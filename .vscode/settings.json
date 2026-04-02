@@ -1,0 +1,22 @@
+{
+    "sqltools.connections": [
+        {
+            "pgOptions": {
+                "ssl": {
+                    "rejectUnauthorized": false
+                }
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "aws-1-ap-southeast-1.pooler.supabase.com",
+            "sshOptions": {
+                "port": 22
+            },
+            "driver": "PostgreSQL",
+            "name": "LeadFlow Supabase",
+            "database": "postgres",
+            "username": "postgres.bomdtkyteajtucptiici",
+            "connectString": "postgresql://postgres.bomdtkyteajtucptiici:FOR_LEADFLOW123$@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
+        }
+    ]
+}
