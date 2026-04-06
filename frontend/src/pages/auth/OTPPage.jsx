@@ -61,11 +61,11 @@ export default function OTPPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-6">
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="relative w-full max-w-[420px]">
         <div className="flex items-center justify-center gap-2.5 mb-10">
-          <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center shadow shadow-brand/30">
+          <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center glow-red">
             <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
             </svg>

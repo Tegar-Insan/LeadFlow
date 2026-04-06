@@ -32,8 +32,8 @@ const ContentLibrarySidebar = ({
     <aside className="w-[175px] flex-shrink-0 bg-[#141414] border-r border-white/8 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="p-3.5 border-b border-white/8">
-        <h2 className="font-syne font-bold text-sm text-white">Content Library</h2>
-        <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight">Drag restaurant content to schedule posts</p>
+        <h2 className="font-display font-bold text-sm text-text-primary">Content Library</h2>
+        <p className="text-[10px] font-body text-text-secondary mt-0.5 leading-tight">Drag content to schedule posts</p>
       </div>
 
       {/* Cards list */}
@@ -63,8 +63,8 @@ const ContentLibrarySidebar = ({
           { label: 'Unscheduled',     value: totalUnscheduled  ?? items.filter(s => s.status === 'draft').length },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between">
-            <span className="text-[10px] text-zinc-500">{label}:</span>
-            <span className="text-[10px] font-bold text-zinc-300">{value}</span>
+            <span className="text-[10px] text-text-secondary">{label}:</span>
+            <span className="text-[10px] font-bold text-text-primary">{value}</span>
           </div>
         ))}
       </div>

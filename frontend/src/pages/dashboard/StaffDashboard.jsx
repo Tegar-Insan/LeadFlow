@@ -50,23 +50,23 @@ export default function StaffDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex">
+    <div className="min-h-screen bg-surface flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
         <main className="flex-1 p-6 animate-fade-in">
           {/* Header */}
           <div className="mb-8">
-            <p className="text-text-muted text-sm font-mono mb-1">{now.format('dddd, DD MMMM YYYY · HH:mm [WIB]')}</p>
-            <h1 className="font-display font-bold text-2xl text-text-primary">
-              {greeting}, <span className="text-brand">{user?.fullName?.split(' ')[0] || 'Staff'}</span> 👋
+            <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Marketing Dashboard</p>
+            <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight mb-1">
+              {greeting}, <span className="text-brand">{user?.fullName?.split(' ')[0] || 'Staff'}</span>
             </h1>
-            <p className="text-text-secondary text-sm mt-1">Here&apos;s what needs your attention today.</p>
+            <p className="text-text-secondary text-base font-body">Here&apos;s what needs your attention today — {now.format('dddd, DD MMMM YYYY')}</p>
           </div>
 
           {/* Quick actions */}
           <div className="mb-8">
-            <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-3">Quick Actions</p>
+            <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest mb-3">Quick Actions</p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <QuickAction to="/calendar"       emoji="📅" label="Content Calendar"  desc="Schedule & manage posts" />
               <QuickAction to="/ai-generator"   emoji="🤖" label="AI Generator"      desc="Generate content ideas"  />
@@ -101,10 +101,13 @@ export default function StaffDashboard() {
                     <li key={post.scheduleid} className="px-5 py-3 flex items-center gap-3">
                       <span className="text-xs font-mono text-text-muted w-12 shrink-0">{formatTime(post.scheduled_time)}</span>
                       <p className="flex-1 text-sm text-text-primary truncate">{post.caption || 'Untitled post'}</p>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-lg border
-                        ${post.status === 'published' ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                        : post.status === 'scheduled'  ? 'text-brand   bg-brand/10   border-brand/20'
-                        : 'text-text-muted bg-surface-raised border-surface-border'}`}>
+                      <span className={
+                        post.status === 'published' ? 'status-live'
+                        : post.status === 'scheduled' ? 'status-scheduled'
+                        : post.status === 'draft' || post.status === 'planned' ? 'status-draft'
+                        : post.status === 'failed' ? 'status-failed'
+                        : 'status-draft'
+                      }>
                         {post.status}
                       </span>
                     </li>

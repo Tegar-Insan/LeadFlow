@@ -34,7 +34,7 @@ const ScheduleFilterBar = ({
         </button>
 
         {/* Month / Year */}
-        <h2 className="font-syne font-bold text-lg text-white min-w-[160px] text-center">
+        <h2 className="font-display font-bold text-lg text-text-primary min-w-[160px] text-center">
           {fMonthYear(displayDate)}
         </h2>
 
