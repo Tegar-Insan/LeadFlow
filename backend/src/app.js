@@ -1,19 +1,21 @@
 // src/app.js
 // Express application — middleware stack, routes, error handling
 
-const express      = require('express');
-const cors         = require('cors');
-const helmet       = require('helmet');
-const morgan       = require('morgan');
-const cookieParser = require('cookie-parser');
+const express       = require('express');
+const cors          = require('cors');
+const helmet        = require('helmet');
+const morgan        = require('morgan');
+const cookieParser  = require('cookie-parser');
 const sanitizeInput = require('./middleware/sanitizeInput');
 const errorHandler  = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { success }    = require('./utils/responseHelper');
 const logger         = require('./utils/logger');
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
+// ── Routes ────────────────────────────────────────────────────
+const authRoutes     = require('./routes/authRoutes');
+const calendarRoutes = require('./routes/calendarRoutes');
+const mediaRoutes    = require('./routes/mediaRoutes');
 
 const app = express();
 
@@ -27,7 +29,10 @@ const allowed = [
   'http://127.0.0.1:5173',
 ];
 app.use(cors({
-  origin: (origin, cb) => (!origin || allowed.includes(origin) ? cb(null, true) : cb(new Error(`CORS blocked: ${origin}`))),
+  origin: (origin, cb) =>
+    !origin || allowed.includes(origin)
+      ? cb(null, true)
+      : cb(new Error(`CORS blocked: ${origin}`)),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -51,27 +56,33 @@ app.use('/api', apiLimiter);
 
 // ── Health check ──────────────────────────────────────────────
 app.get('/health', (req, res) =>
-  success(res, {
+  res.status(200).json({
+    success: true,
     data: {
-      status: 'healthy',
-      service: 'LeadFlow API',
-      version: '1.0.0',
+      status:      'healthy',
+      service:     'LeadFlow API',
+      version:     '1.0.0',
       environment: process.env.NODE_ENV,
-      timezone: 'Asia/Jakarta (GMT+7)',
-      timestamp: new Date().toISOString(),
+      timezone:    'Asia/Jakarta (GMT+7)',
+      timestamp:   new Date().toISOString(),
     },
   })
 );
 
 // ── API Routes ────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
+app.use('/api/auth',     authRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/media',    mediaRoutes);
 
-// ── 404 ───────────────────────────────────────────────────────
+// ── 404 — must be AFTER all routes ───────────────────────────
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
 });
 
-// ── Global error handler ──────────────────────────────────────
+// ── Global error handler — must be last ──────────────────────
 app.use(errorHandler);
 
 module.exports = app;

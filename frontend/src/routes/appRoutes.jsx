@@ -1,24 +1,24 @@
-// src/routes/appRoutes.jsx
-// AUTH TESTING ONLY — other routes added later
+// src/routes/AppRoutes.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import LoginPage    from '../pages/auth/LoginPage.jsx';
-import RegisterPage from '../pages/auth/RegisterPage.jsx';
-import OTPPage      from '../pages/auth/OTPPage.jsx';
+import LoginPage      from '../pages/auth/LoginPage.jsx';
+import RegisterPage   from '../pages/auth/RegisterPage.jsx';
+import OTPPage        from '../pages/auth/OTPPage.jsx';
+import CalendarPage   from '../pages/schedule/CalendarPage.jsx';
+import ProfilePage    from '../pages/profile/ProfilePage.jsx';
+import ProtectedRoute from '../components/common/ProtectedRoute.jsx';
 
 function UnauthorizedPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <p className="text-white text-xl">403 — Access Denied</p>
-    </div>
-  );
-}
-
-function PlaceholderPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <p className="text-white text-xl">Coming Soon</p>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+      <div className="text-center">
+        <p className="text-6xl font-syne font-extrabold text-zinc-200 mb-4">403</p>
+        <p className="text-zinc-500 text-lg font-medium">Access Denied</p>
+        <a href="/login" className="mt-4 inline-block text-sm text-pink-500 hover:text-pink-400 font-semibold">
+          ← Back to Login
+        </a>
+      </div>
     </div>
   );
 }
@@ -26,12 +26,42 @@ function PlaceholderPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* ── Public routes ───────────────────────────────────── */}
       <Route path="/login"        element={<LoginPage />} />
       <Route path="/register"     element={<RegisterPage />} />
       <Route path="/otp"          element={<OTPPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="*"             element={<Navigate to="/login" replace />} />
-      <Route path="/otp" element={<OTPPage />} />
+
+      {/* ── Dashboard redirects (role-based landing) ────────── */}
+      <Route path="/staff/dashboard"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/owner/dashboard"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/admin/dashboard"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/dashboard/staff"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/dashboard/owner"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/dashboard/admin"   element={<Navigate to="/calendar" replace />} />
+      <Route path="/dashboard"         element={<Navigate to="/calendar" replace />} />
+
+      {/* ── Protected routes ────────────────────────────────── */}
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ── Fallback — MUST be last ──────────────────────────── */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

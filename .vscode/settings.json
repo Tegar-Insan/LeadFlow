@@ -18,5 +18,6 @@
             "username": "postgres.bomdtkyteajtucptiici",
             "connectString": "postgresql://postgres.bomdtkyteajtucptiici:FOR_LEADFLOW123$@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
         }
-    ]
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false
 }

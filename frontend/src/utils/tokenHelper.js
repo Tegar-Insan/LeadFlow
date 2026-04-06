@@ -1,57 +1,29 @@
 // src/utils/tokenHelper.js
-// Access token storage and retrieval helpers
+// localStorage helpers for JWT token + user session
+// LeadFlow – Krench Chicken
 
-import { STORAGE_KEYS } from './constants';
+const ACCESS_TOKEN_KEY  = 'lf_access_token';
+const USER_KEY          = 'lf_user';
 
-export function getAccessToken() {
-  return localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-}
+// ── Access Token ──────────────────────────────────────────────
+export const getAccessToken  = () => localStorage.getItem(ACCESS_TOKEN_KEY);
+export const setAccessToken  = (token) => localStorage.setItem(ACCESS_TOKEN_KEY, token);
+export const removeAccessToken = () => localStorage.removeItem(ACCESS_TOKEN_KEY);
 
-export function setAccessToken(token) {
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
-}
-
-export function removeAccessToken() {
-  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-}
-
-export function getStoredUser() {
+// ── User object ───────────────────────────────────────────────
+export const getStoredUser = () => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USER);
+    const raw = localStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
-}
+};
+export const setStoredUser   = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user));
+export const removeStoredUser = () => localStorage.removeItem(USER_KEY);
 
-export function setStoredUser(user) {
-  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-}
-
-export function removeStoredUser() {
-  localStorage.removeItem(STORAGE_KEYS.USER);
-}
-
-export function clearAuthStorage() {
-  removeAccessToken();
-  removeStoredUser();
-  localStorage.removeItem(STORAGE_KEYS.PENDING_EMAIL);
-}
-
-/** Decode JWT payload without verification (client-side only, not for security checks) */
-export function decodeTokenPayload(token) {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
-
-/** Check if a token is expired (client-side estimate only) */
-export function isTokenExpired(token) {
-  const payload = decodeTokenPayload(token);
-  if (!payload?.exp) return true;
-  return Date.now() >= payload.exp * 1000;
-}
-
+// ── Clear everything ──────────────────────────────────────────
+export const clearAuthStorage = () => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+};

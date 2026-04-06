@@ -76,7 +76,7 @@ function authReducer(state, action) {
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Sync token + user to localStorage whenever they change
+  // Sync token to localStorage
   useEffect(() => {
     if (state.token) {
       setAccessToken(state.token);
@@ -85,6 +85,7 @@ export function AuthProvider({ children }) {
     }
   }, [state.token]);
 
+  // Sync user to localStorage
   useEffect(() => {
     if (state.user) {
       setStoredUser(state.user);
@@ -155,8 +156,8 @@ export function AuthProvider({ children }) {
   // Role-based dashboard redirect path
   const dashboardPath = (() => {
     const role = state.user?.role_name || state.user?.roleName;
-    if (role === 'admin')          return '/admin/dashboard';
-    if (role === 'business_owner') return '/owner/dashboard';
+    if (role === 'admin')           return '/admin/dashboard';
+    if (role === 'business_owner')  return '/owner/dashboard';
     if (role === 'marketing_staff') return '/staff/dashboard';
     return '/dashboard';
   })();
@@ -181,11 +182,10 @@ export function AuthProvider({ children }) {
 // Named export — used by useAuth.js
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
   return ctx;
 };
 
-// Alias for backward compatibility
 export const useAuthContext = useAuth;
 
 export default AuthContext;

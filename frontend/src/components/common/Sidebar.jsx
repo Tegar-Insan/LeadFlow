@@ -11,6 +11,7 @@ const NAV_BY_ROLE = {
   ],
   business_owner: [
     { to: '/dashboard/owner', label: 'Dashboard', icon: '📊' },
+    { to: '/calendar', label: 'Content Calendar', icon: '📅' },
   ],
   marketing_staff: [
     { to: '/dashboard/staff',  label: 'Overview',         icon: '🏠' },
@@ -36,6 +37,7 @@ function NavItem({ to, label, icon }) {
       <span className="text-base">{icon}</span>
       <span>{label}</span>
     </Link>
+    
   );
 }
 

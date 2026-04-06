@@ -1,54 +1,64 @@
-// src/utils/jakartaTime.js
-// Dayjs GMT+7 (Asia/Jakarta / WIB) timezone utility
-// All scheduled content times are stored in UTC and displayed in Jakarta time
+/**
+ * jakartaTime.js
+ * GMT+7 (WIB / Asia/Jakarta) time utilities using dayjs
+ * All DB timestamps are stored UTC; this converts for display/logic
+ * LeadFlow – Krench Chicken
+ */
 
 const dayjs = require('dayjs');
-const utc      = require('dayjs/plugin/utc');
-const timezone = require('dayjs/plugin/timezone');
+const utc   = require('dayjs/plugin/utc');
+const tz    = require('dayjs/plugin/timezone');
 
 dayjs.extend(utc);
-dayjs.extend(timezone);
+dayjs.extend(tz);
 
-const JAKARTA_TZ = 'Asia/Jakarta';
-
-/**
- * Get current Jakarta time as a dayjs object
- */
-function nowJakarta() {
-  return dayjs().tz(JAKARTA_TZ);
-}
+const TIMEZONE = 'Asia/Jakarta';
 
 /**
- * Convert a UTC date string or Date to Jakarta dayjs
- * @param {string|Date} date
+ * Current time in WIB as dayjs object
  */
-function toJakarta(date) {
-  return dayjs(date).tz(JAKARTA_TZ);
-}
+const nowJakarta = () => dayjs().tz(TIMEZONE);
 
 /**
- * Format a date in Jakarta timezone
- * @param {string|Date} date
- * @param {string} fmt  - dayjs format string
+ * Convert a UTC date/string to WIB dayjs object
  */
-function formatJakarta(date, fmt = 'YYYY-MM-DD HH:mm:ss') {
-  return toJakarta(date).format(fmt);
-}
+const toJakarta = (utcDate) => dayjs(utcDate).tz(TIMEZONE);
 
 /**
- * Convert a Jakarta local time string to UTC ISO string for DB storage
- * @param {string} jakartaDateStr - e.g. "2025-08-15 14:30:00"
+ * Convert a UTC date/string to WIB ISO string
  */
-function jakartaToUTC(jakartaDateStr) {
-  return dayjs.tz(jakartaDateStr, JAKARTA_TZ).utc().toISOString();
-}
+const toJakartaISO = (utcDate) => dayjs(utcDate).tz(TIMEZONE).toISOString();
 
 /**
- * Check if a UTC scheduled time has passed (is due for publishing)
- * @param {string} scheduledUtc - UTC ISO string from DB
+ * Format a UTC date to human readable WIB string
+ * e.g. "04 April 2026, 14:30 WIB"
  */
-function isDue(scheduledUtc) {
-  return dayjs().utc().isAfter(dayjs(scheduledUtc).utc());
-}
+const formatJakarta = (utcDate, format = 'DD MMMM YYYY, HH:mm [WIB]') => {
+  return dayjs(utcDate).tz(TIMEZONE).format(format);
+};
 
-module.exports = { JAKARTA_TZ, nowJakarta, toJakarta, formatJakarta, jakartaToUTC, isDue };
+/**
+ * Convert a WIB datetime string to UTC for DB storage
+ * Input: "2026-04-04T14:30:00" (assumed WIB)
+ * Output: UTC Date object
+ */
+const jakartaToUTC = (wibDateString) => {
+  return dayjs.tz(wibDateString, TIMEZONE).utc().toDate();
+};
+
+/**
+ * Check if a scheduled_at (UTC) has passed WIB "now"
+ */
+const isScheduleTimeReached = (scheduledAtUTC) => {
+  return dayjs(scheduledAtUTC).isBefore(dayjs());
+};
+
+module.exports = {
+  TIMEZONE,
+  nowJakarta,
+  toJakarta,
+  toJakartaISO,
+  formatJakarta,
+  jakartaToUTC,
+  isScheduleTimeReached,
+};
