@@ -5,25 +5,31 @@ export default {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#E63946',
-          dark:    '#c1121f',
-          light:   '#ff6b74',
+          DEFAULT: '#e31837',
+          dark:    '#b01229',
+          light:   '#ff4d6a',
+        },
+        gold: {
+          DEFAULT: '#fecb00',
+          dim:     'rgba(254,203,0,0.1)',
         },
         surface: {
-          DEFAULT: '#111111',
-          raised:   '#1a1a1a',
-          overlay:  '#222222',
-          border:   '#2a2a2a',
+          DEFAULT: '#131313',
+          raised:   '#1c1b1b',
+          overlay:  '#2a2a2a',
+          border:   'rgba(255,255,255,0.05)',
+          card:     '#27272a',
         },
         text: {
-          primary:   '#f5f5f5',
-          secondary: '#9ca3af',
-          muted:     '#4b5563',
+          primary:   '#e5e2e1',
+          secondary: '#71717a',
+          muted:     '#52525b',
         },
+        success: '#10b981',
       },
       fontFamily: {
-        display: ['"Syne"',           'sans-serif'],
-        body:    ['"DM Sans"',        'sans-serif'],
+        display: ['"Manrope"',        'sans-serif'],
+        body:    ['"Inter"',          'sans-serif'],
         mono:    ['"JetBrains Mono"', 'monospace'],
       },
       animation: {

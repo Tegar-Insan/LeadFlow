@@ -11,11 +11,11 @@ import ProtectedRoute from '../components/common/ProtectedRoute.jsx';
 
 function UnauthorizedPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-      <div className="text-center">
-        <p className="text-6xl font-syne font-extrabold text-zinc-200 mb-4">403</p>
-        <p className="text-zinc-500 text-lg font-medium">Access Denied</p>
-        <a href="/login" className="mt-4 inline-block text-sm text-pink-500 hover:text-pink-400 font-semibold">
+    <div className="min-h-screen flex items-center justify-center bg-surface">
+      <div className="text-center animate-slide-up">
+        <p className="text-6xl font-display font-extrabold text-brand mb-4">403</p>
+        <p className="text-text-secondary text-lg font-body font-medium">Access Denied</p>
+        <a href="/login" className="mt-4 inline-block text-sm text-brand hover:text-brand-light font-body font-semibold transition-colors">
           ← Back to Login
         </a>
       </div>

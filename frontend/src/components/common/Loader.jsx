@@ -3,7 +3,7 @@
 
 export function FullPageLoader({ message = 'Loading LeadFlow…' }) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4">
         <div className="relative w-12 h-12">
           <div className="absolute inset-0 rounded-full border-2 border-surface-border" />
           <div className="absolute inset-0 rounded-full border-2 border-brand border-t-transparent animate-spin" />

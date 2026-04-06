@@ -1,6 +1,6 @@
 /**
  * CalendarView.jsx
- * Clean white monthly calendar — Google Calendar style
+ * Dark monthly calendar — Figma-aligned
  * LeadFlow – Krench Chicken
  */
 import React, { useState } from 'react';
@@ -15,11 +15,11 @@ dayjs.extend(timezone);
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const STATUS_DOT = {
-  draft:     'bg-zinc-400',
-  planned:   'bg-blue-400',
-  scheduled: 'bg-pink-500',
-  uploaded:  'bg-purple-500',
-  published: 'bg-emerald-500',
+  draft:     'bg-gold',
+  planned:   'bg-gold',
+  scheduled: 'bg-brand',
+  uploaded:  'bg-brand',
+  published: 'bg-success',
   failed:    'bg-red-500',
 };
 
@@ -39,20 +39,20 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
       }}
       onClick={() => onDayClick?.(cell.iso)}
       className={`
-        min-h-[110px] p-2 border-r border-b border-zinc-200 flex flex-col gap-1
+        min-h-[110px] p-2 border-r border-b border-surface-border flex flex-col gap-1
         cursor-pointer transition-colors
-        ${!cell.isCurrentMonth ? 'bg-zinc-50' : 'bg-white hover:bg-zinc-50'}
-        ${cell.isToday ? '!bg-pink-50' : ''}
-        ${isOver ? '!bg-blue-50' : ''}
+        ${!cell.isCurrentMonth ? 'bg-surface opacity-60' : 'bg-surface-raised hover:bg-white/[0.03]'}
+        ${cell.isToday ? '!bg-gold/[0.08]' : ''}
+        ${isOver ? '!bg-brand/[0.08]' : ''}
       `}
     >
       {/* Day number */}
       <div className="flex justify-end">
         <span className={`
-          w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold
+          w-7 h-7 flex items-center justify-center rounded-full text-sm font-display font-semibold
           ${cell.isToday
-            ? 'bg-pink-500 text-white'
-            : cell.isCurrentMonth ? 'text-zinc-700' : 'text-zinc-300'}
+            ? 'bg-gold text-black'
+            : cell.isCurrentMonth ? 'text-text-primary' : 'text-text-muted'}
         `}>
           {cell.day}
         </span>
@@ -71,18 +71,18 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
               draggable
               onDragStart={e => { e.stopPropagation(); e.dataTransfer.setData('scheduleId', s.id); }}
               onClick={e => { e.stopPropagation(); onCardClick?.(s); }}
-              className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg bg-white border border-zinc-100 hover:border-zinc-300 hover:shadow-sm transition-all cursor-pointer group"
+              className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg bg-surface-overlay border border-surface-border hover:border-brand/30 transition-all cursor-pointer group"
             >
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
-              <span className="text-[11px] text-zinc-700 truncate font-medium flex-1">
-                {time && <span className="text-zinc-400 mr-1">{time}</span>}
+              <span className="text-[11px] text-text-primary font-body truncate font-medium flex-1">
+                {time && <span className="text-text-muted mr-1">{time}</span>}
                 {s.custom_caption || s.title || 'Untitled'}
               </span>
             </div>
           );
         })}
         {overflow > 0 && (
-          <p className="text-[11px] text-zinc-400 px-1.5 py-0.5 font-medium">
+          <p className="text-[11px] text-text-muted font-body px-1.5 py-0.5 font-medium">
             +{overflow} more
           </p>
         )}
@@ -95,14 +95,14 @@ const CalendarView = ({ year, month, schedulesByDate = {}, onDrop, onDayClick, o
   const grid = buildMonthGrid(year, month);
 
   return (
-    <div className="flex flex-col h-full rounded-xl overflow-hidden border border-zinc-200 bg-white shadow-sm">
+    <div className="flex flex-col h-full rounded-xl overflow-hidden border border-surface-border bg-surface-raised">
 
       {/* Weekday header */}
-      <div className="grid grid-cols-7 bg-white border-b border-zinc-200">
+      <div className="grid grid-cols-7 bg-surface-raised border-b border-surface-border">
         {WEEKDAYS.map((d, i) => (
           <div key={d} className={`
-            py-3 text-center text-xs font-bold uppercase tracking-wider border-r border-zinc-100 last:border-r-0
-            ${i >= 5 ? 'text-pink-400' : 'text-zinc-400'}
+            py-3 text-center text-xs font-body font-bold uppercase tracking-widest border-r border-surface-border last:border-r-0
+            ${i >= 5 ? 'text-brand' : 'text-text-secondary'}
           `}>
             {d}
           </div>
@@ -112,8 +112,8 @@ const CalendarView = ({ year, month, schedulesByDate = {}, onDrop, onDayClick, o
       {/* Calendar grid */}
       <div className="grid grid-cols-7 flex-1 relative">
         {loading && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-            <div className="flex items-center gap-2 text-zinc-400 text-sm">
+          <div className="absolute inset-0 bg-surface-raised/70 flex items-center justify-center z-10">
+            <div className="flex items-center gap-2 text-text-secondary font-body text-sm">
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>

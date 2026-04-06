@@ -6,7 +6,7 @@ export default function NotFoundPage() {
   const { isAuthenticated, dashboardPath } = useAuth();
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-6">
       <div className="text-center animate-slide-up">
         <p className="font-mono text-brand text-6xl font-bold mb-4">404</p>
         <h1 className="font-display font-bold text-2xl text-text-primary mb-3">Page not found</h1>
