@@ -4,7 +4,7 @@ import Sidebar from '../../components/common/Sidebar';
 import Navbar  from '../../components/common/Navbar';
 import useAuth from '../../hooks/useAuth';
 import api    from '../../services/authService';
-import { nowJakarta, getGreeting } from '../../utils/formatDate';
+import { nowWIB, getGreeting } from '../../utils/formatDate';
 
 /* ── KPI Bento Card ─────────────────────────────────────────────────── */
 function KPICard({ label, value, trend, sub, highlight = false, colSpan = 1, icon }) {
@@ -59,7 +59,7 @@ export default function OwnerDashboard() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const now      = nowJakarta();
+  const now      = nowWIB();
   const greeting = getGreeting();
   const kpis     = weekly || {};
 

@@ -5,7 +5,7 @@ import Sidebar from '../../components/common/Sidebar';
 import Navbar  from '../../components/common/Navbar';
 import useAuth from '../../hooks/useAuth';
 import api    from '../../services/authService';
-import { nowJakarta, getGreeting, formatTime, fromNowJakarta } from '../../utils/formatDate';
+import { nowWIB, getGreeting, formatTime, fromNowJakarta } from '../../utils/formatDate';
 
 const INTENT_STYLE = {
   lead:      'text-green-400 bg-green-500/10 border-green-500/20',
@@ -35,7 +35,7 @@ export default function StaffDashboard() {
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [loadingInbox, setLoadingInbox] = useState(true);
 
-  const now      = nowJakarta();
+  const now      = nowWIB();
   const greeting = getGreeting();
 
   useEffect(() => {

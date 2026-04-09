@@ -5,7 +5,7 @@ import Navbar  from '../../components/common/Navbar';
 import useAuth from '../../hooks/useAuth';
 import api     from '../../services/authService';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
-import { formatJakarta, nowJakarta } from '../../utils/formatDate';
+import { formatJakarta, nowWIB } from '../../utils/formatDate';
 
 function StatCard({ label, value, icon }) {
   return (

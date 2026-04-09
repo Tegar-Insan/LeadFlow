@@ -53,11 +53,12 @@ COMMENT ON COLUMN content_ideas.status IS 'pending_validation → approved (trig
 COMMENT ON COLUMN content_ideas.hook   IS 'Opening line to hook TikTok viewers in first 3 seconds of video.';
 COMMENT ON COLUMN content_ideas.hashtags IS 'PostgreSQL text array. Stored as {''#KrenchChicken'',''#BogorFood'',...}.';
 
-CREATE INDEX idx_content_ideas_prompt_id ON content_ideas (prompt_id);
-CREATE INDEX idx_content_ideas_status    ON content_ideas (status);
-CREATE INDEX idx_content_ideas_created   ON content_ideas (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_prompt_id ON content_ideas (prompt_id);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_status    ON content_ideas (status);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_created   ON content_ideas (created_at DESC);
 
 -- Auto-update updated_at
+DROP TRIGGER IF EXISTS trg_content_ideas_updated_at ON content_ideas;
 CREATE TRIGGER trg_content_ideas_updated_at
     BEFORE UPDATE ON content_ideas
     FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
@@ -79,6 +80,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_prompt_ideas_count_sync ON content_ideas;
 CREATE TRIGGER trg_prompt_ideas_count_sync
     AFTER INSERT OR DELETE ON content_ideas
     FOR EACH ROW EXECUTE FUNCTION trigger_sync_prompt_ideas_count();
@@ -125,6 +127,10 @@ COMMENT ON VIEW v_content_ideas_detail IS 'Full idea detail for validation UI. I
 -- Admin: full access
 -- ---------------------------------------------------------------------------
 ALTER TABLE content_ideas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS rls_ideas_admin_all  ON content_ideas;
+DROP POLICY IF EXISTS rls_ideas_staff_all  ON content_ideas;
+DROP POLICY IF EXISTS rls_ideas_owner_read ON content_ideas;
 
 CREATE POLICY rls_ideas_admin_all ON content_ideas
     FOR ALL USING (get_caller_role() = 'admin');

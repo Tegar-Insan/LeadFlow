@@ -36,7 +36,7 @@ function authReducer(state, action) {
       return {
         ...state,
         user:            action.payload.user,
-        token:           action.payload.token,
+        token:           action.payload.accessToken,
         isAuthenticated: true,
         isLoading:       false,
       };
@@ -51,7 +51,7 @@ function authReducer(state, action) {
       return {
         ...state,
         user:            action.payload.user,
-        token:           action.payload.token,
+        token:           action.payload.accessToken,
         isAuthenticated: true,
         otpPending:      false,
         otpEmail:        null,
@@ -102,7 +102,7 @@ export function AuthProvider({ children }) {
         dispatch({ type: 'OTP_PENDING', payload: email });
         return { otpRequired: true };
       }
-      setAccessToken(res.data.token);
+      setAccessToken(res.data.accessToken);
       setStoredUser(res.data.user);
       dispatch({ type: 'LOGIN_SUCCESS', payload: res.data });
       return { success: true };
@@ -116,7 +116,7 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const res = await registerVerifyOTP({ email, otp });
-      setAccessToken(res.data.token);
+      setAccessToken(res.data.accessToken);
       setStoredUser(res.data.user);
       dispatch({ type: 'OTP_VERIFIED', payload: res.data });
       return { success: true };

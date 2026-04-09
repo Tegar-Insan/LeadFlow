@@ -59,7 +59,7 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
       </div>
 
       {/* Schedule items */}
-      <div className="space-y-0.5 flex-1" onClick={e => e.stopPropagation()}>
+      <div className="space-y-0.5 flex-1">
         {visible.map(s => {
           const dot  = STATUS_DOT[s.status] || STATUS_DOT.draft;
           const time = s.scheduled_at

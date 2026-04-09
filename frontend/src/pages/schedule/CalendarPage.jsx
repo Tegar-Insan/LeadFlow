@@ -55,11 +55,25 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
     auto_publish: initial.auto_publish !== false,
     privacy_level: initial.privacy_level || 'PUBLIC_TO_EVERYONE',
   });
+  const [dateError, setDateError] = useState(null);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm(f => ({ ...f, [k]: v }));
+    if (k === 'scheduled_at') setDateError(null);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Guard: reject past dates (WIB) before hitting the API
+    if (form.scheduled_at) {
+      const scheduledWIB = dayjs.tz(form.scheduled_at, TZ);
+      if (scheduledWIB.isBefore(dayjs().tz(TZ))) {
+        setDateError('Cannot schedule in the past. Please choose a future date and time (WIB).');
+        return;
+      }
+    }
+
     onSave({
       title:        form.title.trim(),
       caption:      form.caption.trim() || null,
@@ -112,8 +126,11 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
               Publish Date & Time <span className="text-text-muted font-normal">(WIB / Jakarta)</span>
             </label>
             <input type="datetime-local" value={form.scheduled_at} onChange={e => set('scheduled_at', e.target.value)}
-              className="input-field [color-scheme:dark]"/>
-            <p className="text-[10px] text-text-muted mt-1">Leave empty to save as draft</p>
+              className={`input-field [color-scheme:dark] ${dateError ? 'border-brand' : ''}`}/>
+            {dateError
+              ? <p className="text-[10px] text-brand mt-1">{dateError}</p>
+              : <p className="text-[10px] text-text-muted mt-1">Leave empty to save as draft</p>
+            }
           </div>
 
           <div className="flex gap-4">

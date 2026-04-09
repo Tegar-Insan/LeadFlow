@@ -83,7 +83,7 @@ const uploadMedia = async (req, res) => {
 
       const asset = await scheduleService.createAsset({
         queue_schedule_id: scheduleId,
-        uploaded_by:       req.user.id,
+        uploaded_by:       req.user.userId,
         content_type:      getContentType(file.mimetype),
         file_name:         file.originalname,
         file_url:          urlData.publicUrl,

@@ -96,6 +96,10 @@ COMMENT ON TABLE  content_queue_schedules              IS 'Core schedule queue. 
 COMMENT ON COLUMN content_queue_schedules.scheduled_at IS 'Stored UTC. Displayed WIB in UI. Cron polls every 60s.';
 COMMENT ON COLUMN content_queue_schedules.priority_order IS 'Drag-drop order in calendar (UC007 NF13).';
 
+-- idea_id is nullable: manual calendar posts have no linked AI idea (UC007).
+-- This ALTER is idempotent — safe to re-run if the column was previously set NOT NULL.
+ALTER TABLE content_queue_schedules ALTER COLUMN idea_id DROP NOT NULL;
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_cqs_status         ON content_queue_schedules (status);
 CREATE INDEX IF NOT EXISTS idx_cqs_scheduled_at   ON content_queue_schedules (scheduled_at);

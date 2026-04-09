@@ -2,11 +2,11 @@
 // Top navigation bar for dashboard pages
 
 import useAuth from '../../hooks/useAuth';
-import { nowJakarta } from '../../utils/formatDate';
+import { nowWIB } from '../../utils/formatDate';
 
 export default function Navbar({ onMenuToggle }) {
   const { user } = useAuth();
-  const timeNow = nowJakarta().format('HH:mm');
+  const timeNow = nowWIB().format('HH:mm');
 
   return (
     <header className="sticky top-0 z-20 bg-surface/90 backdrop-blur-md border-b border-surface-border h-16 px-6 flex items-center gap-4">

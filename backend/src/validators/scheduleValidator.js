@@ -4,7 +4,14 @@
  * LeadFlow – Krench Chicken
  */
 
-const { body } = require('express-validator');
+const { body }       = require('express-validator');
+const dayjs          = require('dayjs');
+const utc            = require('dayjs/plugin/utc');
+const tz             = require('dayjs/plugin/timezone');
+const { nowJakarta } = require('../utils/jakartaTime');
+
+dayjs.extend(utc);
+dayjs.extend(tz);
 
 const scheduleCreateRules = [
   body('title')
@@ -30,8 +37,8 @@ const scheduleCreateRules = [
     .optional({ nullable: true })
     .isISO8601().withMessage('scheduled_at must be a valid ISO 8601 datetime')
     .custom((val) => {
-      if (val && new Date(val) < new Date()) {
-        throw new Error('scheduled_at must be in the future');
+      if (val && dayjs(val).isBefore(nowJakarta())) {
+        throw new Error('Cannot schedule content in the past. Please choose a future date and time (WIB).');
       }
       return true;
     }),
