@@ -128,6 +128,7 @@ export default function Sidebar({ isOpen, onClose }) {
           {/* Create Post button */}
           <Link
             to="/calendar"
+            state={{ openCreate: true }}
             className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-display font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98]"
             style={{ boxShadow: '0 10px 20px -5px rgba(227,24,55,0.3)' }}
           >

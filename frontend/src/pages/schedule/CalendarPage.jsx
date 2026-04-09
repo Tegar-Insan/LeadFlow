@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc      from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -260,11 +260,12 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onMediaUpload, onMed
 
 // ─── MAIN PAGE ────────────────────────────────────────────────
 const CalendarPage = () => {
-  const navigate = useNavigate();
-  const authCtx  = useContext(AuthContext);
-  const user     = authCtx?.user;
-  const roleName = user?.roleName || user?.role_name;
-  const canEdit  = ['marketing_staff', 'admin'].includes(roleName);
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const authCtx   = useContext(AuthContext);
+  const user      = authCtx?.user;
+  const roleName  = user?.roleName || user?.role_name;
+  const canEdit   = ['marketing_staff', 'admin'].includes(roleName);
 
   const {
     year, month,
@@ -293,6 +294,18 @@ const CalendarPage = () => {
     const diff  = dow === 0 ? -6 : 1 - dow;
     return today.add(diff, 'day').startOf('day');
   });
+
+  // Auto-open create modal when navigated from Sidebar "Create Post"
+  useEffect(() => {
+    if (canEdit && location.state?.openCreate) {
+      setActiveDate(null);
+      setActiveHour(null);
+      setFormError(null);
+      setModal('create');
+      // Clear state so refreshing the page doesn't re-open the modal
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, []);
 
   useEffect(() => {
     if (modal === 'detail' && activeSchedule) {
