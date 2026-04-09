@@ -14,6 +14,7 @@ const logger         = require('./utils/logger');
 
 // ── Routes ────────────────────────────────────────────────────
 const authRoutes     = require('./routes/authRoutes');
+const profileRoutes  = require('./routes/profileRoutes');
 const calendarRoutes = require('./routes/calendarRoutes');
 const mediaRoutes    = require('./routes/mediaRoutes');
 
@@ -71,6 +72,7 @@ app.get('/health', (req, res) =>
 
 // ── API Routes ────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes);
+app.use('/api/profile',  profileRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/media',    mediaRoutes);
 

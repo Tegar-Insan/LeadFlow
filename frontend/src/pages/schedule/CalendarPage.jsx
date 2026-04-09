@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc      from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -259,6 +260,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onMediaUpload, onMed
 
 // ─── MAIN PAGE ────────────────────────────────────────────────
 const CalendarPage = () => {
+  const navigate = useNavigate();
   const authCtx  = useContext(AuthContext);
   const user     = authCtx?.user;
   const roleName = user?.roleName || user?.role_name;
@@ -448,6 +450,17 @@ const CalendarPage = () => {
                 New Post
               </button>
             )}
+
+            {/* Profile button */}
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-8 h-8 rounded-lg border border-surface-border flex items-center justify-center text-white hover:bg-white/[0.06] transition-colors flex-shrink-0"
+              title="Profile"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+              </svg>
+            </button>
           </div>
         </header>
 
