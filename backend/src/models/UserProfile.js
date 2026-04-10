@@ -28,10 +28,11 @@ async function findByUserId(userId) {
   return data;
 }
 
-async function update(userId, { fullName, phone }) {
+async function update(userId, { fullName, phone, profilePhotoUrl }) {
   const updates = {};
-  if (fullName !== undefined) updates.full_name = fullName;
-  if (phone    !== undefined) updates.phone     = phone;
+  if (fullName        !== undefined) updates.full_name         = fullName;
+  if (phone           !== undefined) updates.phone             = phone;
+  if (profilePhotoUrl !== undefined) updates.profile_photo_url = profilePhotoUrl;
   const { data, error } = await db
     .from('user_profiles')
     .update(updates)

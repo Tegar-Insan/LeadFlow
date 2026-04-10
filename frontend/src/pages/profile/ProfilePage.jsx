@@ -4,12 +4,12 @@
  * LeadFlow – Krench Chicken
  */
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import Sidebar from '../../components/common/Sidebar';
 import Navbar  from '../../components/common/Navbar';
-import { getProfile, updateProfile, changePassword } from '../../services/profileService';
+import { getProfile, updateProfile, changePassword, uploadPhoto } from '../../services/profileService';
 
 const ROLE_CONFIG = {
   admin:           { label: 'Admin',           cls: 'status-scheduled' },
@@ -53,6 +53,40 @@ const ProfilePage = () => {
   const roleCfg  = ROLE_CONFIG[roleName] || { label: roleName || 'User', cls: 'status-draft' };
   const initials = (user?.fullName || user?.email || 'U')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const photoInputRef = useRef(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError,     setPhotoError]     = useState(null);
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED.includes(file.type)) {
+      setPhotoError('Only JPEG, PNG or WEBP images are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Photo must be under 5 MB.');
+      return;
+    }
+
+    setPhotoUploading(true);
+    setPhotoError(null);
+    try {
+      const r        = await uploadPhoto(file);
+      const photoUrl = r.data?.data?.photoUrl;
+      setProfile(prev => ({ ...prev, photoUrl }));
+      updateUser({ ...authCtx.user, photoUrl });
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || 'Photo upload failed.');
+    } finally {
+      setPhotoUploading(false);
+      // reset input so the same file can be re-selected after an error
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
 
   // ── Edit profile state ────────────────────────────────────────
   const [editMode,   setEditMode]   = useState(false);
@@ -153,9 +187,57 @@ const ProfilePage = () => {
               {/* Avatar + role + edit button */}
               <div className="px-6 pb-5">
                 <div className="flex items-end justify-between -mt-10 mb-5">
-                  <div className="w-20 h-20 rounded-full bg-brand border-4 border-surface-raised flex items-center justify-center glow-red">
-                    <span className="font-display font-extrabold text-2xl text-white">{initials}</span>
+
+                  {/* ── Clickable avatar ── */}
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={photoUploading}
+                      className="w-20 h-20 rounded-full border-4 border-surface-raised overflow-hidden flex items-center justify-center glow-red focus:outline-none"
+                      title="Click to change photo"
+                    >
+                      {user?.photoUrl ? (
+                        <img
+                          src={user.photoUrl}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-brand flex items-center justify-center">
+                          <span className="font-display font-extrabold text-2xl text-white">{initials}</span>
+                        </div>
+                      )}
+
+                      {/* Hover / uploading overlay */}
+                      <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity
+                        ${photoUploading
+                          ? 'bg-black/60 opacity-100'
+                          : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}>
+                        {photoUploading ? (
+                          <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                    />
                   </div>
+
                   <div className="flex items-center gap-2">
                     <span className={roleCfg.cls}>{roleCfg.label}</span>
                     <button onClick={openEdit}
@@ -169,6 +251,9 @@ const ProfilePage = () => {
                 </div>
                 <h2 className="font-display font-bold text-xl text-text-primary tracking-tight">{user?.fullName || 'User'}</h2>
                 <p className="text-sm text-text-secondary font-body mt-0.5">Krench Chicken · Bogor, Indonesia</p>
+                {photoError && (
+                  <p className="text-xs text-brand font-body mt-2">{photoError}</p>
+                )}
               </div>
 
               <div className="h-px bg-surface-border" />
