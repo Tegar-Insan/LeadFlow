@@ -7,7 +7,7 @@
 
 const multer            = require('multer');
 const path              = require('path');
-const { v4: uuidv4 }    = require('uuid');
+const { randomUUID }    = require('crypto');
 const { createClient }  = require('@supabase/supabase-js');
 const scheduleService   = require('../services/scheduleService');
 const { success, error } = require('../utils/responseHelper');
@@ -51,19 +51,19 @@ const uploadMedia = async (req, res) => {
     const { scheduleId } = req.params;
 
     const schedule = await scheduleService.getScheduleById(scheduleId);
-    if (!schedule) return res.status(404).json(error('Schedule not found'));
+    if (!schedule) return error(res, { message: 'Schedule not found', statusCode: 404 });
     if (schedule.status === 'published') {
-      return res.status(409).json(error('Cannot upload to a published schedule'));
+      return error(res, { message: 'Cannot upload to a published schedule', statusCode: 409 });
     }
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json(error('No files uploaded'));
+      return error(res, { message: 'No files uploaded', statusCode: 400 });
     }
 
     const uploadedAssets = [];
 
     for (const file of req.files) {
       const ext         = path.extname(file.originalname) || '.bin';
-      const storagePath = `schedules/${scheduleId}/${uuidv4()}${ext}`;
+      const storagePath = `schedules/${scheduleId}/${randomUUID()}${ext}`;
 
       const { error: storageErr } = await supabaseStorage
         .storage.from(STORAGE_BUCKET)
@@ -74,7 +74,7 @@ const uploadMedia = async (req, res) => {
 
       if (storageErr) {
         logger.error('[mediaController] Storage error', storageErr);
-        return res.status(502).json(error(`Storage upload failed: ${storageErr.message}`));
+        return error(res, { message: `Storage upload failed: ${storageErr.message}`, statusCode: 502 });
       }
 
       const { data: urlData } = supabaseStorage
@@ -96,10 +96,10 @@ const uploadMedia = async (req, res) => {
     }
 
     logger.info(`[Media] ${req.files.length} file(s) uploaded to schedule ${scheduleId}`);
-    return res.status(201).json(success('Media uploaded', { assets: uploadedAssets }));
+    return success(res, { message: 'Media uploaded', data: { assets: uploadedAssets }, statusCode: 201 });
   } catch (err) {
     logger.error('[mediaController.uploadMedia]', err);
-    return res.status(500).json(error('Media upload failed'));
+    return error(res, { message: 'Media upload failed', statusCode: 500 });
   }
 };
 
@@ -109,12 +109,12 @@ const uploadMedia = async (req, res) => {
 const getMediaBySchedule = async (req, res) => {
   try {
     const schedule = await scheduleService.getScheduleById(req.params.scheduleId);
-    if (!schedule) return res.status(404).json(error('Schedule not found'));
+    if (!schedule) return error(res, { message: 'Schedule not found', statusCode: 404 });
     const assets = await scheduleService.getAssetsBySchedule(req.params.scheduleId);
-    return res.status(200).json(success('Assets loaded', { assets }));
+    return success(res, { message: 'Assets loaded', data: { assets } });
   } catch (err) {
     logger.error('[mediaController.getMediaBySchedule]', err);
-    return res.status(500).json(error('Failed to load media'));
+    return error(res, { message: 'Failed to load media', statusCode: 500 });
   }
 };
 
@@ -124,14 +124,14 @@ const getMediaBySchedule = async (req, res) => {
 const deleteMedia = async (req, res) => {
   try {
     const asset = await scheduleService.deleteAsset(req.params.assetId);
-    if (!asset) return res.status(404).json(error('Asset not found'));
+    if (!asset) return error(res, { message: 'Asset not found', statusCode: 404 });
 
     await supabaseStorage.storage.from(STORAGE_BUCKET).remove([asset.storage_path]);
     logger.info(`[Media] Asset deleted id=${asset.id}`);
-    return res.status(200).json(success('Media deleted', { assetId: asset.id }));
+    return success(res, { message: 'Media deleted', data: { assetId: asset.id } });
   } catch (err) {
     logger.error('[mediaController.deleteMedia]', err);
-    return res.status(500).json(error('Failed to delete media'));
+    return error(res, { message: 'Failed to delete media', statusCode: 500 });
   }
 };
 

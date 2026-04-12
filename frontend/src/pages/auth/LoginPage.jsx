@@ -1,5 +1,5 @@
 // src/pages/auth/LoginPage.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import LoginForm from '../../components/auth/LoginForm';
@@ -59,17 +59,24 @@ function AuthShell({ children }) {
 export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { login, dashboardPath } = useAuth();
-  const [loading,  setLoading]  = useState(false);
-  const [apiError, setApiError] = useState('');
+  const { login, dashboardPath, isAuthenticated } = useAuth();
+  const [loading,       setLoading]       = useState(false);
+  const [apiError,      setApiError]      = useState('');
+  const [loginDone,     setLoginDone]     = useState(false);
   const from = location.state?.from?.pathname || null;
+
+  // Redirect only AFTER isAuthenticated flips true in state — avoids race with ProtectedRoute
+  useEffect(() => {
+    if (isAuthenticated && loginDone) {
+      navigate(from || dashboardPath || '/calendar', { replace: true });
+    }
+  }, [isAuthenticated, loginDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async ({ email, password }) => {
     setApiError(''); setLoading(true);
     try {
-      const user = await login(email.trim().toLowerCase(), password);
-      const dest  = from || dashboardPath;
-      navigate(dest, { replace: true });
+      await login(email.trim().toLowerCase(), password);
+      setLoginDone(true); // triggers the useEffect above once state settles
     } catch (err) {
       setApiError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
     } finally {

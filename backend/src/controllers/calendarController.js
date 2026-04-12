@@ -19,7 +19,7 @@ const getCalendarByMonth = async (req, res) => {
     const month = parseInt(req.query.month, 10) || (new Date().getMonth() + 1);
 
     if (month < 1 || month > 12) {
-      return res.status(400).json(error('Invalid month value (1–12)'));
+      return error(res, { message: 'Invalid month value (1–12)', statusCode: 400 });
     }
 
     const schedules = await scheduleService.getSchedulesByMonth(year, month);

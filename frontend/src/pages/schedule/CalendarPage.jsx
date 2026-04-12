@@ -12,9 +12,9 @@ import utc      from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 
-import WeeklyCalendarView    from '../../components/schedule/WeeklyCalendarView';
-import CalendarView          from '../../components/schedule/CalendarView';
-import ContentLibrarySidebar from '../../components/schedule/ContentLibrarySidebar';
+import WeeklyCalendarView    from '../../components/Schedule/WeeklyCalendarView';
+import CalendarView          from '../../components/Schedule/CalendarView';
+import ContentLibrarySidebar from '../../components/Schedule/ContentLibrarySidebar';
 import MediaUploader         from '../../components/media/MediaUploader';
 import MediaPreview          from '../../components/media/MediaPreview';
 import { useSchedule }       from '../../hooks/useSchedule';

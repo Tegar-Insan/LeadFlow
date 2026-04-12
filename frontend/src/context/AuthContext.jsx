@@ -105,7 +105,14 @@ export function AuthProvider({ children }) {
       setAccessToken(res.data.accessToken);
       setStoredUser(res.data.user);
       dispatch({ type: 'LOGIN_SUCCESS', payload: res.data });
-      return { success: true };
+
+      // Return fresh role path so LoginPage doesn't rely on stale closure
+      const role = res.data.user?.role_name || res.data.user?.roleName;
+      const redirectTo =
+        role === 'admin'           ? '/admin'    :
+        role === 'business_owner'  ? '/calendar' :
+                                     '/calendar';
+      return { success: true, redirectTo };
     } catch (err) {
       dispatch({ type: 'SET_LOADING', payload: false });
       throw err;
@@ -156,10 +163,10 @@ export function AuthProvider({ children }) {
   // Role-based dashboard redirect path
   const dashboardPath = (() => {
     const role = state.user?.role_name || state.user?.roleName;
-    if (role === 'admin')           return '/admin/dashboard';
-    if (role === 'business_owner')  return '/owner/dashboard';
-    if (role === 'marketing_staff') return '/staff/dashboard';
-    return '/dashboard';
+    if (role === 'admin')           return '/admin';
+    if (role === 'business_owner')  return '/calendar';
+    if (role === 'marketing_staff') return '/calendar';
+    return '/calendar';
   })();
 
   return (

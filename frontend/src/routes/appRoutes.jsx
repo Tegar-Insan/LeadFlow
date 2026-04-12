@@ -2,12 +2,15 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import LoginPage      from '../pages/auth/LoginPage.jsx';
-import RegisterPage   from '../pages/auth/RegisterPage.jsx';
-import OTPPage        from '../pages/auth/OTPPage.jsx';
-import CalendarPage   from '../pages/schedule/CalendarPage.jsx';
-import ProfilePage    from '../pages/profile/ProfilePage.jsx';
-import ProtectedRoute from '../components/common/ProtectedRoute.jsx';
+import LoginPage               from '../pages/auth/LoginPage.jsx';
+import RegisterPage            from '../pages/auth/RegisterPage.jsx';
+import OTPPage                 from '../pages/auth/OTPPage.jsx';
+import CalendarPage            from '../pages/schedule/CalendarPage.jsx';
+import ProfilePage             from '../pages/profile/ProfilePage.jsx';
+import AdminAllUsersPage       from '../pages/dashboard/AdminAllUsersPage.jsx';
+import AdminMarketingStaffPage from '../pages/dashboard/AdminMarketingStaffPage.jsx';
+import AdminBusinessOwnersPage from '../pages/dashboard/AdminBusinessOwnersPage.jsx';
+import ProtectedRoute, { GuestRoute } from '../components/common/ProtectedRoute.jsx';
 
 function UnauthorizedPage() {
   return (
@@ -26,20 +29,39 @@ function UnauthorizedPage() {
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* ── Public routes ───────────────────────────────────── */}
-      <Route path="/login"        element={<LoginPage />} />
-      <Route path="/register"     element={<RegisterPage />} />
-      <Route path="/otp"          element={<OTPPage />} />
+      {/* ── Public routes (GuestRoute bounces authenticated users to their dashboard) */}
+      <Route path="/login"    element={<GuestRoute><LoginPage /></GuestRoute>} />
+      <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+      <Route path="/otp"      element={<OTPPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      {/* ── Dashboard redirects (role-based landing) ────────── */}
-      <Route path="/staff/dashboard"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/owner/dashboard"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/admin/dashboard"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/dashboard/staff"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/dashboard/owner"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/dashboard/admin"   element={<Navigate to="/calendar" replace />} />
-      <Route path="/dashboard"         element={<Navigate to="/calendar" replace />} />
+      {/* ── Admin — 3 separate pages, all admin-only ─────────── */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminAllUsersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/marketing-staff"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminMarketingStaffPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/business-owners"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminBusinessOwnersPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Legacy alias → Page 1 */}
+      <Route path="/dashboard/admin" element={<Navigate to="/admin" replace />} />
 
       {/* ── Protected routes ────────────────────────────────── */}
       <Route
@@ -50,7 +72,6 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/profile"
         element={

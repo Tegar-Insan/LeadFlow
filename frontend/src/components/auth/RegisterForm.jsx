@@ -1,6 +1,6 @@
 // src/components/auth/RegisterForm.jsx
 import { useState } from 'react';
-import Button from '../common/Button';
+import Button from '../common/button';
 
 const ROLE_OPTIONS = [
   { value: 'business_owner',  label: 'Business Owner',  desc: 'Monitor performance & manage team' },

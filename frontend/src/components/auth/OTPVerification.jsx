@@ -2,7 +2,7 @@
 // 6-digit OTP input with paste, keyboard nav, countdown resend
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import Button from '../common/Button';
+import Button from '../common/button';
 import { resendOTP } from '../../services/authService';
 import { OTP_RESEND_COOLDOWN } from '../../utils/constants';
 

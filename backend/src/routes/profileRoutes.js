@@ -7,12 +7,16 @@ const {
   updateProfile,
   changePassword,
   uploadPhoto,
+  deletePhoto,
+  getPhotoHistory,
   photoUploadMiddleware,
 } = require('../controllers/profileController');
 
-router.get('/me',          authMiddleware, getProfile);
-router.put('/me',          authMiddleware, updateProfile);
-router.put('/me/password', authMiddleware, changePassword);
-router.post('/me/photo',   authMiddleware, photoUploadMiddleware, uploadPhoto);
+router.get('/me',           authMiddleware, getProfile);
+router.put('/me',           authMiddleware, updateProfile);
+router.put('/me/password',  authMiddleware, changePassword);
+router.post('/me/photo',    authMiddleware, photoUploadMiddleware, uploadPhoto);
+router.delete('/me/photo',  authMiddleware, deletePhoto);
+router.get('/me/photos',    authMiddleware, getPhotoHistory);
 
 module.exports = router;
