@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import Sidebar from '../../components/common/Sidebar';
 import Navbar  from '../../components/common/Navbar';
-import { getProfile, updateProfile, changePassword, uploadPhoto } from '../../services/profileService';
+import { getProfile, updateProfile, changePassword, uploadPhoto, deletePhoto } from '../../services/profileService';
 
 const ROLE_CONFIG = {
   admin:           { label: 'Admin',           cls: 'status-scheduled' },
@@ -56,6 +56,7 @@ const ProfilePage = () => {
 
   const photoInputRef = useRef(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoDeleting,  setPhotoDeleting]  = useState(false);
   const [photoError,     setPhotoError]     = useState(null);
 
   const handlePhotoChange = async (e) => {
@@ -85,6 +86,20 @@ const ProfilePage = () => {
       setPhotoUploading(false);
       // reset input so the same file can be re-selected after an error
       if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    setPhotoDeleting(true);
+    setPhotoError(null);
+    try {
+      await deletePhoto();
+      setProfile(prev => ({ ...prev, photoUrl: null }));
+      updateUser({ ...authCtx.user, photoUrl: null });
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || 'Failed to delete photo.');
+    } finally {
+      setPhotoDeleting(false);
     }
   };
 
@@ -236,6 +251,28 @@ const ProfilePage = () => {
                       className="hidden"
                       onChange={handlePhotoChange}
                     />
+
+                    {/* Delete photo button — only shown when a photo exists */}
+                    {user?.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={handlePhotoDelete}
+                        disabled={photoDeleting || photoUploading}
+                        title="Remove photo"
+                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand border-2 border-surface-raised flex items-center justify-center hover:bg-brand-dark transition-colors focus:outline-none"
+                      >
+                        {photoDeleting ? (
+                          <svg className="w-3 h-3 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/>
+                          </svg>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -354,6 +391,58 @@ const ProfilePage = () => {
             </div>
 
             <form onSubmit={handleEditSave} className="px-6 py-5 space-y-4">
+              {/* Photo upload inside modal */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={photoUploading}
+                    className="w-20 h-20 rounded-full border-4 border-surface-border overflow-hidden flex items-center justify-center focus:outline-none"
+                    title="Click to change photo"
+                  >
+                    {user?.photoUrl ? (
+                      <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-brand flex items-center justify-center">
+                        <span className="font-display font-extrabold text-2xl text-white">{initials}</span>
+                      </div>
+                    )}
+                    <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity
+                      ${photoUploading ? 'bg-black/60 opacity-100' : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}>
+                      {photoUploading ? (
+                        <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-text-muted font-body">
+                    {photoUploading ? 'Uploading…' : photoDeleting ? 'Removing…' : 'Click photo to change'}
+                  </p>
+                  {user?.photoUrl && !photoUploading && !photoDeleting && (
+                    <button
+                      type="button"
+                      onClick={handlePhotoDelete}
+                      className="text-xs text-brand hover:text-brand-light font-body font-semibold transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {photoError && (
+                  <p className="text-xs text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-1.5 font-body text-center">{photoError}</p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">Full Name</label>
                 <input type="text" required value={editForm.fullName}

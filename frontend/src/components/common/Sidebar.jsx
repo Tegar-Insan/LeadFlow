@@ -51,7 +51,10 @@ const icons = {
 
 const NAV_BY_ROLE = {
   admin: [
-    { to: '/dashboard/admin', label: 'Overview',         icon: icons.overview },
+    { to: '/admin',                  label: 'All Accounts',    icon: icons.overview      },
+    { to: '/admin/marketing-staff',  label: 'Marketing Staff', icon: icons.interactions  },
+    { to: '/admin/business-owners',  label: 'Business Owners', icon: icons.dashboard     },
+    { to: '/profile',                label: 'Profile',         icon: icons.publish       },
   ],
   business_owner: [
     { to: '/dashboard/owner', label: 'Dashboard',        icon: icons.dashboard },
@@ -125,8 +128,8 @@ export default function Sidebar({ isOpen, onClose }) {
             </span>
           </div>
 
-          {/* Create Post button */}
-          <Link
+          {/* Create Post button — hidden for admin */}
+          {roleName !== 'admin' && <Link
             to="/calendar"
             state={{ openCreate: true }}
             className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-display font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98]"
@@ -134,7 +137,7 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             {icons.plus}
             Create Post
-          </Link>
+          </Link>}
         </div>
 
         {/* Nav links */}

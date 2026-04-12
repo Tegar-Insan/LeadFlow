@@ -2,7 +2,7 @@
 // Login form component — used by LoginPage
 
 import { useState } from 'react';
-import Button from '../common/Button';
+import Button from '../common/button';
 
 function validate({ email, password }) {
   const errors = {};
