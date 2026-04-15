@@ -10,24 +10,22 @@ function AuthShell({ children }) {
   return (
     <div className="min-h-screen flex bg-surface">
       <div className="hidden lg:flex lg:w-[460px] relative overflow-hidden flex-col">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0608] via-[#0d0808] to-surface" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a1200] via-[#0d0a00] to-surface" />
         <div className="absolute top-[25%] left-[15%] w-72 h-72 bg-brand/20 rounded-full blur-[100px] pointer-events-none" />
         <div className="relative z-10 flex flex-col h-full p-12">
           <div className="flex items-center gap-3 mb-auto">
             <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center glow-red">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-              </svg>
+              <span className="text-black font-display font-extrabold text-base">K</span>
             </div>
             <span className="font-display font-bold text-xl text-text-primary">
-              Lead<span className="text-brand">Flow</span>
+              Krench <span className="text-brand">Chicken</span>
             </span>
           </div>
           <div className="mb-auto">
             <h1 className="font-display font-extrabold text-4xl text-text-primary leading-tight mb-5">
               Join{' '}
               <span className="bg-gradient-to-r from-brand to-brand-light bg-clip-text text-transparent">
-                LeadFlow
+                Krench Chicken
               </span>
             </h1>
             <p className="text-text-secondary text-base leading-relaxed">
@@ -35,7 +33,7 @@ function AuthShell({ children }) {
             </p>
           </div>
           <p className="text-xs text-text-muted">
-            © {new Date().getFullYear()} LeadFlow · Krench Chicken
+            © {new Date().getFullYear()} Krench Chicken · Bogor, West Java
           </p>
         </div>
       </div>
@@ -43,7 +41,7 @@ function AuthShell({ children }) {
       <div className="flex-1 flex flex-col">
         <div className="lg:hidden flex items-center gap-2.5 p-6 border-b border-surface-border">
           <span className="font-display font-bold text-lg text-text-primary">
-            Lead<span className="text-brand">Flow</span>
+            Krench <span className="text-brand">Chicken</span>
           </span>
         </div>
         <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
@@ -119,7 +117,7 @@ export default function RegisterPage() {
             Create your account
           </h2>
           <p className="text-text-secondary text-base font-body">
-            Join LeadFlow to manage Krench Chicken's TikTok marketing.
+            Join Krench Chicken to manage your TikTok marketing with AI.
           </p>
         </div>
 

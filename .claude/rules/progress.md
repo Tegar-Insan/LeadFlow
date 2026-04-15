@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-15
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -31,7 +31,7 @@ All 13 core tables are defined and deployed to Supabase:
 | Profile | `GET /api/profile/me` | ✅ Done |
 | Profile | `PUT /api/profile/me` | ✅ Done |
 | Profile | `PUT /api/profile/me/password` | ✅ Done |
-| Profile | `POST /api/profile/me/photo` | ✅ Done (fixed bucket + grant bugs) |
+| Profile | `POST /api/profile/me/photo` | ✅ Done |
 | Profile | `DELETE /api/profile/me/photo` | ✅ Done |
 | Profile | `GET /api/profile/me/photos` | ✅ Done |
 | Calendar | `GET /api/calendar` | ✅ Done |
@@ -43,9 +43,9 @@ All 13 core tables are defined and deployed to Supabase:
 | Media | `POST /api/media/upload` | ✅ Done |
 | Media | `GET /api/media/:scheduleId` | ✅ Done |
 | Media | `DELETE /api/media/:id` | ✅ Done |
-| **Admin** | **`GET /api/admin/users`** | **✅ Done (today)** |
-| **Admin** | **`PUT /api/admin/users/:id/role`** | **✅ Done (today)** |
-| **Admin** | **`PUT /api/admin/users/:id/status`** | **✅ Done (today)** |
+| Admin | `GET /api/admin/users` | ✅ Done |
+| Admin | `PUT /api/admin/users/:id/role` | ✅ Done |
+| Admin | `PUT /api/admin/users/:id/status` | ✅ Done |
 
 **Infrastructure done:**
 - `authMiddleware` + `roleMiddleware` RBAC on all protected routes
@@ -62,15 +62,15 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 
 | Page | Route | State |
 |---|---|---|
-| Login | `/login` | ✅ Working (redirect race-condition fixed today) |
+| Login | `/login` | ✅ Working |
 | Register | `/register` | ✅ Working |
 | OTP Verification | `/verify-otp` | ✅ Working |
-| Profile | `/profile` | ✅ Working (photo upload fixed) |
+| Profile | `/profile` | ✅ Working |
 | Calendar | `/calendar` | ✅ UI exists, backend connected |
-| **Admin — All Accounts** | **`/admin`** | **✅ Working end-to-end (today)** |
-| **Admin — Marketing Staff** | **`/admin/marketing-staff`** | **✅ Working end-to-end (today)** |
-| **Admin — Business Owners** | **`/admin/business-owners`** | **✅ Working end-to-end (today)** |
-| Content Schedule Queue | `/schedule` | ⚠️ UI exists, backend stub |
+| Admin — All Accounts | `/admin` | ✅ Working end-to-end |
+| Admin — Marketing Staff | `/admin/marketing-staff` | ✅ Working end-to-end |
+| Admin — Business Owners | `/admin/business-owners` | ✅ Working end-to-end |
+| Content Schedule Queue | `/schedule` | ✅ Working — list/queue view wired to calendar API |
 | Prompt Input | `/content/prompt` | ⚠️ UI exists, backend stub |
 | Generated Ideas | `/content/ideas` | ⚠️ UI exists, backend stub |
 | Idea Validation | `/content/validate` | ⚠️ UI exists, backend stub |
@@ -82,13 +82,13 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 
 **Frontend infrastructure done:**
 - `AuthContext` + `NotificationContext` providers
-- `ProtectedRoute` + `GuestRoute` with role guard (GuestRoute added today to login/register)
-- All 9 service layer files (API call layer) + `adminService.js` added today
+- `ProtectedRoute` + `GuestRoute` with role guard
+- All 9 service layer files + `adminService.js`
 - All 5 hooks (`useAuth`, `useContentIdeas`, `useSchedule`, `useInteraction`, `useDashboard`)
-- `appRoutes.jsx` with role-based redirect on login (race-condition fixed today)
+- `appRoutes.jsx` with role-based redirect on login
 
 ### Tests — Frontend + AI Only
-- **Frontend:** 6 Vitest test files for login form, OTP, calendar view, drag-drop, login page, schedule queue page
+- **Frontend:** 6 Vitest test files — login form, OTP, calendar view, drag-drop, login page, schedule queue page — **43/43 passing**
 - **AI Analyzer:** 2 pytest files for classifier unit tests and `/analyze` route
 - **Backend:** ❌ No Jest/Supertest tests written yet
 
@@ -100,48 +100,16 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 
 ---
 
-## What Was Built Today (2026-04-12)
-
-### UC003 — Admin User Management (complete)
-
-#### Backend
-- **`backend/src/controllers/roleController.js`** — 3 handlers:
-  - `getAllUsers` — lists all users (email, role, phone, is_active, email_verified, joined date); supports `?role=` filter + pagination
-  - `updateUserRole` — validates new role, blocks self-role-change, updates `role_id` in DB
-  - `toggleUserStatus` — activates/deactivates an account; blocks self-deactivation
-- **`backend/src/routes/roleRoutes.js`** — all routes stacked with `authMiddleware → roleMiddleware(['admin'])`
-- **`backend/src/app.js`** — mounted `adminRoutes` at `/api/admin`
-
-#### Frontend
-- **`frontend/src/services/adminService.js`** — `getAllUsers`, `updateUserRole`, `toggleUserStatus`
-- **`frontend/src/components/dashboard/AdminLayout.jsx`** — shared shell (Sidebar + Navbar + 3-page sub-navigation tabs) used by all 3 admin pages
-- **`frontend/src/components/dashboard/AdminUserTable.jsx`** — reusable table component with search, role-change dropdown, active toggle switch, Apply button; used by all 3 pages
-- **`frontend/src/pages/dashboard/AdminAllUsersPage.jsx`** → `/admin` — all registered accounts + stat cards
-- **`frontend/src/pages/dashboard/AdminMarketingStaffPage.jsx`** → `/admin/marketing-staff` — marketing staff filtered view
-- **`frontend/src/pages/dashboard/AdminBusinessOwnersPage.jsx`** → `/admin/business-owners` — business owners filtered view
-
-#### Database seed
-- **`database/seeds/seed_tegar_admin.sql`** — assigns `tegarinsan49@gmail.com` as admin; handles both "already registered" and "not yet registered" cases with `DO $$ ... END $$` block
-
-### Auth Bugs Fixed Today
-
-| Bug | Root Cause | Fix |
-|---|---|---|
-| Admin redirected to `/calendar` after login | `AuthContext.dashboardPath` returned `/admin/dashboard` (non-existent route) | Changed to `/admin` |
-| Admin redirected to `/calendar` after login (2nd cause) | React render race: `navigate()` fired before `dispatch(LOGIN_SUCCESS)` settled; `ProtectedRoute` saw stale `isAuthenticated = false` and bounced | `LoginPage` now uses `useEffect` watching `isAuthenticated && loginDone` — navigates only after state is confirmed settled |
-| Authenticated user could revisit `/login` | No `GuestRoute` on login/register routes | Wrapped `/login` and `/register` with `GuestRoute` in `appRoutes.jsx` |
-| Admin saw "Create Post" button (irrelevant) | No role check on sidebar button | Hidden when `roleName === 'admin'` |
-
----
-
 ## Current State
 
 ### What Actually Works End-to-End
 1. Register → OTP email → verify → JWT login → protected routes
 2. Profile: view, update name/phone, change password, upload/delete photo (Supabase Storage)
-3. Calendar: CRUD, monthly view, draft management
-4. Media: upload PNG/JPG/MP4/MOV ≤50MB, server-side validation
-5. **Admin panel: login as `tegarinsan49@gmail.com` → auto-redirect to `/admin` → 3 pages (All Accounts, Marketing Staff, Business Owners) with search, role change, active toggle — fully connected to Supabase**
+3. Calendar: CRUD, weekly/monthly view, draft management, drag-drop with thumbnail preservation, correct slot-card titles
+4. Media: TikTok-compliant MP4/H.264 video + multi-photo carousel upload (50 MB); natural-dimension preview; thumbnails preserved after drag-drop
+5. Content Schedule Queue (`/schedule`): working list view — month navigation, status filter, search, thumbnail, delete, navigate to calendar for edit/view
+6. Admin panel: login as `tegarinsan49@gmail.com` → auto-redirect to `/admin` → 3 pages (All Accounts, Marketing Staff, Business Owners) with search, role change, active toggle — fully connected to Supabase
+7. **UI Redesign (2026-04-15):** All red (`#e31837`) brand color replaced with orange (`#f6b70a`) across all components, pages, CSS, and Tailwind config. Favicon updated to Krench Chicken logo. All "LeadFlow" user-visible strings replaced with "Krench Chicken". Past calendar dates marked "Not Available" and blocked from schedule creation and drag-drop (both monthly CalendarView and weekly DragDropSlot). Past-date block logic added to `CalendarPage.jsx` `handleSlotClick` and `handleDrop`.
 
 ### What Is Wired Up but Blocked on Backend Stubs
 - Content idea generation (GPT-4o) — frontend UI ready, controller/service empty
@@ -156,8 +124,6 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 ## Next Steps (Priority Order)
 
 ### Phase 1 — Core Content Pipeline (UC004–UC006)
-These are the heart of the product. Do these first.
-
 1. **Backend: Prompt → GPT-4o → Content Ideas**
    - Implement `promptController.js` + `promptRoutes.js`
    - Implement `contentIdeaController.js` + `contentIdeaService.js`
@@ -172,7 +138,7 @@ These are the heart of the product. Do these first.
 3. **Mount all stub routes in `app.js`** (currently they do nothing)
 
 ### Phase 2 — TikTok Integration (UC009–UC012)
-4. **TikTok OAuth flow** — `tiktokRoutes.js`, `tiktok0AuthService.js`, token encryption in DB
+4. **TikTok OAuth flow** — `tiktokRoutes.js`, `tiktokOAuthService.js`, token encryption in DB
 5. **Publish to TikTok** — `publishService.js`, `tiktokPublishService.js`, write to `publish_status_logs`
 6. **Fetch interactions** — `fetchInteractionJob.js` implementation, write to `interaction_messages`
 7. **Interaction inbox** — view, reply (push to TikTok), delete
@@ -199,7 +165,10 @@ These are the heart of the product. Do these first.
 |---|---|---|
 | `permission denied for table` | New tables created via raw SQL don't auto-inherit Supabase's default privileges | Always include `GRANT` in every `CREATE TABLE` migration; migration 017 sets `ALTER DEFAULT PRIVILEGES` for future tables |
 | `Bucket not found` | Storage bucket must be provisioned separately from table schema | Create bucket via `storage.buckets` insert in a migration (015) |
-| RLS policy inconsistency | Used `auth.uid()` instead of project's custom `get_caller_user_id()` | All RLS policies in this project must use `get_caller_role()` and `get_caller_user_id()` from migration 001 |
-| Supabase grant vs RLS confusion | service_role bypasses RLS but NOT table-level GRANTs — two independent layers | Table GRANT = PostgreSQL privilege; RLS Policy = row filter. Both needed. |
-| Login redirects to wrong page | `navigate()` called before React state update settled — `ProtectedRoute` saw stale `isAuthenticated = false` | Use `useEffect` watching `isAuthenticated` to trigger navigation after state confirms; never call `navigate()` immediately after async dispatch |
-| `dashboardPath` stale in async handler | Closure captured `dashboardPath` before login state updated | `login()` now returns `redirectTo` computed from fresh API response; `useEffect` reads live `dashboardPath` from settled state |
+| RLS policy inconsistency | Used `auth.uid()` instead of project's custom `get_caller_user_id()` | All RLS policies must use `get_caller_role()` and `get_caller_user_id()` from migration 001 |
+| Supabase grant vs RLS confusion | `service_role` bypasses RLS but NOT table-level GRANTs — two independent layers | Table GRANT = PostgreSQL privilege; RLS Policy = row filter. Both needed. |
+| Login redirects to wrong page | `navigate()` called before React state update settled | Use `useEffect` watching `isAuthenticated` to trigger navigation after state confirms |
+| `dashboardPath` stale in async handler | Closure captured `dashboardPath` before login state updated | `login()` returns `redirectTo` from fresh API response; `useEffect` reads live state |
+| Thumbnails vanish after drag-drop | `dragDrop` replaced state with raw API response missing computed fields | Added `schedulesRef` + `draftsRef` via `useRef`; merge computed fields back after API response |
+| Slot card titles always blank | `ScheduleQueueCard.jsx` rendered `schedule.title` but DB column is `custom_caption` | Use `schedule.custom_caption \|\| schedule.title \|\| 'Untitled'` |
+| Test import paths broke on Linux | Imported from lowercase `schedule/` but folder is `Schedule/` (case-sensitive FS) | Match import paths exactly to filesystem casing |

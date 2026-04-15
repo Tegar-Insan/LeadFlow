@@ -5,11 +5,15 @@
 import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/components/schedule/ScheduleQueueCard', () => ({
-  default: ({ schedule }) => <div data-testid="schedule-card">{schedule.title}</div>,
+vi.mock('@/components/Schedule/ScheduleQueueCard', () => ({
+  default: ({ schedule }) => (
+    <div data-testid="schedule-card">
+      {schedule.custom_caption || schedule.title}
+    </div>
+  ),
 }));
 
-import DragDropSlot from '../../src/components/schedule/DragDropSlot';
+import DragDropSlot from '../../src/components/Schedule/DragDropSlot';
 
 const makeCell = (overrides = {}) => ({
   day: 10, iso: '2026-04-10', isCurrentMonth: true, isToday: false, ...overrides,

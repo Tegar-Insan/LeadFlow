@@ -191,7 +191,7 @@ const ProfilePage = () => {
             <div>
               <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Account</p>
               <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight">My Profile</h1>
-              <p className="text-text-secondary font-body text-base mt-1">Your LeadFlow account information</p>
+              <p className="text-text-secondary font-body text-base mt-1">Your Krench Chicken account information</p>
             </div>
 
             {/* ── Profile card ── */}

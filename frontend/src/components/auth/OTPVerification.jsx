@@ -79,7 +79,7 @@ export default function OTPVerification({ email, otpType = 'register', onSubmit,
             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
           </svg>
         </div>
-        <h2 className="text-2xl font-display font-bold text-text-primary">Check your email</h2>
+        <h2 className="text-2xl font-headline font-bold text-text-primary">Check your email</h2>
         <p className="mt-2 text-sm text-text-secondary">
           We sent a 6-digit code to <span className="text-text-primary font-medium">{masked}</span>
         </p>
@@ -102,10 +102,12 @@ export default function OTPVerification({ email, otpType = 'register', onSubmit,
               onKeyDown={(e) => handleKeyDown(i, e)}
               onFocus={(e) => e.target.select()}
               aria-label={`Digit ${i + 1}`}
-              className={`w-12 h-14 text-center text-xl font-mono font-bold bg-surface-raised rounded-xl
-                outline-none transition-all duration-200 focus:scale-105
-                focus:border-brand focus:ring-2 focus:ring-brand/20
-                ${d ? 'border border-brand/50 bg-brand/5' : 'border border-surface-border'}
+              className={`w-12 h-14 text-center text-xl font-mono font-bold rounded-xl
+                outline-none transition-all duration-200 focus:scale-105 backdrop-blur-sm
+                ${d
+                  ? 'border border-brand/60 bg-brand/[0.08] text-brand focus:ring-2 focus:ring-brand/20'
+                  : 'border border-white/[0.12] bg-white/[0.04] text-text-primary focus:border-brand focus:ring-2 focus:ring-brand/20'
+                }
                 ${error ? 'animate-shake' : ''}`}
             />
           ))}

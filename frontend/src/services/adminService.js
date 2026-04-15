@@ -11,3 +11,6 @@ export const updateUserRole = (userId, roleName) =>
 
 export const toggleUserStatus = (userId, isActive) =>
   api.put(`/admin/users/${userId}/status`, { isActive }).then((r) => r.data);
+
+export const createUser = (payload) =>
+  api.post('/admin/users', payload).then((r) => r.data);

@@ -117,23 +117,17 @@ export default function Sidebar({ isOpen, onClose }) {
       `}>
         {/* Logo */}
         <div className="p-5 border-b border-surface-border">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center glow-red shrink-0">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-              </svg>
-            </div>
-            <span className="font-display font-extrabold text-xl text-text-primary tracking-tight">
-              Lead<span className="text-brand">Flow</span>
-            </span>
+          <div className="flex items-center gap-2 mb-5">
+
+            <img src="/logo.png" alt="Krench Chicken" className="h-10 w-auto object-contain" />
           </div>
 
           {/* Create Post button — hidden for admin */}
           {roleName !== 'admin' && <Link
             to="/calendar"
             state={{ openCreate: true }}
-            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-display font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98]"
-            style={{ boxShadow: '0 10px 20px -5px rgba(227,24,55,0.3)' }}
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-black font-display font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98]"
+            style={{ boxShadow: '0 10px 20px -5px rgba(246,183,10,0.3)' }}
           >
             {icons.plus}
             Create Post
@@ -150,7 +144,7 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* User footer */}
         <div className="p-4 border-t border-surface-border space-y-2">
           <div className="flex items-center gap-3 px-1">
-            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white font-bold font-display text-sm shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black font-bold font-display text-sm shrink-0">
               {(user?.fullName || user?.email || 'U')[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">

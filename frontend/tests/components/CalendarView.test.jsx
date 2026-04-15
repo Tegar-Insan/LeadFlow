@@ -28,7 +28,7 @@ vi.mock('@/utils/formatDate', () => {
   return { TZ, buildMonthGrid };
 });
 
-import CalendarView from '../../src/components/schedule/CalendarView';
+import CalendarView from '../../src/components/Schedule/CalendarView';
 
 describe('CalendarView', () => {
   const defaultProps = {

@@ -35,11 +35,12 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
         onClick={onClose}
       />
       {/* Panel */}
-      <div className={`relative w-full ${sizes[size]} bg-surface border border-surface-border rounded-2xl shadow-2xl animate-slide-up`}>
+      <div className={`relative w-full ${sizes[size]} bg-[#191919]/90 backdrop-blur-2xl border border-white/[0.08] rounded-2xl animate-slide-up`}
+        style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
-            <h2 className="font-display font-semibold text-text-primary">{title}</h2>
+          <div className="flex items-center justify-between px-6 py-5 pb-4">
+            <h2 className="font-headline font-bold text-text-primary text-lg">{title}</h2>
             <button
               onClick={onClose}
               className="text-text-muted hover:text-text-secondary transition-colors"

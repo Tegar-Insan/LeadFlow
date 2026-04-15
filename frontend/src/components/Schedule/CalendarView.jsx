@@ -5,9 +5,13 @@
  */
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import utc      from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import utc       from 'dayjs/plugin/utc';
+import timezone  from 'dayjs/plugin/timezone';
+import isBefore  from 'dayjs/plugin/isSameOrBefore';
 import { buildMonthGrid, TZ } from '../../utils/formatDate';
+import { InlineLoader } from '../common/Loader';
+
+dayjs.extend(isBefore);
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -28,21 +32,27 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
   const visible  = schedules.slice(0, 3);
   const overflow = schedules.length - 3;
 
+  // Past if the cell date is before today (WIB)
+  const isPast = cell.iso
+    ? dayjs.tz(cell.iso, TZ).startOf('day').isBefore(dayjs().tz(TZ).startOf('day'))
+    : false;
+
   return (
     <div
-      onDragOver={e => { e.preventDefault(); setIsOver(true); }}
-      onDragLeave={() => setIsOver(false)}
-      onDrop={e => {
+      onDragOver={isPast ? undefined : e => { e.preventDefault(); setIsOver(true); }}
+      onDragLeave={isPast ? undefined : () => setIsOver(false)}
+      onDrop={isPast ? undefined : e => {
         e.preventDefault(); setIsOver(false);
         const id = e.dataTransfer.getData('scheduleId');
         if (id) onDrop?.(id, cell.iso);
       }}
-      onClick={() => onDayClick?.(cell.iso)}
+      onClick={isPast ? undefined : () => onDayClick?.(cell.iso)}
       className={`
         min-h-[110px] p-2 border-r border-b border-surface-border flex flex-col gap-1
-        cursor-pointer transition-colors
-        ${!cell.isCurrentMonth ? 'bg-surface opacity-60' : 'bg-surface-raised hover:bg-white/[0.03]'}
-        ${cell.isToday ? '!bg-gold/[0.08]' : ''}
+        transition-colors
+        ${isPast ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+        ${!cell.isCurrentMonth ? 'bg-surface opacity-60' : (isPast ? 'bg-surface' : 'bg-surface-raised hover:bg-white/[0.03]')}
+        ${cell.isToday ? '!bg-brand/[0.08]' : ''}
         ${isOver ? '!bg-brand/[0.08]' : ''}
       `}
     >
@@ -51,16 +61,25 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
         <span className={`
           w-7 h-7 flex items-center justify-center rounded-full text-sm font-display font-semibold
           ${cell.isToday
-            ? 'bg-gold text-black'
-            : cell.isCurrentMonth ? 'text-text-primary' : 'text-text-muted'}
+            ? 'bg-brand text-black'
+            : isPast ? 'text-text-muted' : cell.isCurrentMonth ? 'text-text-primary' : 'text-text-muted'}
         `}>
           {cell.day}
         </span>
       </div>
 
+      {/* Not Available label for past dates */}
+      {isPast && cell.isCurrentMonth && (
+        <div className="flex items-center justify-center flex-1 pointer-events-none">
+          <span className="text-[9px] font-body font-semibold text-text-muted uppercase tracking-wider">
+            Not Available
+          </span>
+        </div>
+      )}
+
       {/* Schedule items */}
       <div className="space-y-0.5 flex-1">
-        {visible.map(s => {
+        {!isPast && visible.map(s => {
           const dot  = STATUS_DOT[s.status] || STATUS_DOT.draft;
           const time = s.scheduled_at
             ? dayjs(s.scheduled_at).tz(TZ).format('HH:mm')
@@ -81,7 +100,7 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
             </div>
           );
         })}
-        {overflow > 0 && (
+        {!isPast && overflow > 0 && (
           <p className="text-[11px] text-text-muted font-body px-1.5 py-0.5 font-medium">
             +{overflow} more
           </p>
@@ -114,10 +133,7 @@ const CalendarView = ({ year, month, schedulesByDate = {}, onDrop, onDayClick, o
         {loading && (
           <div className="absolute inset-0 bg-surface-raised/70 flex items-center justify-center z-10">
             <div className="flex items-center gap-2 text-text-secondary font-body text-sm">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
+              <InlineLoader size="sm" />
               Loading calendar…
             </div>
           </div>

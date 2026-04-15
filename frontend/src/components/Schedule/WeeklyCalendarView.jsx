@@ -103,7 +103,7 @@ const WeeklyCalendarView = ({
                   {/* Past empty */}
                   {past && isEmpty && (
                     <div className="flex items-center justify-center h-full min-h-[76px]">
-                      <span className="text-[10px] text-text-muted font-body select-none opacity-40">Past</span>
+                      <span className="text-[10px] text-text-muted font-body select-none opacity-40">Not Available</span>
                     </div>
                   )}
 

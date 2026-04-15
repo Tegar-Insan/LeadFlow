@@ -21,6 +21,9 @@ export default function Navbar({ onMenuToggle }) {
         </svg>
       </button>
 
+      {/* Brand logo */}
+      <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain shrink-0" />
+
       {/* Search bar */}
       <div className="hidden md:flex flex-1 max-w-sm items-center gap-2 bg-surface-overlay rounded px-3 py-2 border border-surface-border">
         <svg className="w-4 h-4 text-text-secondary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -50,7 +53,7 @@ export default function Navbar({ onMenuToggle }) {
         </div>
 
         {/* User avatar */}
-        <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white font-bold font-display text-sm shrink-0">
+        <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black font-bold font-display text-sm shrink-0">
           {(user?.fullName || user?.email || 'U')[0].toUpperCase()}
         </div>
       </div>

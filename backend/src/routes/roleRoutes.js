@@ -14,6 +14,9 @@ router.use(authMiddleware, roleMiddleware(['admin']));
 // GET  /api/admin/users             — list all registered users
 router.get('/users',              roleController.getAllUsers);
 
+// POST /api/admin/users             — create account directly (no OTP)
+router.post('/users',             roleController.createUserByAdmin);
+
 // PUT  /api/admin/users/:id/role    — change a user's role
 router.put('/users/:id/role',     roleController.updateUserRole);
 

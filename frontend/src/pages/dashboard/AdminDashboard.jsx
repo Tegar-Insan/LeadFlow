@@ -7,6 +7,7 @@ import Navbar   from '../../components/common/Navbar';
 import { getAllUsers, updateUserRole, toggleUserStatus } from '../../services/adminService';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
+import { InlineLoader } from '../../components/common/Loader';
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ function StatusBadge({ active }) {
 function Avatar({ name, email }) {
   const letter = (name || email || 'U')[0].toUpperCase();
   return (
-    <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-sm font-bold font-display shrink-0">
+    <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black text-sm font-bold font-display shrink-0">
       {letter}
     </div>
   );
@@ -88,7 +89,7 @@ function OverviewTab({ users, loading }) {
   if (loading) {
     return (
       <div className="py-24 flex justify-center">
-        <div className="w-7 h-7 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        <InlineLoader size="lg" />
       </div>
     );
   }
@@ -237,7 +238,7 @@ function AllUsersTab({ users, loading }) {
       <div className="card overflow-hidden">
         {loading ? (
           <div className="py-20 flex justify-center">
-            <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <InlineLoader size="md" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="py-16 text-center text-text-muted text-sm">No users match your filter.</p>
@@ -354,7 +355,7 @@ function RoleManagementTab({ users, loading, onRoleChange, onStatusChange }) {
       <div className="card overflow-hidden">
         {loading ? (
           <div className="py-20 flex justify-center">
-            <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <InlineLoader size="md" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="py-16 text-center text-text-muted text-sm">No users found.</p>
@@ -438,7 +439,7 @@ function RoleManagementTab({ users, loading, onRoleChange, onStatusChange }) {
                             className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-display font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-50"
                           >
                             {isSaving ? (
-                              <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                              <InlineLoader size="sm" className="text-white" />
                             ) : (
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
@@ -561,7 +562,7 @@ export default function AdminDashboard() {
               Admin Panel
             </h1>
             <p className="text-text-secondary text-base font-body">
-              Manage all registered accounts · Krench Chicken / LeadFlow
+              Manage all registered accounts · Krench Chicken
             </p>
           </div>
 

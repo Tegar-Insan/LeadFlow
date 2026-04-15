@@ -42,7 +42,7 @@ function KPICard({ label, value, trend, sub, highlight = false, colSpan = 1, ico
 const INTENTS = [
   { label: 'Lead',      color: '#10b981', pct: 0 },
   { label: 'Question',  color: '#38bdf8', pct: 0 },
-  { label: 'Complaint', color: '#e31837', pct: 0 },
+  { label: 'Complaint', color: '#f6b70a', pct: 0 },
   { label: 'Praise',    color: '#fecb00', pct: 0 },
   { label: 'Spam',      color: '#3f3f46', pct: 0 },
 ];
@@ -149,7 +149,7 @@ export default function OwnerDashboard() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-text-muted font-body mt-4">Powered by LeadFlow AI Classifier · Real-time</p>
+              <p className="text-xs text-text-muted font-body mt-4">Powered by Krench Chicken AI Classifier · Real-time</p>
             </div>
           </div>
 

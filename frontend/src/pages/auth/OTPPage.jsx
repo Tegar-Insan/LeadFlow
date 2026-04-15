@@ -33,7 +33,7 @@ export default function OTPPage() {
       localStorage.removeItem(STORAGE_KEYS.PENDING_EMAIL);
 
       // ✅ Show animated success toast from bottom
-      toast.success('🎉 Account created successfully! Welcome to LeadFlow.', {
+      toast.success('🎉 Account created successfully! Welcome to Krench Chicken.', {
         duration: 3000,
       });
 
@@ -66,12 +66,10 @@ export default function OTPPage() {
       <div className="relative w-full max-w-[420px]">
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center glow-red">
-            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-            </svg>
+            <span className="text-black font-display font-extrabold text-sm">K</span>
           </div>
           <span className="font-display font-bold text-xl text-text-primary">
-            Lead<span className="text-brand">Flow</span>
+            Krench <span className="text-brand">Chicken</span>
           </span>
         </div>
 
@@ -87,7 +85,7 @@ export default function OTPPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-text-muted">
-          © {new Date().getFullYear()} LeadFlow · Krench Chicken · Bogor, West Java
+          © {new Date().getFullYear()} Krench Chicken · Bogor, West Java
         </p>
       </div>
     </div>

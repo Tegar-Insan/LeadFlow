@@ -1,9 +1,11 @@
 // src/controllers/roleController.js
 // Admin-only: user management (list, change role, toggle active)
 
-const User  = require('../models/User');
-const Role  = require('../models/Role');
+const User        = require('../models/User');
+const Role        = require('../models/Role');
+const UserProfile = require('../models/UserProfile');
 const { success, error } = require('../utils/responseHelper');
+const { hashPassword }   = require('../utils/passwordHelper');
 
 // GET /api/admin/users?page=1&limit=20&role=marketing_staff
 async function getAllUsers(req, res, next) {
@@ -105,4 +107,41 @@ async function toggleUserStatus(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getAllUsers, updateUserRole, toggleUserStatus };
+// POST /api/admin/users  — body: { email, password, fullName, phone, roleName }
+async function createUserByAdmin(req, res, next) {
+  try {
+    const { email, password, fullName, phone, roleName = 'marketing_staff' } = req.body;
+
+    if (!email || !password || !fullName)
+      return error(res, { message: 'email, password, and fullName are required.', statusCode: 400 });
+
+    const validRoles = ['admin', 'business_owner', 'marketing_staff'];
+    if (!validRoles.includes(roleName))
+      return error(res, { message: `Invalid role. Must be one of: ${validRoles.join(', ')}`, statusCode: 400 });
+
+    const exists = await User.emailExists(email);
+    if (exists)
+      return error(res, { message: 'An account with this email already exists.', statusCode: 409 });
+
+    const roleRow = await Role.findByName(roleName);
+    if (!roleRow)
+      return error(res, { message: 'Role not found in database.', statusCode: 404 });
+
+    const passwordHash = await hashPassword(password);
+
+    const newUser = await User.create({ email, passwordHash, roleId: roleRow.id });
+
+    // Mark verified — admin-created accounts skip OTP
+    await User.markEmailVerified(email);
+
+    await UserProfile.create({ userId: newUser.id, fullName, phone: phone || null });
+
+    return success(res, {
+      message: 'Account created successfully.',
+      data:    { userId: newUser.id, email: newUser.email, roleName },
+      statusCode: 201,
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { getAllUsers, updateUserRole, toggleUserStatus, createUserByAdmin };

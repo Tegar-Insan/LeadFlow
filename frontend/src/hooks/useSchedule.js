@@ -4,7 +4,7 @@
  * LeadFlow – Krench Chicken
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import utc     from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -31,6 +31,13 @@ export const useSchedule = () => {
   const [drafts,       setDrafts]       = useState([]);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
+
+  // Refs that always hold the latest state — used inside dragDrop to avoid
+  // stale closures when looking up the original schedule before overwriting it.
+  const schedulesRef = useRef([]);
+  const draftsRef    = useRef([]);
+  useEffect(() => { schedulesRef.current = schedules; }, [schedules]);
+  useEffect(() => { draftsRef.current    = drafts;    }, [drafts]);
 
   // ── Fetch month data ──────────────────────────────────────
   const loadMonth = useCallback(async (y, m) => {
@@ -105,14 +112,35 @@ export const useSchedule = () => {
     const utcISO = dayjs.tz(wibStr, TZ).utc().toISOString();
     const res    = await moveSchedule(id, utcISO);
     const s      = res.data.data.schedule;
+
+    // The API response only returns raw DB columns — computed fields like
+    // primary_asset_url, primary_asset_mime, created_by_name are NOT included.
+    // Find the original entry (from either list) and re-attach those fields so
+    // thumbnails don't disappear from the sidebar and calendar slot after a drag.
+    const original = schedulesRef.current.find(x => x.id === id)
+                  || draftsRef.current.find(x => x.id === id);
+
+    const merged = original
+      ? {
+          ...s,
+          primary_asset_url:  original.primary_asset_url  ?? null,
+          primary_asset_type: original.primary_asset_type ?? null,
+          primary_asset_mime: original.primary_asset_mime ?? null,
+          created_by_name:    original.created_by_name    ?? null,
+          slide_count:        original.slide_count        ?? 1,
+        }
+      : s;
+
     // Remove from drafts if it was there
     setDrafts(prev => prev.filter(x => x.id !== id));
-    // Refresh month schedules
+    // Add / update in the scheduled list with computed fields intact
     setSchedules(prev => {
-      const exists = prev.find(x => x.id === id);
-      return exists ? prev.map(x => x.id === id ? s : x) : [...prev, s];
+      const inList = prev.find(x => x.id === id);
+      return inList
+        ? prev.map(x => x.id === id ? merged : x)
+        : [...prev, merged];
     });
-    return s;
+    return merged;
   }, []);
 
   // ── Schedules grouped by date string "YYYY-MM-DD" (WIB) ───

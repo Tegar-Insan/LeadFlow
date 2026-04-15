@@ -23,7 +23,7 @@ export default function AdminAllUsersPage() {
   return (
     <AdminLayout
       title="All Accounts"
-      subtitle={`${total} registered · ${active} active — Krench Chicken / LeadFlow`}
+      subtitle={`${total} registered · ${active} active — Krench Chicken`}
     >
       {/* Summary row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">

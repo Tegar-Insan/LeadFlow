@@ -60,9 +60,9 @@ const ScheduleQueueCard = ({
         </span>
       )}
 
-      {/* Title */}
+      {/* Title — DB stores caption as custom_caption; fall back to title for safety */}
       <p className={`font-medium leading-tight truncate ${compact ? 'text-[10px]' : 'text-xs'} text-white/90`}>
-        {schedule.title}
+        {schedule.custom_caption || schedule.title || 'Untitled'}
       </p>
 
       {/* Time */}

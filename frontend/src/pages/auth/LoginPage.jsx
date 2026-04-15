@@ -1,71 +1,151 @@
 // src/pages/auth/LoginPage.jsx
+// Redesigned — "Digital Growth Login" (Stitch: Dynamic Red Loader)
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import LoginForm from '../../components/auth/LoginForm';
 
-// Split-panel auth layout (inline — no separate AuthLayout file per spec)
+/* ─── Feature bento items ─── */
+const FEATURES = [
+  {
+    icon: 'psychology',
+    title: 'AI Content Ideas',
+    desc: 'Neural-mapped trending topics generated instantly for your niche.',
+  },
+  {
+    icon: 'calendar_today',
+    title: 'Easy Schedule',
+    desc: 'Easy management schedule, relax and set publish to TikTok.',
+  },
+  {
+    icon: 'all_inbox',
+    title: 'Unified Inbox',
+    desc: 'Centralized command center for all your community engagement.',
+  },
+  {
+    icon: 'query_stats',
+    title: 'Analytics',
+    desc: 'Deep-dive metrics with real-time conversion tracking.',
+  },
+];
+
+/* ─── Mesh-gradient background ─── */
+const meshStyle = {
+  background: `
+    radial-gradient(at 0% 0%, #1a1a1a 0%, transparent 50%),
+    radial-gradient(at 100% 0%, #332b00 0%, transparent 50%),
+    radial-gradient(at 100% 100%, #1a1a1a 0%, transparent 50%),
+    radial-gradient(at 0% 100%, #000000 0%, transparent 50%)
+  `,
+};
+
+/* ─── Auth shell ─── */
 function AuthShell({ children }) {
   return (
-    <div className="min-h-screen flex bg-surface">
-      {/* Left brand panel */}
-      <div className="hidden lg:flex lg:w-[460px] xl:w-[520px] relative overflow-hidden flex-col">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0608] via-[#0d0808] to-surface" />
-        <div className="absolute top-[25%] left-[15%] w-72 h-72 bg-brand/20 rounded-full blur-[100px] pointer-events-none" />
-        <div className="relative z-10 flex flex-col h-full p-12">
-          <div className="flex items-center gap-3 mb-auto">
-            <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center glow-red">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-              </svg>
-            </div>
-            <span className="font-display font-bold text-xl text-text-primary">Lead<span className="text-brand">Flow</span></span>
-          </div>
-          <div className="mb-auto">
-            <h1 className="font-display font-extrabold text-4xl xl:text-5xl text-text-primary leading-tight mb-5">
-              TikTok Marketing,{' '}<span className="bg-gradient-to-r from-brand to-brand-light bg-clip-text text-transparent">Managed Smarter.</span>
-            </h1>
-            <p className="text-text-secondary text-base leading-relaxed mb-8">
-              Plan content, schedule posts, and handle customer interactions — built for <span className="text-text-primary font-medium">Krench Chicken</span>.
-            </p>
-            <ul className="space-y-3.5">
-              {['🤖 AI-powered content idea generation','📅 Drag & drop content calendar','💬 Unified TikTok interaction inbox','📊 Weekly performance dashboard'].map((f) => (
-                <li key={f} className="text-sm text-text-secondary flex items-center gap-2"><span>{f}</span></li>
-              ))}
-            </ul>
-          </div>
-          <p className="text-xs text-text-muted">© {new Date().getFullYear()} LeadFlow · Krench Chicken · Bogor, West Java</p>
-        </div>
+    <div className="min-h-screen flex bg-[#0e0e0e] overflow-hidden relative font-body">
+
+      {/* Mesh gradient overlay */}
+      <div className="absolute inset-0 z-0 opacity-60" style={meshStyle} />
+
+      {/* Ambient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/[0.08] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand/[0.05] blur-[120px] rounded-full pointer-events-none" />
+
+      {/* Floating particles */}
+      <div className="fixed inset-0 pointer-events-none z-20 overflow-hidden">
+        <div className="absolute top-1/4 right-[40%] w-1 h-1 bg-brand rounded-full opacity-30"
+          style={{ boxShadow: '0 0 15px 2px rgba(246,183,10,0.3)' }} />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-brand rounded-full opacity-20"
+          style={{ boxShadow: '0 0 15px 2px rgba(246,183,10,0.3)' }} />
+        <div className="absolute top-1/2 left-[10%] w-1 h-1 bg-brand rounded-full opacity-40"
+          style={{ boxShadow: '0 0 15px 2px rgba(246,183,10,0.3)' }} />
       </div>
 
-      {/* Right form panel */}
-      <div className="flex-1 flex flex-col">
-        <div className="lg:hidden flex items-center gap-2.5 p-6 border-b border-surface-border">
-          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048" />
-            </svg>
-          </div>
-          <span className="font-display font-bold text-lg text-text-primary">Lead<span className="text-brand">Flow</span></span>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-          <div className="w-full max-w-[420px]">{children}</div>
-        </div>
+      {/* API status badge — top right */}
+      <div className="absolute top-8 right-8 z-30 hidden sm:flex items-center gap-2 bg-white/[0.06] backdrop-blur px-4 py-2 rounded-full border border-white/10">
+        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"
+          style={{ boxShadow: '0 0 8px rgba(34,197,94,0.5)' }} />
+        <span className="font-headline text-[9px] uppercase tracking-widest text-white/60">API V2 Connected</span>
       </div>
+
+      {/* ── Left brand panel ── */}
+      <section className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 z-10 relative">
+
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center">
+            <span className="material-symbols-outlined text-black font-bold text-lg">bolt</span>
+          </div>
+          <img src="/logo.png" alt="Krench Chicken" className="h-9 w-auto object-contain" />
+        </div>
+
+        {/* Headline + feature grid */}
+        <div className="space-y-8">
+          <div className="space-y-4">
+            {/* Live badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20">
+              <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+              <span className="font-headline text-[10px] uppercase tracking-widest text-brand">Network Operational</span>
+            </div>
+            {/* Headline */}
+            <h2 className="font-headline text-6xl xl:text-7xl font-bold leading-[0.9] tracking-tight text-white">
+              TikTok growth,<br />
+              <span className="text-brand">with Krench Chicken.</span>
+            </h2>
+          </div>
+
+          {/* Feature bento grid */}
+          <div className="grid grid-cols-2 gap-4 pt-12">
+            {FEATURES.map(f => (
+              <div
+                key={f.title}
+                className="bg-white/[0.04] backdrop-blur-md p-6 rounded-xl border border-white/[0.07] hover:border-brand/30 transition-all duration-500 group"
+              >
+                <span className="material-symbols-outlined text-brand mb-4 block text-2xl">{f.icon}</span>
+                <h4 className="font-headline text-base font-bold text-white mb-1">{f.title}</h4>
+                <p className="text-white/50 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Social proof footer */}
+        <div className="flex items-center gap-8">
+          <p className="text-white/40 text-xs uppercase tracking-[0.2em] font-headline">
+            For Krench Chicken Management Only
+          </p>
+        </div>
+      </section>
+
+      {/* ── Right form panel ── */}
+      <section className="w-full lg:w-1/2 flex items-center justify-center p-8 z-10 relative">
+
+        {/* Mobile logo */}
+        <div className="absolute top-6 left-6 lg:hidden flex items-center gap-2.5">
+          <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain" />
+        </div>
+
+        {/* Glassmorphism card */}
+        <div className="w-full max-w-md bg-white/[0.04] backdrop-blur-2xl p-10 rounded-2xl border border-white/[0.08]"
+          style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}
+        >
+          {children}
+        </div>
+      </section>
     </div>
   );
 }
 
+/* ─── Login page ─── */
 export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { login, dashboardPath, isAuthenticated } = useAuth();
-  const [loading,       setLoading]       = useState(false);
-  const [apiError,      setApiError]      = useState('');
-  const [loginDone,     setLoginDone]     = useState(false);
+  const [loading,   setLoading]   = useState(false);
+  const [apiError,  setApiError]  = useState('');
+  const [loginDone, setLoginDone] = useState(false);
   const from = location.state?.from?.pathname || null;
 
-  // Redirect only AFTER isAuthenticated flips true in state — avoids race with ProtectedRoute
   useEffect(() => {
     if (isAuthenticated && loginDone) {
       navigate(from || dashboardPath || '/calendar', { replace: true });
@@ -76,7 +156,7 @@ export default function LoginPage() {
     setApiError(''); setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
-      setLoginDone(true); // triggers the useEffect above once state settles
+      setLoginDone(true);
     } catch (err) {
       setApiError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
     } finally {
@@ -86,28 +166,45 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <div className="animate-slide-up">
-        <div className="mb-8">
-          <h2 className="font-display font-extrabold text-4xl text-text-primary mb-2 tracking-tight">Welcome back</h2>
-          <p className="text-text-secondary text-base font-body">Sign in to your LeadFlow account to continue.</p>
+      {/* Success banner */}
+      {location.state?.registered && (
+        <div className="mb-6 rounded-xl border bg-green-500/10 border-green-500/30 text-green-400 px-4 py-3 text-sm flex items-center gap-2.5 animate-slide-up">
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <p>Account created — sign in to continue.</p>
         </div>
+      )}
 
-        {location.state?.registered && (
-  <div className="mb-6 rounded-xl border bg-green-500/10 border-green-500/30 text-green-400 px-4 py-3 text-sm flex items-center gap-2.5 animate-slide-up">
-    <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-    </svg>
-    <p>Account created successfully! Please sign in to continue.</p>
-  </div>
-)}
-
-        <LoginForm onSubmit={handleSubmit} loading={loading} apiError={apiError} />
-
-        <p className="mt-6 text-center text-sm text-text-secondary">
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-brand hover:text-brand-light font-medium transition-colors">Create account</Link>
-        </p>
+      {/* Header */}
+      <div className="text-center mb-10">
+        <h3 className="font-headline text-3xl font-bold text-white mb-2">Login</h3>
+        <p className="text-white/50 text-sm">Enter your credentials to access.</p>
       </div>
+
+      {/* Form */}
+      <LoginForm onSubmit={handleSubmit} loading={loading} apiError={apiError} />
+
+      {/* Divider */}
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-transparent px-4 text-white/30 font-headline tracking-widest">or</span>
+        </div>
+      </div>
+
+      {/* Register link */}
+      <p className="text-center text-xs font-headline uppercase tracking-widest text-white/40">
+        New to the system?{' '}
+        <Link
+          to="/register"
+          className="text-brand hover:text-brand-light font-bold transition-colors duration-200"
+        >
+          Register Here
+        </Link>
+      </p>
     </AuthShell>
   );
 }

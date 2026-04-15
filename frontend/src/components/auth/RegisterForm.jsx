@@ -11,7 +11,7 @@ const ROLE_OPTIONS = [
 function Field({ id, label, type = 'text', placeholder, autoComplete, value, onChange, error, hint }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-text-secondary">
+      <label htmlFor={id} className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest">
         {label} <span className="text-brand">*</span>
       </label>
       <input
@@ -145,7 +145,7 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
 
       {/* Password with strength meter */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-text-secondary">
+        <label htmlFor="password" className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest">
           Password <span className="text-brand">*</span>
         </label>
         <div className="relative">
@@ -188,7 +188,7 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
 
       {/* Role selector */}
       <div>
-        <label className="text-sm font-medium text-text-secondary block mb-2">
+        <label className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest block mb-3">
           Select role <span className="text-brand">*</span>
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -197,10 +197,10 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
               key={value}
               type="button"
               onClick={() => selectRole(value)}
-              className={`p-3 rounded-xl border text-left transition-all duration-200
+              className={`p-3 rounded-xl border text-left transition-all duration-200 backdrop-blur-sm
                 ${form.role === value
-                  ? 'border-brand bg-brand/10 ring-1 ring-brand/30'
-                  : 'border-surface-border bg-surface-raised hover:border-surface-overlay'}`}
+                  ? 'border-brand/60 bg-brand/[0.08] shadow-[0_0_16px_rgba(246,183,10,0.15)]'
+                  : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]'}`}
             >
               <p className={`text-sm font-semibold mb-0.5 ${form.role === value ? 'text-brand' : 'text-text-primary'}`}>
                 {label}

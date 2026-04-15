@@ -16,17 +16,17 @@ function AdminSubNav() {
   const { pathname } = useLocation();
 
   return (
-    <div className="flex items-center gap-1 border-b border-surface-border mb-6">
+    <div className="flex items-center gap-1 mb-6">
       {ADMIN_PAGES.map((page) => {
         const isActive = pathname === page.to;
         return (
           <Link
             key={page.to}
             to={page.to}
-            className={`px-4 py-2.5 text-sm font-body font-semibold transition-all border-b-2 -mb-px
+            className={`px-4 py-2.5 text-sm font-headline font-bold transition-all border-b-2
               ${isActive
                 ? 'border-brand text-brand'
-                : 'border-transparent text-text-secondary hover:text-text-primary hover:border-surface-border'
+                : 'border-transparent text-text-secondary hover:text-text-primary hover:border-white/[0.15]'
               }`}
           >
             {page.label}
@@ -53,7 +53,7 @@ export default function AdminLayout({ title, subtitle, children }) {
             <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">
               System Administration
             </p>
-            <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight mb-1">
+            <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight mb-1">
               {title}
             </h1>
             {subtitle && (

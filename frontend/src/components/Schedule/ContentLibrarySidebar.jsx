@@ -1,6 +1,8 @@
 /**
  * ContentLibrarySidebar.jsx
  * Left panel — draggable content library
+ * Shows all non-published content; scheduled items remain visible so the user
+ * can still drag-reschedule them or see their status at a glance.
  * LeadFlow – Krench Chicken
  */
 import React from 'react';
@@ -15,24 +17,26 @@ const ContentLibrarySidebar = ({
   totalScheduled,
   totalUnscheduled,
 }) => {
-  const allItems = [
+  // Build unified list: scheduled/uploaded first (already on calendar), then drafts.
+  // Deduplication ensures items moved from drafts→schedules appear only once.
+  const seen = new Set();
+  const items = [
     ...schedules.filter(s => s.status !== 'published'),
     ...drafts,
-  ];
-
-  // Deduplicate
-  const seen = new Set();
-  const items = allItems.filter(s => {
+  ].filter(s => {
     if (seen.has(s.id)) return false;
     seen.add(s.id);
     return true;
   });
 
+  const scheduledCount   = items.filter(s => s.status === 'scheduled' || s.status === 'uploaded').length;
+  const unscheduledCount = items.filter(s => s.status === 'draft').length;
+
   return (
     <aside className="w-[175px] flex-shrink-0 bg-[#141414] border-r border-white/8 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="p-3.5 border-b border-white/8">
-        <h2 className="font-display font-bold text-sm text-text-primary">Content Library</h2>
+        <h2 className="font-headline font-bold text-sm text-text-primary">Content Library</h2>
         <p className="text-[10px] font-body text-text-secondary mt-0.5 leading-tight">Drag content to schedule posts</p>
       </div>
 
@@ -59,8 +63,8 @@ const ContentLibrarySidebar = ({
       <div className="p-3 border-t border-white/8 space-y-1">
         {[
           { label: 'Total Content',   value: totalContent      ?? items.length },
-          { label: 'Scheduled',       value: totalScheduled    ?? items.filter(s => s.status === 'scheduled' || s.status === 'uploaded').length },
-          { label: 'Unscheduled',     value: totalUnscheduled  ?? items.filter(s => s.status === 'draft').length },
+          { label: 'Scheduled',       value: totalScheduled    ?? scheduledCount },
+          { label: 'Unscheduled',     value: totalUnscheduled  ?? unscheduledCount },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between">
             <span className="text-[10px] text-text-secondary">{label}:</span>

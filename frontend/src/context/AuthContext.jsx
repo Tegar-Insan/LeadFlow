@@ -47,12 +47,14 @@ function authReducer(state, action) {
         otpEmail:   action.payload,
         isLoading:  false,
       };
-    case 'OTP_VERIFIED':
+    // Registration OTP confirmed — clear pending state but do NOT log in.
+    // User must proceed to /login and authenticate explicitly.
+    case 'OTP_VERIFIED_REGISTER':
       return {
         ...state,
-        user:            action.payload.user,
-        token:           action.payload.accessToken,
-        isAuthenticated: true,
+        user:            null,
+        token:           null,
+        isAuthenticated: false,
         otpPending:      false,
         otpEmail:        null,
         isLoading:       false,
@@ -122,10 +124,11 @@ export function AuthProvider({ children }) {
   const verifyOTP = async (email, otp) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const res = await registerVerifyOTP({ email, otp });
-      setAccessToken(res.data.accessToken);
-      setStoredUser(res.data.user);
-      dispatch({ type: 'OTP_VERIFIED', payload: res.data });
+      // Verify the registration OTP — discard any returned token.
+      // The user must log in explicitly; we must NOT auto-authenticate here
+      // or GuestRoute will redirect /login → /calendar before they can sign in.
+      await registerVerifyOTP({ email, otp });
+      dispatch({ type: 'OTP_VERIFIED_REGISTER' });
       return { success: true };
     } catch (err) {
       dispatch({ type: 'SET_LOADING', payload: false });
