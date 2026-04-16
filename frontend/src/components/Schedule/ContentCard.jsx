@@ -93,7 +93,7 @@ export const SlotCard = ({ schedule, onClick }) => {
         e.dataTransfer.setData('scheduleId', schedule.id);
       }}
       onClick={(e) => { e.stopPropagation(); onClick?.(schedule); }}
-      className="relative rounded-lg overflow-hidden bg-surface-overlay border border-surface-border cursor-grab active:cursor-grabbing hover:border-brand/30 transition-all duration-200 group"
+      className="relative rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.08] cursor-grab active:cursor-grabbing hover:border-brand/40 transition-all duration-200 group"
     >
       {/* Image */}
       {hasImage && (

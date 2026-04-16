@@ -285,7 +285,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
           <div>
-            <h2 className="font-display font-bold text-lg text-text-primary">
+            <h2 className="font-headline font-bold text-lg text-text-primary">
               {isCreate ? 'Manage Content Queue' : 'Edit Post'}
             </h2>
             {isCreate && (
@@ -313,10 +313,10 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
                     key={n}
                     type="button"
                     onClick={() => changeCount(n)}
-                    className={`w-9 h-9 rounded-lg text-sm font-display font-bold transition-all border
+                    className={`w-9 h-9 rounded-lg text-sm font-headline font-bold transition-all border
                       ${postCount === n
-                        ? 'bg-brand text-white border-brand shadow-md'
-                        : 'bg-surface-overlay text-text-secondary border-surface-border hover:border-brand/50 hover:text-text-primary'}`}
+                        ? 'bg-brand text-black border-brand shadow-[0_0_10px_rgba(246,183,10,0.2)]'
+                        : 'bg-white/[0.04] text-text-secondary border-white/[0.08] hover:border-brand/50 hover:text-text-primary'}`}
                   >
                     {n}
                   </button>
@@ -338,7 +338,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
                     key={i}
                     type="button"
                     onClick={() => setActiveTab(i)}
-                    className={`flex items-center gap-1.5 px-3 h-8 rounded-t-lg text-xs font-display font-semibold whitespace-nowrap transition-all border-b-2
+                    className={`flex items-center gap-1.5 px-3 h-8 rounded-t-lg text-xs font-headline font-semibold whitespace-nowrap transition-all border-b-2
                       ${activeTab === i
                         ? 'bg-surface-overlay text-text-primary border-brand'
                         : 'text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-overlay/50'}`}
@@ -509,7 +509,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onMediaUpload, onMed
                 </span>
               )}
             </div>
-            <h2 className="font-display font-bold text-lg text-text-primary truncate">
+            <h2 className="font-headline font-bold text-lg text-text-primary truncate">
               {schedule.custom_caption || schedule.title || 'Untitled'}
             </h2>
             {schedule.scheduled_at && (

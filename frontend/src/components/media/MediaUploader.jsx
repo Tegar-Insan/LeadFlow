@@ -167,7 +167,7 @@ const MediaUploader = ({
       {/* Existing assets grid */}
       {existingAssets.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">
+          <p className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest mb-2">
             Uploaded Media
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -193,8 +193,8 @@ const MediaUploader = ({
             relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer
             transition-all duration-200
             ${isDragOver
-              ? 'border-red-500 bg-red-950/20'
-              : 'border-zinc-600 hover:border-zinc-400 hover:bg-zinc-800/50'}
+              ? 'border-brand bg-brand/[0.08]'
+              : 'border-white/[0.12] hover:border-brand/50 hover:bg-white/[0.03]'}
           `}
         >
           <input
@@ -227,7 +227,7 @@ const MediaUploader = ({
       {/* Pending files preview */}
       {files.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">
+          <p className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest mb-2">
             Ready to Upload ({files.length} file{files.length > 1 ? 's' : ''})
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -251,9 +251,9 @@ const MediaUploader = ({
             <span>Uploading…</span>
             <span>{progress}%</span>
           </div>
-          <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
             <div
-              className="h-full bg-red-500 rounded-full transition-all duration-300"
+              className="h-full bg-brand rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -271,7 +271,7 @@ const MediaUploader = ({
       {files.length > 0 && !uploading && (
         <button
           onClick={handleUpload}
-          className="w-full h-10 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-red-900/30"
+          className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-all hover:shadow-[0_0_20px_rgba(246,183,10,0.3)]"
         >
           Upload {files.length} File{files.length > 1 ? 's' : ''}
         </button>

@@ -5,7 +5,7 @@ import Button from '../common/button';
 function validate({ email, password }) {
   const errors = {};
   if (!email)                                           errors.email    = 'Email is required.';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email    = 'Enter a valid email.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email    = 'Enter a valid email address.';
   if (!password) errors.password = 'Password is required.';
   return errors;
 }

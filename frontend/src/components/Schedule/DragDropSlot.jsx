@@ -64,7 +64,7 @@ const DragDropSlot = ({
       onDrop={isPast ? undefined : handleDrop}
       onClick={isPast ? undefined : handleCellClick}
       className={`
-        relative min-h-[100px] p-1.5 border-b border-r border-white/5
+        relative min-h-[100px] p-1.5 border-b border-r border-white/[0.04]
         flex flex-col gap-1 transition-colors duration-100
         ${isPast ? 'cursor-not-allowed opacity-50 bg-surface/60' : 'cursor-pointer'}
         ${!cell.isCurrentMonth ? 'opacity-35' : ''}
@@ -90,7 +90,7 @@ const DragDropSlot = ({
       {/* Not Available overlay for past dates */}
       {isPast && (
         <div className="flex items-center justify-center flex-1 pointer-events-none">
-          <span className="text-[9px] font-body font-semibold text-zinc-600 uppercase tracking-wider">
+          <span className="text-[9px] font-headline font-bold text-white/20 uppercase tracking-widest">
             Not Available
           </span>
         </div>

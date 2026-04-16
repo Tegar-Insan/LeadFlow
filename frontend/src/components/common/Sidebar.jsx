@@ -77,11 +77,11 @@ function NavItem({ to, label, icon }) {
     <Link
       to={to}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-body font-medium
+        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-headline font-bold
         transition-all duration-200
         ${isActive
-          ? 'bg-surface-raised text-gold border-l-2 border-brand pl-[10px]'
-          : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03] border-l-2 border-transparent'
+          ? 'bg-white/[0.06] text-brand border-l-2 border-brand pl-[10px]'
+          : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border-l-2 border-transparent'
         }
       `}
     >
@@ -111,12 +111,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside className={`
         fixed lg:sticky top-0 left-0 z-40 h-screen w-56 flex flex-col
-        bg-surface border-r border-surface-border
+        bg-[#0e0e0e] border-r border-white/[0.06]
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="p-5 border-b border-surface-border">
+        <div className="p-5">
           <div className="flex items-center gap-2 mb-5">
 
             <img src="/logo.png" alt="Krench Chicken" className="h-10 w-auto object-contain" />
@@ -126,7 +126,7 @@ export default function Sidebar({ isOpen, onClose }) {
           {roleName !== 'admin' && <Link
             to="/calendar"
             state={{ openCreate: true }}
-            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-black font-display font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-black font-headline font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_20px_rgba(246,183,10,0.35)]"
             style={{ boxShadow: '0 10px 20px -5px rgba(246,183,10,0.3)' }}
           >
             {icons.plus}
@@ -142,9 +142,9 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-4 border-t border-surface-border space-y-2">
+        <div className="p-4 space-y-2">
           <div className="flex items-center gap-3 px-1">
-            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black font-bold font-display text-sm shrink-0">
+            <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black font-bold font-headline text-sm shrink-0">
               {(user?.fullName || user?.email || 'U')[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">

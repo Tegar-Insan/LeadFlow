@@ -16,7 +16,7 @@ vi.mock('@/components/Schedule/ScheduleQueueCard', () => ({
 import DragDropSlot from '../../src/components/Schedule/DragDropSlot';
 
 const makeCell = (overrides = {}) => ({
-  day: 10, iso: '2026-04-10', isCurrentMonth: true, isToday: false, ...overrides,
+  day: 25, iso: '2026-04-25', isCurrentMonth: true, isToday: false, ...overrides,
 });
 
 // jsdom doesn't implement dataTransfer — helper creates a proper drag event
@@ -32,13 +32,13 @@ describe('DragDropSlot', () => {
   // TC007_01 — renders the day number
   it('renders the day number', () => {
     render(<DragDropSlot cell={makeCell()} />);
-    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.getByText('25')).toBeInTheDocument();
   });
 
   // TC007_01 — today cell gets today indicator styling
   it('applies today style when cell.isToday is true', () => {
     render(<DragDropSlot cell={makeCell({ isToday: true, day: 9 })} />);
-    expect(screen.getByText('9').className).toContain('bg-red-500');
+    expect(screen.getByText('9').className).toContain('bg-brand');
   });
 
   // TC007 — onDayClick fires when the cell background is clicked
@@ -46,7 +46,7 @@ describe('DragDropSlot', () => {
     const onDayClick = vi.fn();
     const { container } = render(<DragDropSlot cell={makeCell()} onDayClick={onDayClick} />);
     fireEvent.click(container.firstChild);
-    expect(onDayClick).toHaveBeenCalledWith('2026-04-10');
+    expect(onDayClick).toHaveBeenCalledWith('2026-04-25');
   });
 
   // TC007 — schedule cards render inside the slot
@@ -79,7 +79,7 @@ describe('DragDropSlot', () => {
     const { container } = render(<DragDropSlot cell={makeCell()} onDrop={vi.fn()} />);
     const slot = container.firstChild;
     fireEvent(slot, makeDragEvent('dragOver', slot));
-    expect(slot.className).toContain('bg-blue-950');
+    expect(slot.className).toContain('bg-brand');
   });
 
   // TC007_05 — onDrop fires with scheduleId and iso
@@ -91,7 +91,7 @@ describe('DragDropSlot', () => {
     fireEvent(slot, makeDragEvent('drop', slot, {
       getData: (key) => key === 'scheduleId' ? '42' : '',
     }));
-    expect(onDrop).toHaveBeenCalledWith('42', '2026-04-10');
+    expect(onDrop).toHaveBeenCalledWith('42', '2026-04-25');
   });
 
   // TC007 — overflow count label when schedules exceed maxVisible

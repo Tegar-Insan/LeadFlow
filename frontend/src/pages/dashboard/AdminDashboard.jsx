@@ -45,7 +45,7 @@ function StatusBadge({ active }) {
 function Avatar({ name, email }) {
   const letter = (name || email || 'U')[0].toUpperCase();
   return (
-    <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black text-sm font-bold font-display shrink-0">
+    <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-black text-sm font-bold font-headline shrink-0">
       {letter}
     </div>
   );
@@ -76,7 +76,7 @@ function StatCard({ label, value, sub, icon }) {
       </div>
       <div>
         <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-gold font-display font-extrabold text-4xl tracking-tight">{value}</p>
+        <p className="text-gold font-headline font-bold text-4xl tracking-tight">{value}</p>
         {sub && <p className="text-text-muted text-xs font-body mt-1">{sub}</p>}
       </div>
     </div>
@@ -161,7 +161,7 @@ function OverviewTab({ users, loading }) {
       {/* Recent 5 registrations */}
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-surface-border">
-          <h2 className="font-display font-semibold text-text-primary">Recently Registered</h2>
+          <h2 className="font-headline font-semibold text-text-primary">Recently Registered</h2>
         </div>
         {users.slice(0, 5).map((u) => (
           <div key={u.id} className="px-5 py-3 border-b border-surface-border last:border-0 flex items-center justify-between gap-4">
@@ -436,7 +436,7 @@ function RoleManagementTab({ users, loading, onRoleChange, onStatusChange }) {
                           <button
                             onClick={() => handleConfirmRole(u.id)}
                             disabled={isSaving}
-                            className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-display font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-50"
+                            className="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-black text-xs font-headline font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-50 hover:shadow-[0_0_12px_rgba(246,183,10,0.3)]"
                           >
                             {isSaving ? (
                               <InlineLoader size="sm" className="text-white" />
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
             <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">
               System Administration
             </p>
-            <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight mb-1">
+            <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight mb-1">
               Admin Panel
             </h1>
             <p className="text-text-secondary text-base font-body">

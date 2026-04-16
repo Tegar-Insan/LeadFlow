@@ -58,7 +58,7 @@ export default function StaffDashboard() {
           {/* Header */}
           <div className="mb-8">
             <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Marketing Dashboard</p>
-            <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight mb-1">
+            <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight mb-1">
               {greeting}, <span className="text-brand">{user?.fullName?.split(' ')[0] || 'Staff'}</span>
             </h1>
             <p className="text-text-secondary text-base font-body">Here&apos;s what needs your attention today — {now.format('dddd, DD MMMM YYYY')}</p>
@@ -79,7 +79,7 @@ export default function StaffDashboard() {
             {/* Today's schedule */}
             <div className="card overflow-hidden">
               <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-                <h2 className="font-display font-semibold text-text-primary text-sm">Today&apos;s Schedule</h2>
+                <h2 className="font-headline font-semibold text-text-primary text-sm">Today&apos;s Schedule</h2>
                 <span className="text-xs text-text-muted font-mono">{now.format('DD MMM')}</span>
               </div>
               {loadingPosts ? (
@@ -119,7 +119,7 @@ export default function StaffDashboard() {
             {/* Recent interactions */}
             <div className="card overflow-hidden">
               <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-                <h2 className="font-display font-semibold text-text-primary text-sm">Recent Interactions</h2>
+                <h2 className="font-headline font-semibold text-text-primary text-sm">Recent Interactions</h2>
                 <Link to="/interactions" className="text-xs text-brand hover:text-brand-light transition-colors">View all →</Link>
               </div>
               {loadingInbox ? (

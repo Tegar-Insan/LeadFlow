@@ -218,7 +218,7 @@ const ContentScheduleQueuePage = () => {
           </svg>
         </button>
         <div>
-          <h1 className="font-display font-bold text-base text-text-primary">Content Schedule Queue</h1>
+          <h1 className="font-headline font-bold text-base text-text-primary">Content Schedule Queue</h1>
           <p className="text-[11px] text-text-secondary font-body mt-0.5">All scheduled + draft content</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -256,8 +256,8 @@ const ContentScheduleQueuePage = () => {
               onClick={() => setFilter(f)}
               className={`px-2.5 h-6 rounded-full text-[11px] font-semibold font-body transition-all capitalize
                 ${filter === f
-                  ? 'bg-brand text-white'
-                  : 'bg-surface-overlay text-text-secondary border border-surface-border hover:text-text-primary'}`}
+                  ? 'bg-brand text-black'
+                  : 'bg-white/[0.04] text-text-secondary border border-white/[0.08] hover:text-text-primary'}`}
             >
               {f === 'all' ? `All (${allItems.length})` : f}
             </button>

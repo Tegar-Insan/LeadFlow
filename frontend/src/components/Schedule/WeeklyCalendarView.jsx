@@ -51,15 +51,15 @@ const WeeklyCalendarView = ({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Day header */}
-      <div className="flex border-b border-surface-border bg-surface-raised flex-shrink-0">
-        <div className="w-16 flex-shrink-0 border-r border-surface-border" />
+      <div className="flex border-b border-white/[0.06] bg-surface-raised flex-shrink-0">
+        <div className="w-16 flex-shrink-0 border-r border-white/[0.06]" />
         {days.map(day => (
           <div key={day.iso}
-            className={`flex-1 py-3 text-center border-r border-surface-border last:border-r-0 transition-colors ${day.isToday ? 'bg-gold/[0.08]' : ''}`}>
-            <p className="text-xs font-display font-semibold text-text-secondary uppercase tracking-widest">{day.label}</p>
+            className={`flex-1 py-3 text-center border-r border-white/[0.06] last:border-r-0 transition-colors ${day.isToday ? 'bg-gold/[0.08]' : ''}`}>
+            <p className="text-xs font-headline font-semibold text-text-secondary uppercase tracking-widest">{day.label}</p>
             <div className={`inline-flex items-center justify-center w-9 h-9 rounded-full mt-1 mx-auto
               ${day.isToday ? 'bg-gold' : ''}`}>
-              <p className={`text-xl font-display font-bold leading-none ${day.isToday ? 'text-black' : 'text-text-primary'}`}>
+              <p className={`text-xl font-headline font-bold leading-none ${day.isToday ? 'text-black' : 'text-text-primary'}`}>
                 {day.date}
               </p>
             </div>
@@ -70,9 +70,9 @@ const WeeklyCalendarView = ({
       {/* Scrollable time rows */}
       <div className="flex-1 overflow-y-auto">
         {HOURS.map(hour => (
-          <div key={hour} className="flex border-b border-surface-border" style={{ minHeight: '100px' }}>
+          <div key={hour} className="flex border-b border-white/[0.06]" style={{ minHeight: '100px' }}>
             {/* Time label */}
-            <div className="w-16 flex-shrink-0 border-r border-surface-border flex items-start justify-end pr-2 pt-2">
+            <div className="w-16 flex-shrink-0 border-r border-white/[0.06] flex items-start justify-end pr-2 pt-2">
               <span className="text-[11px] font-mono text-text-muted">
                 {String(hour).padStart(2,'0')}:00
               </span>
@@ -93,7 +93,7 @@ const WeeklyCalendarView = ({
                   onDrop={e => { e.preventDefault(); setDragOverKey(null); const id = e.dataTransfer.getData('scheduleId'); if (id && !past) onDrop?.(id, day.iso, hour); }}
                   onClick={() => { if (!past && isEmpty) onSlotClick?.(day.iso, hour); }}
                   className={`
-                    flex-1 border-r border-surface-border last:border-r-0 p-2 relative transition-colors duration-100
+                    flex-1 border-r border-white/[0.06] last:border-r-0 p-2 relative transition-colors duration-100
                     ${day.isToday ? 'bg-gold/[0.04]' : ''}
                     ${isOver ? 'bg-brand/[0.08]' : ''}
                     ${!past && isEmpty ? 'cursor-pointer hover:bg-white/[0.03] group' : ''}
@@ -110,7 +110,7 @@ const WeeklyCalendarView = ({
                   {/* Future empty — + on hover */}
                   {!past && isEmpty && (
                     <div className="flex items-center justify-center h-full min-h-[76px] opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-8 h-8 rounded-full border-2 border-dashed border-surface-border flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full border-2 border-dashed border-white/[0.06] flex items-center justify-center">
                         <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
                         </svg>

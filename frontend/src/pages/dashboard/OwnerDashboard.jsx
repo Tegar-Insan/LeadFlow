@@ -29,7 +29,7 @@ function KPICard({ label, value, trend, sub, highlight = false, colSpan = 1, ico
       </div>
       <div>
         <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest mb-2">{label}</p>
-        <p className={`font-display font-extrabold tracking-tight ${highlight ? 'text-gold text-5xl' : 'text-text-primary text-4xl'}`}>
+        <p className={`font-headline font-bold tracking-tight ${highlight ? 'text-gold text-5xl' : 'text-text-primary text-4xl'}`}>
           {value}
         </p>
         {sub && <p className="text-text-secondary text-xs font-body mt-1.5">{sub}</p>}
@@ -73,7 +73,7 @@ export default function OwnerDashboard() {
           {/* Header */}
           <div className="mb-8">
             <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Business Intelligence</p>
-            <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight mb-1">
+            <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight mb-1">
               {greeting}, <span className="text-brand">{user?.fullName?.split(' ')[0] || 'Owner'}</span>
             </h1>
             <p className="text-text-secondary text-base font-body">Weekly performance overview for Krench Chicken · {now.format('DD MMMM YYYY')}</p>
@@ -114,7 +114,7 @@ export default function OwnerDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest mb-1">Total Interactions</p>
-                  <p className="font-display font-extrabold text-4xl text-text-primary tracking-tight">
+                  <p className="font-headline font-bold text-4xl text-text-primary tracking-tight">
                     {loading ? '—' : kpis.interactions ?? '0'}
                   </p>
                 </div>

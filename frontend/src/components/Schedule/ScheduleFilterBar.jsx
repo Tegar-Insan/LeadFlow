@@ -25,7 +25,7 @@ const ScheduleFilterBar = ({
         <button
           onClick={onPrev}
           disabled={loading}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors disabled:opacity-40"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-40"
           aria-label="Previous month"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +34,7 @@ const ScheduleFilterBar = ({
         </button>
 
         {/* Month / Year */}
-        <h2 className="font-display font-bold text-lg text-text-primary min-w-[160px] text-center">
+        <h2 className="font-headline font-bold text-lg text-text-primary min-w-[160px] text-center">
           {fMonthYear(displayDate)}
         </h2>
 
@@ -42,7 +42,7 @@ const ScheduleFilterBar = ({
         <button
           onClick={onNext}
           disabled={loading}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors disabled:opacity-40"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-40"
           aria-label="Next month"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,7 +53,7 @@ const ScheduleFilterBar = ({
         {/* Today */}
         <button
           onClick={onToday}
-          className="px-3 h-8 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-white/5"
+          className="px-3 h-8 rounded-lg text-xs font-headline font-bold bg-white/[0.05] hover:bg-white/[0.09] text-text-secondary hover:text-text-primary transition-colors border border-white/[0.08]"
         >
           Today
         </button>
@@ -62,15 +62,15 @@ const ScheduleFilterBar = ({
       {/* Right: view toggle + new button */}
       <div className="flex items-center gap-2">
         {/* View toggle */}
-        <div className="flex items-center bg-zinc-800 rounded-lg p-0.5 border border-white/5">
+        <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
           {['month', 'week', 'list'].map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-3 h-7 rounded-md text-xs font-semibold transition-all duration-150
+              className={`px-3 h-7 rounded-md text-xs font-headline font-bold transition-all duration-150
                 ${view === v
-                  ? 'bg-zinc-700 text-white shadow'
-                  : 'text-zinc-400 hover:text-zinc-200'}`}
+                  ? 'bg-brand text-black shadow-[0_0_10px_rgba(246,183,10,0.2)]'
+                  : 'text-text-secondary hover:text-text-primary'}`}
             >
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
@@ -80,7 +80,7 @@ const ScheduleFilterBar = ({
         {/* New schedule */}
         <button
           onClick={onCreateNew}
-          className="flex items-center gap-1.5 px-4 h-8 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-red-900/30"
+          className="flex items-center gap-1.5 px-4 h-8 rounded-lg bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-all hover:shadow-[0_0_16px_rgba(246,183,10,0.3)]"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />

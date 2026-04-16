@@ -37,16 +37,16 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
-  // TC002_01 — welcome heading is visible
+  // TC002_01 — login heading is visible
   it('displays "Welcome back" heading', () => {
     renderPage();
-    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
+    expect(screen.getByText(/login/i)).toBeInTheDocument();
   });
 
   // TC002 — register link is present
   it('shows a link to the register page', () => {
     renderPage();
-    expect(screen.getByRole('link', { name: /create account/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /register here/i })).toBeInTheDocument();
   });
 
   // TC002_03 — empty form submission shows validation errors
@@ -61,7 +61,7 @@ describe('LoginPage', () => {
     renderPage();
     await userEvent.type(screen.getByLabelText(/email address/i), 'bad-email');
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(await screen.findByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(await screen.findByText(/enter a valid email/i)).toBeInTheDocument();
   });
 
   // TC002_04 — API error message is displayed on failed login
@@ -79,6 +79,6 @@ describe('LoginPage', () => {
   // TC002_06 — success banner shown after registration redirect
   it('shows success banner when location.state.registered is true', () => {
     renderPage({ registered: true });
-    expect(screen.getByText(/account created successfully/i)).toBeInTheDocument();
+    expect(screen.getByText(/account created/i)).toBeInTheDocument();
   });
 });

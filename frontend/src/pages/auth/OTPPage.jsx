@@ -66,9 +66,9 @@ export default function OTPPage() {
       <div className="relative w-full max-w-[420px]">
         <div className="flex items-center justify-center gap-2.5 mb-10">
           <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center glow-red">
-            <span className="text-black font-display font-extrabold text-sm">K</span>
+            <span className="text-black font-headline font-bold text-sm">K</span>
           </div>
-          <span className="font-display font-bold text-xl text-text-primary">
+          <span className="font-headline font-bold text-xl text-text-primary">
             Krench <span className="text-brand">Chicken</span>
           </span>
         </div>

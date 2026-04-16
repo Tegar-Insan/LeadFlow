@@ -190,7 +190,7 @@ const ProfilePage = () => {
             {/* Page header */}
             <div>
               <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Account</p>
-              <h1 className="font-display font-extrabold text-4xl text-text-primary tracking-tight">My Profile</h1>
+              <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight">My Profile</h1>
               <p className="text-text-secondary font-body text-base mt-1">Your Krench Chicken account information</p>
             </div>
 
@@ -220,7 +220,7 @@ const ProfilePage = () => {
                         />
                       ) : (
                         <div className="w-full h-full bg-brand flex items-center justify-center">
-                          <span className="font-display font-extrabold text-2xl text-white">{initials}</span>
+                          <span className="font-headline font-bold text-2xl text-white">{initials}</span>
                         </div>
                       )}
 
@@ -286,7 +286,7 @@ const ProfilePage = () => {
                     </button>
                   </div>
                 </div>
-                <h2 className="font-display font-bold text-xl text-text-primary tracking-tight">{user?.fullName || 'User'}</h2>
+                <h2 className="font-headline font-bold text-xl text-text-primary tracking-tight">{user?.fullName || 'User'}</h2>
                 <p className="text-sm text-text-secondary font-body mt-0.5">Krench Chicken · Bogor, Indonesia</p>
                 {photoError && (
                   <p className="text-xs text-brand font-body mt-2">{photoError}</p>
@@ -382,7 +382,7 @@ const ProfilePage = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border border-surface-border">
             <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
-              <h2 className="font-display font-bold text-lg text-text-primary">Edit Profile</h2>
+              <h2 className="font-headline font-bold text-lg text-text-primary">Edit Profile</h2>
               <button onClick={() => setEditMode(false)} className="text-text-muted hover:text-text-primary transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
@@ -405,7 +405,7 @@ const ProfilePage = () => {
                       <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-brand flex items-center justify-center">
-                        <span className="font-display font-extrabold text-2xl text-white">{initials}</span>
+                        <span className="font-headline font-bold text-2xl text-white">{initials}</span>
                       </div>
                     )}
                     <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity

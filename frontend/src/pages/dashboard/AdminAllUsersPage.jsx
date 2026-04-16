@@ -35,7 +35,7 @@ export default function AdminAllUsersPage() {
         ].map(({ label, value }) => (
           <div key={label} className="card px-5 py-4 flex flex-col gap-1 animate-slide-up">
             <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest">{label}</p>
-            <p className="text-3xl font-display font-extrabold text-gold">{loading ? '—' : value}</p>
+            <p className="text-3xl font-headline font-bold text-gold">{loading ? '—' : value}</p>
           </div>
         ))}
       </div>

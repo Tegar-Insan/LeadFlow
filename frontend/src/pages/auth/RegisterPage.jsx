@@ -15,14 +15,14 @@ function AuthShell({ children }) {
         <div className="relative z-10 flex flex-col h-full p-12">
           <div className="flex items-center gap-3 mb-auto">
             <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center glow-red">
-              <span className="text-black font-display font-extrabold text-base">K</span>
+              <span className="text-black font-headline font-bold text-base">K</span>
             </div>
-            <span className="font-display font-bold text-xl text-text-primary">
+            <span className="font-headline font-bold text-xl text-text-primary">
               Krench <span className="text-brand">Chicken</span>
             </span>
           </div>
           <div className="mb-auto">
-            <h1 className="font-display font-extrabold text-4xl text-text-primary leading-tight mb-5">
+            <h1 className="font-headline font-bold text-4xl text-text-primary leading-tight mb-5">
               Join{' '}
               <span className="bg-gradient-to-r from-brand to-brand-light bg-clip-text text-transparent">
                 Krench Chicken
@@ -40,7 +40,7 @@ function AuthShell({ children }) {
 
       <div className="flex-1 flex flex-col">
         <div className="lg:hidden flex items-center gap-2.5 p-6 border-b border-surface-border">
-          <span className="font-display font-bold text-lg text-text-primary">
+          <span className="font-headline font-bold text-lg text-text-primary">
             Krench <span className="text-brand">Chicken</span>
           </span>
         </div>
@@ -113,7 +113,7 @@ export default function RegisterPage() {
     <AuthShell>
       <div className="animate-slide-up">
         <div className="mb-7">
-          <h2 className="font-display font-extrabold text-4xl text-text-primary mb-2 tracking-tight">
+          <h2 className="font-headline font-bold text-4xl text-text-primary mb-2 tracking-tight">
             Create your account
           </h2>
           <p className="text-text-secondary text-base font-body">

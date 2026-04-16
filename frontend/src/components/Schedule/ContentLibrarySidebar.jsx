@@ -33,9 +33,9 @@ const ContentLibrarySidebar = ({
   const unscheduledCount = items.filter(s => s.status === 'draft').length;
 
   return (
-    <aside className="w-[175px] flex-shrink-0 bg-[#141414] border-r border-white/8 flex flex-col h-full overflow-hidden">
+    <aside className="w-[175px] flex-shrink-0 bg-[#141414] border-r border-white/[0.06] flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="p-3.5 border-b border-white/8">
+      <div className="p-3.5 border-b border-white/[0.06]">
         <h2 className="font-headline font-bold text-sm text-text-primary">Content Library</h2>
         <p className="text-[10px] font-body text-text-secondary mt-0.5 leading-tight">Drag content to schedule posts</p>
       </div>
@@ -60,7 +60,7 @@ const ContentLibrarySidebar = ({
       </div>
 
       {/* Footer stats */}
-      <div className="p-3 border-t border-white/8 space-y-1">
+      <div className="p-3 border-t border-white/[0.06] space-y-1">
         {[
           { label: 'Total Content',   value: totalContent      ?? items.length },
           { label: 'Scheduled',       value: totalScheduled    ?? scheduledCount },

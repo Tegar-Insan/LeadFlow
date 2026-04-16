@@ -14,25 +14,39 @@
 
 @layer components {
   .input-field {
-    @apply w-full bg-transparent border-0 border-b border-white/15 rounded-none px-0 py-2.5
-           text-text-primary placeholder:text-text-muted text-sm font-body outline-none
-           transition-all duration-200 focus:border-brand;
+    @apply w-full bg-transparent rounded-none px-0 py-2.5
+           text-text-primary text-sm font-body outline-none
+           transition-all duration-200;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
   }
-  .input-error { @apply border-red-500 focus:border-red-500; }
-  .card { @apply bg-white/[0.03] rounded-2xl border border-white/[0.08] backdrop-blur-sm; }
+  .input-field:focus { border-bottom-color: #f6b70a; }
+  .input-error { border-bottom-color: #ef4444 !important; }
+  .input-error:focus { border-bottom-color: #ef4444 !important; }
+  .card {
+    @apply rounded-2xl backdrop-blur-sm;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark
-           text-black font-display font-bold rounded-lg py-3 px-6 text-sm
-           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
-           focus:outline-none focus:ring-2 focus:ring-brand/40 active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 bg-brand
+           text-black font-headline font-bold rounded-lg py-3 px-6 text-sm
+           transition-all duration-200 outline-none select-none;
     box-shadow: 0 10px 20px -5px rgba(246, 183, 10, 0.3);
   }
+  .btn-primary:hover  { background-color: #d4960a; box-shadow: 0 0 20px rgba(246,183,10,0.35); }
+  .btn-primary:focus  { ring: 2px solid rgba(246,183,10,0.4); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 bg-surface-raised hover:bg-surface-overlay
+    @apply inline-flex items-center justify-center gap-2 bg-surface-raised
            text-text-primary font-body font-semibold rounded py-2 px-6 text-sm
-           border border-surface-border transition-all duration-200
-           disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-white/10 active:scale-[0.98];
+           border border-surface-border transition-all duration-200 outline-none select-none;
   }
+  .btn-secondary:hover    { background-color: #2a2a2a; }
+  .btn-secondary:active   { transform: scale(0.98); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
   .role-badge { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold font-body; }
 
   /* Status badges — used across calendar, publish, etc. */

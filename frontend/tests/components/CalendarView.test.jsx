@@ -13,14 +13,14 @@ vi.mock('@/utils/formatDate', () => {
   const buildMonthGrid = vi.fn((year, month) => {
     // Return a minimal grid: just week 1 of April 2026 + padding
     const cells = [];
-    // 3 padding days from prev month
-    [29, 30, 31].forEach((d, i) => {
-      cells.push({ day: d, iso: `2026-03-${d}`, isCurrentMonth: false, isToday: false });
+    // 3 padding days from prev month (May → April)
+    [28, 29, 30].forEach((d) => {
+      cells.push({ day: d, iso: `2026-04-${d}`, isCurrentMonth: false, isToday: false });
     });
-    // April 1–5
+    // May 1–5 (future dates — past-date blocking won't apply)
     for (let d = 1; d <= 5; d++) {
-      const iso = `2026-04-0${d}`;
-      cells.push({ day: d, iso, isCurrentMonth: true, isToday: d === 9 });
+      const iso = `2026-05-0${d}`;
+      cells.push({ day: d, iso, isCurrentMonth: true, isToday: d === 3 });
     }
     return cells;
   });
@@ -85,7 +85,7 @@ describe('CalendarView', () => {
   // TC007 — schedule items are rendered in correct cells
   it('renders schedule cards in the correct date cell', () => {
     const schedulesByDate = {
-      '2026-04-01': [{ id: 1, title: 'Promo Post', status: 'scheduled', scheduled_at: null }],
+      '2026-05-01': [{ id: 1, title: 'Promo Post', status: 'scheduled', scheduled_at: null }],
     };
     render(<CalendarView {...defaultProps} schedulesByDate={schedulesByDate} />);
     expect(screen.getByText('Promo Post')).toBeInTheDocument();
