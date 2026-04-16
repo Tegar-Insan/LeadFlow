@@ -29,8 +29,8 @@ const STATUS_DOT = {
 
 const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
   const [isOver, setIsOver] = useState(false);
-  const visible  = schedules.slice(0, 3);
-  const overflow = schedules.length - 3;
+  const visible  = schedules.slice(0, 5);
+  const overflow = schedules.length - 5;
 
   // Past if the cell date is before today (WIB)
   const isPast = cell.iso
@@ -48,7 +48,7 @@ const DayCell = ({ cell, schedules = [], onDrop, onDayClick, onCardClick }) => {
       }}
       onClick={isPast ? undefined : () => onDayClick?.(cell.iso)}
       className={`
-        min-h-[110px] p-2 border-r border-b border-white/[0.05] flex flex-col gap-1
+        min-h-[150px] p-2 border-r border-b border-white/[0.05] flex flex-col gap-1
         transition-colors
         ${isPast ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
         ${!cell.isCurrentMonth ? 'bg-surface opacity-60' : (isPast ? 'bg-surface' : 'bg-surface-raised hover:bg-white/[0.03]')}

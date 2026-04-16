@@ -26,6 +26,7 @@ import {
   TZ,
 } from '../../utils/formatDate';
 import { fetchMediaBySchedule, uploadMedia } from '../../services/mediaService';
+import AIChatbot from '../../components/common/AIChatbot';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -880,6 +881,9 @@ const CalendarPage = () => {
           onMediaDeleted={(id) => setAssets(prev => prev.filter(a => a.id !== id))}
           canEdit={canEdit} />
       )}
+
+      {/* ── AI Chatbot FAB — bottom-right floating ── */}
+      <AIChatbot />
     </div>
   );
 };

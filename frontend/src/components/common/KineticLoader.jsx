@@ -1,19 +1,18 @@
 /**
- * KineticLoader.jsx — Minimalist kinetic loading screen for LeadFlow
- * Adapted from "Dynamic Red Loader" Stitch project (Minimalist Loading Desktop)
- * Design: single pulsing ring · shimmer bar · grain overlay · no heavy chrome
+ * KineticLoader.jsx — Minimalist glassmorphism loader for LeadFlow
+ * Design reference: "Dynamic Red Loader / Minimalist Loading Desktop" (Stitch)
+ * Visual: transparent blur overlay · floating glass card · neon square pulse · spaced type
  */
 
 import { useEffect, useState } from 'react';
 
 /**
- * Full-page blocking loader — auth checks, page transitions, cold data fetches.
+ * Full-page / overlay loader — auth checks, page transitions, cold data fetches.
  *
- * @param {string}  message  - Status label (default: "Loading LeadFlow…")
+ * @param {string}  message  - Status label shown below the icon
  * @param {boolean} overlay  - true = position:fixed over content (default). false = fills parent.
  */
-export function KineticLoader({ message = 'Loading Krench Chicken…', overlay = true }) {
-  // Dot blink phase for the three status dots
+export function KineticLoader({ message = 'Loading…', overlay = true }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -22,177 +21,165 @@ export function KineticLoader({ message = 'Loading Krench Chicken…', overlay =
   }, []);
 
   const wrapCls = overlay
-    ? 'fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden'
-    : 'relative w-full min-h-screen flex flex-col items-center justify-center overflow-hidden';
+    ? 'fixed inset-0 z-[9999] flex items-center justify-center'
+    : 'relative w-full min-h-screen flex items-center justify-center';
 
   return (
     <div
       className={wrapCls}
-      style={{ background: '#000000' }}
       role="status"
       aria-label={message}
+      style={{
+        background: 'rgba(0, 0, 0, 0.35)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
     >
-      {/* ── Ambient radial glow ── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(circle at 50% 50%, rgba(246,183,10,0.05) 0%, transparent 70%)',
-        }}
-      />
-
-      {/* ── Centre element ── */}
-      <div className="relative flex items-center justify-center" style={{ animation: 'lf-drift 3s ease-in-out infinite' }}>
-        {/* Ambient glow disc — same pulse as the ring */}
-        <div
-          className="absolute rounded-full"
+      {/* ── Subtle star particles ── */}
+      {STARS.map((s, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full pointer-events-none"
           style={{
-            width: '8rem',
-            height: '8rem',
-            background: 'rgba(246,183,10,0.12)',
-            filter: 'blur(36px)',
-            animation: 'lf-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite',
-          }}
-        />
-
-        {/* Outer slow hint ring */}
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: '7rem',
-            height: '7rem',
-            border: '1px solid rgba(246,183,10,0.1)',
-            animation: 'lf-pulse 3.2s cubic-bezier(0.4,0,0.6,1) infinite reverse',
-          }}
-        />
-
-        {/* Main pulsing thin ring */}
-        <div
-          className="rounded-full"
-          style={{
-            width: '5rem',
-            height: '5rem',
-            border: '1.5px solid #f6b70a',
-            animation: 'lf-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite',
-          }}
-        />
-
-        {/* Core static dot with glow */}
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: '4px',
-            height: '4px',
+            width: s.size,
+            height: s.size,
+            left: s.x,
+            top: s.y,
             background: '#f6b70a',
-            boxShadow: '0 0 15px rgba(246,183,10,0.8)',
+            opacity: s.opacity,
+            animation: `lf-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
           }}
         />
-      </div>
+      ))}
 
-      {/* ── Label + shimmer bar ── */}
+      {/* ── Glass card ── */}
       <div
-        className="flex flex-col items-center gap-2 mt-14"
-        style={{ animation: 'lf-drift 3s ease-in-out infinite' }}
+        className="flex flex-col items-center justify-center gap-5"
+        style={{
+          width: 200,
+          height: 200,
+          borderRadius: 28,
+          background: 'rgba(255, 255, 255, 0.04)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.45)',
+        }}
       >
-        {/* Brand micro-label */}
-        <span
-          style={{
-            fontFamily: 'Manrope, sans-serif',
-            fontSize: '8px',
-            fontWeight: 600,
-            letterSpacing: '0.35em',
-            color: 'rgba(246,183,10,0.4)',
-            textTransform: 'uppercase',
-            userSelect: 'none',
-          }}
-        >
-          KRENCH CHICKEN
-        </span>
+        {/* Neon glowing square icon */}
+        <div className="relative flex items-center justify-center">
+          {/* Outer glow disc */}
+          <div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: 72,
+              height: 72,
+              background: 'rgba(246,183,10,0.15)',
+              filter: 'blur(18px)',
+              animation: 'lf-glow 2s ease-in-out infinite',
+            }}
+          />
 
-        {/* State label */}
-        <span
-          style={{
-            fontFamily: 'Manrope, sans-serif',
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.5em',
-            color: '#f6b70a',
-            opacity: 0.8,
-            textTransform: 'uppercase',
-            userSelect: 'none',
-          }}
-        >
-          LOADING
-        </span>
-
-        {/* Shimmer progress bar */}
-        <div
-          className="mt-2 overflow-hidden"
-          style={{
-            width: '12rem',
-            height: '1px',
-            background: 'rgba(246,183,10,0.15)',
-          }}
-        >
+          {/* Neon square outline */}
           <div
             style={{
-              height: '100%',
-              width: '33%',
-              background:
-                'linear-gradient(to right, transparent, #f6b70a, transparent)',
-              animation: 'lf-slide 1.5s linear infinite',
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              border: '2px solid #f6b70a',
+              boxShadow:
+                '0 0 8px rgba(246,183,10,0.8), 0 0 20px rgba(246,183,10,0.4), inset 0 0 8px rgba(246,183,10,0.1)',
+              animation: 'lf-square-pulse 2s cubic-bezier(0.4,0,0.6,1) infinite',
+            }}
+          />
+
+          {/* Centre dot */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: 5,
+              height: 5,
+              background: '#f6b70a',
+              boxShadow: '0 0 8px rgba(246,183,10,0.9)',
             }}
           />
         </div>
 
-        {/* Status dots */}
-        <div className="flex items-center gap-1.5 mt-1">
-          {[0, 1, 2].map(i => (
-            <span
-              key={i}
-              className="rounded-full"
-              style={{
-                width: '3px',
-                height: '3px',
-                background: '#f6b70a',
-                opacity: phase === i ? 0.9 : 0.2,
-                transition: 'opacity 0.3s',
-              }}
-            />
-          ))}
+        {/* Label */}
+        <div className="flex flex-col items-center gap-1.5">
+          <span
+            style={{
+              fontFamily: 'Space Grotesk, Manrope, sans-serif',
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.42em',
+              color: 'rgba(255,255,255,0.55)',
+              textTransform: 'uppercase',
+              userSelect: 'none',
+            }}
+          >
+            LOADING
+          </span>
+
+          {/* Three blink dots */}
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map(i => (
+              <span
+                key={i}
+                className="rounded-full"
+                style={{
+                  width: 3,
+                  height: 3,
+                  background: '#f6b70a',
+                  opacity: phase === i ? 0.9 : 0.2,
+                  transition: 'opacity 0.3s ease',
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Grain overlay ── */}
-      <div
-        className="fixed inset-0 pointer-events-none mix-blend-overlay"
-        style={{
-          opacity: 0.03,
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
-        }}
-      />
-
       {/* ── Keyframes ── */}
       <style>{`
-        @keyframes lf-pulse {
-          0%   { transform: scale(0.95); opacity: 0.2; }
-          50%  { transform: scale(1.05); opacity: 0.8; }
-          100% { transform: scale(0.95); opacity: 0.2; }
+        @keyframes lf-square-pulse {
+          0%   { transform: scale(0.94); opacity: 0.7; }
+          50%  { transform: scale(1.06); opacity: 1;   }
+          100% { transform: scale(0.94); opacity: 0.7; }
         }
-        @keyframes lf-drift {
-          0%   { transform: translateY(0);   }
-          50%  { transform: translateY(-5px); }
-          100% { transform: translateY(0);   }
+        @keyframes lf-glow {
+          0%   { opacity: 0.4; transform: scale(0.9); }
+          50%  { opacity: 1;   transform: scale(1.1); }
+          100% { opacity: 0.4; transform: scale(0.9); }
         }
-        @keyframes lf-slide {
-          from { transform: translateX(-100%); }
-          to   { transform: translateX(300%);  }
+        @keyframes lf-twinkle {
+          0%   { opacity: var(--op-start, 0.1); }
+          50%  { opacity: var(--op-peak,  0.5); }
+          100% { opacity: var(--op-start, 0.1); }
+        }
+        @keyframes lf-spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
   );
 }
+
+/** Pre-computed star positions so the component stays pure/deterministic */
+const STARS = [
+  { x: '12%',  y: '18%', size: 2,   opacity: 0.35, dur: 2.8, delay: 0 },
+  { x: '85%',  y: '12%', size: 1.5, opacity: 0.25, dur: 3.4, delay: 0.6 },
+  { x: '22%',  y: '72%', size: 2.5, opacity: 0.3,  dur: 2.2, delay: 1.1 },
+  { x: '75%',  y: '65%', size: 1.5, opacity: 0.2,  dur: 3.8, delay: 0.3 },
+  { x: '55%',  y: '88%', size: 2,   opacity: 0.25, dur: 2.6, delay: 1.5 },
+  { x: '8%',   y: '50%', size: 1.5, opacity: 0.2,  dur: 4.0, delay: 0.8 },
+  { x: '92%',  y: '42%', size: 2,   opacity: 0.3,  dur: 3.1, delay: 1.8 },
+  { x: '38%',  y: '8%',  size: 1.5, opacity: 0.2,  dur: 2.9, delay: 0.4 },
+  { x: '68%',  y: '25%', size: 2.5, opacity: 0.15, dur: 3.5, delay: 2.0 },
+  { x: '45%',  y: '78%', size: 1.5, opacity: 0.25, dur: 2.4, delay: 0.9 },
+  { x: '30%',  y: '35%', size: 1,   opacity: 0.15, dur: 3.7, delay: 1.3 },
+  { x: '80%',  y: '80%', size: 1.5, opacity: 0.2,  dur: 3.0, delay: 0.7 },
+];
 
 /**
  * Compact inline spinner — use inside buttons, table rows, cards, and
@@ -216,7 +203,6 @@ export function InlineLoader({ size = 'md', className = '' }) {
         borderRadius: '50%',
         border: `${stroke}px solid rgba(246,183,10,0.25)`,
         borderTopColor: '#f6b70a',
-        color: '#f6b70a',
         animation: 'lf-spin 0.85s linear infinite',
       }}
     >

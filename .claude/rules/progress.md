@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-04-15
+**Last updated:** 2026-04-16
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -46,6 +46,7 @@ All 13 core tables are defined and deployed to Supabase:
 | Admin | `GET /api/admin/users` | ✅ Done |
 | Admin | `PUT /api/admin/users/:id/role` | ✅ Done |
 | Admin | `PUT /api/admin/users/:id/status` | ✅ Done |
+| Chatbot | `POST /api/chatbot/message` | ✅ Done (stub-safe — no `openai` pkg crash) |
 
 **Infrastructure done:**
 - `authMiddleware` + `roleMiddleware` RBAC on all protected routes
@@ -56,6 +57,7 @@ All 13 core tables are defined and deployed to Supabase:
 - `emailService` Gmail SMTP for OTP delivery
 - `rateLimiter`, `sanitizeInput`, `validateRequest` middleware
 - `autoPublishJob.js` + `fetchInteractionJob.js` job stubs wired in
+- `chatbotRoutes.js` mounted in `app.js` at `/api/chatbot`
 
 ### Frontend — Structure + Auth Flow Working
 All pages and components exist. Auth flow (register → OTP → login → JWT) is fully functional.
@@ -63,8 +65,8 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 | Page | Route | State |
 |---|---|---|
 | Login | `/login` | ✅ Working |
-| Register | `/register` | ✅ Working |
-| OTP Verification | `/verify-otp` | ✅ Working |
+| Register | `/register` | ✅ Working — Stitch "Digital Growth Login" design applied |
+| OTP Verification | `/otp` | ✅ Working |
 | Profile | `/profile` | ✅ Working |
 | Calendar | `/calendar` | ✅ UI exists, backend connected |
 | Admin — All Accounts | `/admin` | ✅ Working end-to-end |
@@ -83,9 +85,10 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 **Frontend infrastructure done:**
 - `AuthContext` + `NotificationContext` providers
 - `ProtectedRoute` + `GuestRoute` with role guard
-- All 9 service layer files + `adminService.js`
+- All 9 service layer files + `adminService.js` + `chatbotService.js`
 - All 5 hooks (`useAuth`, `useContentIdeas`, `useSchedule`, `useInteraction`, `useDashboard`)
 - `appRoutes.jsx` with role-based redirect on login
+- `TransitionLoader.jsx` — global page-transition KineticLoader wired in `App.jsx`
 
 ### Tests — Frontend + AI Only
 - **Frontend:** 6 Vitest test files — login form, OTP, calendar view, drag-drop, login page, schedule queue page — **43/43 passing**
@@ -110,6 +113,11 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 5. Content Schedule Queue (`/schedule`): working list view — month navigation, status filter, search, thumbnail, delete, navigate to calendar for edit/view
 6. Admin panel: login as `tegarinsan49@gmail.com` → auto-redirect to `/admin` → 3 pages (All Accounts, Marketing Staff, Business Owners) with search, role change, active toggle — fully connected to Supabase
 7. **UI Redesign (2026-04-15):** All red (`#e31837`) brand color replaced with orange (`#f6b70a`) across all components, pages, CSS, and Tailwind config. Favicon updated to Krench Chicken logo. All "LeadFlow" user-visible strings replaced with "Krench Chicken". Past calendar dates marked "Not Available" and blocked from schedule creation and drag-drop (both monthly CalendarView and weekly DragDropSlot). Past-date block logic added to `CalendarPage.jsx` `handleSlotClick` and `handleDrop`.
+8. **AI Chatbot (2026-04-16):** Floating AI assistant added to CalendarPage (`bottom-right FAB`). Backend: `chatbotController.js` uses lazy-loaded OpenAI (no crash if `openai` pkg missing — returns stub response), `chatbotRoutes.js` mounted at `/api/chatbot/message` (auth-protected). Frontend: `chatbotService.js`, `AIChatbot.jsx` (yellow circle FAB, glassmorphism panel, user/AI message bubbles, typing indicator, 4 suggestion chips, auto-resize textarea). Requires `OPENAI_API_KEY` in backend `.env` to activate GPT-4o; runs in stub mode without it.
+9. **Register Page Redesign (2026-04-16):** Stitch "Digital Growth Login / Registration_V1" design applied to `RegisterPage.jsx`. Same split-layout shell as LoginPage: left brand panel ("TikTok growth, on autopilot." headline + 4 feature bento cards), right glassmorphism card. Dynamic background via CSS-only keyframe animations (orbFloat, particleDrift, meshShift, gridLineFade) — zero cursor/mousemove dependency. All `RegisterForm` fields and submit logic unchanged.
+10. **Navbar Update (2026-04-16):** Removed logo from left side of Navbar. Search bar now `flex-1` expanding across the full left area on all dashboard pages.
+11. **OpenAI error fix (2026-04-16):** `chatbotController.js` changed from top-level `require('openai')` (crash on startup if pkg missing) to lazy-loaded `getOpenAI()` with try/catch. Server starts cleanly with or without `openai` npm package installed.
+12. **Page Transition Loader (2026-04-16):** `TransitionLoader.jsx` created and added to `App.jsx`. Uses `useLocation().key` to detect every `navigate()` call, shows `KineticLoader` for 420 ms with route-specific messages (`"Sending Verification…"`, `"Authenticating…"`, `"Loading Calendar…"`, etc.). Covers all state-passing navigations: Register→OTP, OTP→Login, Login→Dashboard, sidebar links, browser back/forward. Skips initial page load.
 
 ### What Is Wired Up but Blocked on Backend Stubs
 - Content idea generation (GPT-4o) — frontend UI ready, controller/service empty
@@ -118,6 +126,7 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 - Interaction inbox (DM + comments) — frontend UI ready, no TikTok fetch logic
 - Weekly dashboard — frontend UI ready, no aggregation queries
 - Publish status — frontend UI ready, no TikTok publish integration
+- AI Chatbot GPT-4o — route wired, stub response active; needs `npm install openai` in backend to go live
 
 ---
 
@@ -137,25 +146,27 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 
 3. **Mount all stub routes in `app.js`** (currently they do nothing)
 
+4. **Install `openai` npm package in backend** — `cd backend && npm install openai` — activates chatbot + content idea generation
+
 ### Phase 2 — TikTok Integration (UC009–UC012)
-4. **TikTok OAuth flow** — `tiktokRoutes.js`, `tiktokOAuthService.js`, token encryption in DB
-5. **Publish to TikTok** — `publishService.js`, `tiktokPublishService.js`, write to `publish_status_logs`
-6. **Fetch interactions** — `fetchInteractionJob.js` implementation, write to `interaction_messages`
-7. **Interaction inbox** — view, reply (push to TikTok), delete
+5. **TikTok OAuth flow** — `tiktokRoutes.js`, `tiktokOAuthService.js`, token encryption in DB
+6. **Publish to TikTok** — `publishService.js`, `tiktokPublishService.js`, write to `publish_status_logs`
+7. **Fetch interactions** — `fetchInteractionJob.js` implementation, write to `interaction_messages`
+8. **Interaction inbox** — view, reply (push to TikTok), delete
 
 ### Phase 3 — AI Classifier (UC011)
-8. **FastAPI classifier** — implement `classifier.py` + `sentiment.py` using GPT-4o
-9. **`/analyze` endpoint** — accept `{text, channel_type}`, return `{sentiment_type, priority_level}`
-10. **Backend job** — forward unclassified rows to FastAPI, flip status to `classified`
+9. **FastAPI classifier** — implement `classifier.py` + `sentiment.py` using GPT-4o
+10. **`/analyze` endpoint** — accept `{text, channel_type}`, return `{sentiment_type, priority_level}`
+11. **Backend job** — forward unclassified rows to FastAPI, flip status to `classified`
 
 ### Phase 4 — Weekly Dashboard (UC013)
-11. **Weekly dashboard backend** — aggregation queries (current/last/2 weeks ago), restrict to `business_owner`
-12. **Wire up `WeeklyDashboardPage.jsx`** — currently empty stub, connect to `/api/dashboard/weekly`
+12. **Weekly dashboard backend** — aggregation queries (current/last/2 weeks ago), restrict to `business_owner`
+13. **Wire up `WeeklyDashboardPage.jsx`** — currently empty stub, connect to `/api/dashboard/weekly`
 
 ### Phase 5 — Testing + CI/CD
-13. **Backend tests** — Jest + Supertest covering full auth flow, calendar CRUD, media validation, cron trigger, admin CRUD
-14. **GitHub Actions** — implement `.github/workflows/ci-backend.yml`, `ci-frontend.yml`, `ci-ai.yml`
-15. **Move `/github/` folder to `/.github/`** (currently in wrong location — CI will never trigger)
+14. **Backend tests** — Jest + Supertest covering full auth flow, calendar CRUD, media validation, cron trigger, admin CRUD
+15. **GitHub Actions** — implement `.github/workflows/ci-backend.yml`, `ci-frontend.yml`, `ci-ai.yml`
+16. **Move `/github/` folder to `/.github/`** (currently in wrong location — CI will never trigger)
 
 ---
 
@@ -172,3 +183,6 @@ All pages and components exist. Auth flow (register → OTP → login → JWT) i
 | Thumbnails vanish after drag-drop | `dragDrop` replaced state with raw API response missing computed fields | Added `schedulesRef` + `draftsRef` via `useRef`; merge computed fields back after API response |
 | Slot card titles always blank | `ScheduleQueueCard.jsx` rendered `schedule.title` but DB column is `custom_caption` | Use `schedule.custom_caption \|\| schedule.title \|\| 'Untitled'` |
 | Test import paths broke on Linux | Imported from lowercase `schedule/` but folder is `Schedule/` (case-sensitive FS) | Match import paths exactly to filesystem casing |
+| `Cannot find module 'openai'` on startup | Top-level `require('openai')` in controller crashes server if package not installed | Use lazy `getOpenAI()` with try/catch; return stub response when pkg absent |
+| `@apply` variant prefix error in CSS | Tailwind `@apply` inside `@layer components` cannot use `hover:`, `focus:`, `disabled:` prefixes | Move all interactive pseudo-class states to raw CSS (`:hover {}`, `:disabled {}`) instead of `@apply` |
+| Vitest tests fail after past-date blocking | Test cells used hardcoded April 2026 dates — now `isPast=true` → all handlers blocked | Use future dates (May 2026+) in test mocks so `isPast` stays false |

@@ -21,11 +21,8 @@ export default function Navbar({ onMenuToggle }) {
         </svg>
       </button>
 
-      {/* Brand logo */}
-      <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain shrink-0" />
-
       {/* Search bar */}
-      <div className="hidden md:flex flex-1 max-w-sm items-center gap-2 bg-white/[0.04] rounded-lg px-3 py-2 border border-white/[0.08] backdrop-blur-sm">
+      <div className="flex flex-1 items-center gap-2 bg-white/[0.04] rounded-lg px-3 py-2 border border-white/[0.08] backdrop-blur-sm">
         <svg className="w-4 h-4 text-text-secondary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
         </svg>
@@ -36,8 +33,6 @@ export default function Navbar({ onMenuToggle }) {
           readOnly
         />
       </div>
-
-      <div className="flex-1 md:flex-none" />
 
       {/* Right section */}
       <div className="flex items-center gap-4">

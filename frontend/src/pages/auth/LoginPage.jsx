@@ -1,6 +1,6 @@
 // src/pages/auth/LoginPage.jsx
 // Redesigned — "Digital Growth Login" (Stitch: Dynamic Red Loader)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import LoginForm from '../../components/auth/LoginForm';
@@ -41,15 +41,59 @@ const meshStyle = {
 
 /* ─── Auth shell ─── */
 function AuthShell({ children }) {
+  const containerRef = useRef(null);
+  const cursorGlowRef = useRef(null);
+  const pos = useRef({ x: 50, y: 50 }); // percent
+  const raf = useRef(null);
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const current = useRef({ x: 50, y: 50 });
+
+  const animate = useCallback(() => {
+    current.current.x = lerp(current.current.x, pos.current.x, 0.07);
+    current.current.y = lerp(current.current.y, pos.current.y, 0.07);
+    if (cursorGlowRef.current) {
+      cursorGlowRef.current.style.background = `
+        radial-gradient(700px circle at ${current.current.x}% ${current.current.y}%,
+          rgba(246,183,10,0.13) 0%,
+          rgba(246,183,10,0.05) 35%,
+          transparent 70%),
+        radial-gradient(400px circle at ${100 - current.current.x}% ${100 - current.current.y}%,
+          rgba(246,183,10,0.06) 0%,
+          transparent 60%)
+      `;
+    }
+    raf.current = requestAnimationFrame(animate);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onMove = (e) => {
+      const rect = el.getBoundingClientRect();
+      pos.current.x = ((e.clientX - rect.left) / rect.width)  * 100;
+      pos.current.y = ((e.clientY - rect.top)  / rect.height) * 100;
+    };
+    el.addEventListener('mousemove', onMove);
+    raf.current = requestAnimationFrame(animate);
+    return () => {
+      el.removeEventListener('mousemove', onMove);
+      cancelAnimationFrame(raf.current);
+    };
+  }, [animate]);
+
   return (
-    <div className="min-h-screen flex bg-[#0e0e0e] overflow-hidden relative font-body">
+    <div ref={containerRef} className="min-h-screen flex bg-[#0e0e0e] overflow-hidden relative font-body">
 
       {/* Mesh gradient overlay */}
       <div className="absolute inset-0 z-0 opacity-60" style={meshStyle} />
 
+      {/* Cursor-following glow */}
+      <div ref={cursorGlowRef} className="absolute inset-0 z-[1] pointer-events-none transition-none" />
+
       {/* Ambient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/[0.08] blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand/[0.05] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/[0.08] blur-[120px] rounded-full pointer-events-none z-[1]" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand/[0.05] blur-[120px] rounded-full pointer-events-none z-[1]" />
 
       {/* Floating particles */}
       <div className="fixed inset-0 pointer-events-none z-20 overflow-hidden">
@@ -61,12 +105,6 @@ function AuthShell({ children }) {
           style={{ boxShadow: '0 0 15px 2px rgba(246,183,10,0.3)' }} />
       </div>
 
-      {/* API status badge — top right */}
-      <div className="absolute top-8 right-8 z-30 hidden sm:flex items-center gap-2 bg-white/[0.06] backdrop-blur px-4 py-2 rounded-full border border-white/10">
-        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"
-          style={{ boxShadow: '0 0 8px rgba(34,197,94,0.5)' }} />
-        <span className="font-headline text-[9px] uppercase tracking-widest text-white/60">API V2 Connected</span>
-      </div>
 
       {/* ── Left brand panel ── */}
       <section className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 z-10 relative">
@@ -82,11 +120,6 @@ function AuthShell({ children }) {
         {/* Headline + feature grid */}
         <div className="space-y-8">
           <div className="space-y-4">
-            {/* Live badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20">
-              <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-              <span className="font-headline text-[10px] uppercase tracking-widest text-brand">Network Operational</span>
-            </div>
             {/* Headline */}
             <h2 className="font-headline text-6xl xl:text-7xl font-bold leading-[0.9] tracking-tight text-white">
               TikTok growth,<br />
@@ -197,7 +230,7 @@ export default function LoginPage() {
 
       {/* Register link */}
       <p className="text-center text-xs font-headline uppercase tracking-widest text-white/40">
-        New to the system?{' '}
+        Not having account?{' '}
         <Link
           to="/register"
           className="text-brand hover:text-brand-light font-bold transition-colors duration-200"

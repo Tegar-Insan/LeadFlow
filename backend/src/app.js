@@ -18,6 +18,7 @@ const profileRoutes  = require('./routes/profileRoutes');
 const calendarRoutes = require('./routes/calendarRoutes');
 const mediaRoutes    = require('./routes/mediaRoutes');
 const adminRoutes    = require('./routes/roleRoutes');
+const chatbotRoutes  = require('./routes/chatbotRoutes');
 
 const app = express();
 
@@ -80,6 +81,7 @@ app.use('/api/profile',  profileRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/media',    mediaRoutes);
 app.use('/api/admin',    adminRoutes);
+app.use('/api/chatbot',  chatbotRoutes);
 
 // ── 404 — must be AFTER all routes ───────────────────────────
 app.use((req, res) => {
