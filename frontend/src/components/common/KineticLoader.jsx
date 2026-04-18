@@ -30,7 +30,7 @@ export function KineticLoader({ message = 'Loading…', overlay = true }) {
       role="status"
       aria-label={message}
       style={{
-        background: 'rgba(0, 0, 0, 0.35)',
+        background: 'rgba(14, 14, 14, 0.96)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
       }}
@@ -59,11 +59,11 @@ export function KineticLoader({ message = 'Loading…', overlay = true }) {
           width: 200,
           height: 200,
           borderRadius: 28,
-          background: 'rgba(255, 255, 255, 0.04)',
+          background: 'rgba(255, 255, 255, 0.07)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 8px 48px rgba(0,0,0,0.45)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 8px 48px rgba(0,0,0,0.6), 0 0 80px rgba(246,183,10,0.06)',
         }}
       >
         {/* Neon glowing square icon */}

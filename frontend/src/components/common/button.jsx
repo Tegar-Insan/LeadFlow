@@ -1,5 +1,5 @@
 // src/components/common/Button.jsx
-import { InlineLoader } from './Loader';
+import { InlineLoader } from './KineticLoader';
 
 export default function Button({
   children, variant = 'primary', size = 'md',

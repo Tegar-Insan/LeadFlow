@@ -7,7 +7,7 @@ import Navbar   from '../../components/common/Navbar';
 import { getAllUsers, updateUserRole, toggleUserStatus } from '../../services/adminService';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
-import { InlineLoader } from '../../components/common/Loader';
+import { InlineLoader } from '../../components/common/KineticLoader';
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 // src/components/common/ProtectedRoute.jsx
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { FullPageLoader } from './Loader';
+import { FullPageLoader } from './KineticLoader';
 
 /** Requires authentication. Optionally restricts to specific roles. */
 export function ProtectedRoute({ children, allowedRoles = [] }) {

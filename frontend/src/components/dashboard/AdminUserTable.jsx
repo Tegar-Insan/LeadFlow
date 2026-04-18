@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
 import { updateUserRole, toggleUserStatus, createUser } from '../../services/adminService';
-import { InlineLoader } from '../common/Loader';
+import { InlineLoader } from '../common/KineticLoader';
 
 const ROLE_OPTIONS = [
   { value: 'admin',           label: 'Admin'           },

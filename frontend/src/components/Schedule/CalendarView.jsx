@@ -9,7 +9,7 @@ import utc       from 'dayjs/plugin/utc';
 import timezone  from 'dayjs/plugin/timezone';
 import isBefore  from 'dayjs/plugin/isSameOrBefore';
 import { buildMonthGrid, TZ } from '../../utils/formatDate';
-import { InlineLoader } from '../common/Loader';
+import { InlineLoader } from '../common/KineticLoader';
 
 dayjs.extend(isBefore);
 
