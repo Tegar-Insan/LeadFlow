@@ -53,3 +53,29 @@ export const rejectScheduleFromChat = async () => {
   );
   return res.data.data;
 };
+
+/**
+ * Fetch upcoming scheduled content cards for display in the chatbot drawer.
+ * Pulls current + next month, filters to future items, sorts ascending, caps at 8.
+ * @returns {Promise<Array>}
+ */
+export const fetchUpcomingSchedules = async () => {
+  const now       = new Date();
+  const year      = now.getFullYear();
+  const month     = now.getMonth() + 1;
+  const nextYear  = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+
+  const [curr, next] = await Promise.allSettled([
+    axios.get(`${API}/calendar`, { params: { year, month },                        headers: authHeader() }),
+    axios.get(`${API}/calendar`, { params: { year: nextYear, month: nextMonth },   headers: authHeader() }),
+  ]);
+
+  const nowISO  = now.toISOString();
+  const extract = (r) => (r.status === 'fulfilled' ? r.value?.data?.data?.schedules : null) || [];
+
+  return [...extract(curr), ...extract(next)]
+    .filter(s => s.scheduled_at && s.scheduled_at > nowISO)
+    .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
+    .slice(0, 8);
+};

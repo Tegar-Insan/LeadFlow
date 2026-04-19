@@ -75,16 +75,19 @@ async function invalidateOTP(email, type = 'register') {
 }
 
 async function hasRecentOTP(email, type = 'register') {
-  const cooldownSince = new Date(Date.now() - RESEND_COOLDOWN * 1000).toISOString();
   const { data } = await supabaseAdmin
     .from('otp_verifications')
-    .select('created_at')
+    .select('expires_at')
     .eq('email', email.toLowerCase())
     .eq('type', type)
     .eq('verified', false)
-    .gte('created_at', cooldownSince)
     .single();
-  return !!data;
+
+  if (!data) return false;
+
+  // OTP expires_at = now + OTP_EXPIRES_MIN. Cooldown = expires_at - (OTP_EXPIRES_MIN - RESEND_COOLDOWN/60) min
+  const sentAt = new Date(data.expires_at).getTime() - OTP_EXPIRES_MIN * 60 * 1000;
+  return Date.now() - sentAt < RESEND_COOLDOWN * 1000;
 }
 
 module.exports = { generateOTP, storeOTP, verifyOTP, invalidateOTP, hasRecentOTP };

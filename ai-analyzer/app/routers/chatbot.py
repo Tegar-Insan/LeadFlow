@@ -3,15 +3,17 @@ chatbot.py — /chatbot/* routes
 Anthropic Claude-powered marketing assistant for Krench Chicken.
 
 POST /chatbot/message        — multi-turn conversation
-POST /chatbot/analyze-tiktok — on-demand Bright Data + Claude analysis
+POST /chatbot/analyze-tiktok — on-demand Apify + Claude analysis
 """
 
-from fastapi import APIRouter, HTTPException
-from app.models.schemas import ChatRequest, ChatResponse, TikTokAnalysisResponse
-from app.services.anthropic_chatbot import chat, analyze_tiktok_data, clear_analysis_cache
-from app.services.brightdata_service import fetch_tiktok_data, summarize_posts
-from app.utils.logger import logger
 import os
+
+from fastapi import APIRouter, HTTPException
+from app.models.schemas import ChatRequest, ChatResponse, TikTokAnalysisResponse, ScheduleRecommendation
+from app.services.anthropic_chatbot import chat, analyze_tiktok_data, clear_analysis_cache
+from app.services.apify_service import fetch_tiktok_data as apify_fetch, summarize_posts as apify_summarize
+from app.services.brightdata_service import fetch_tiktok_data as brightdata_fetch, summarize_posts as brightdata_summarize
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/chatbot")
 
@@ -20,14 +22,29 @@ _tiktok_context: str = ""
 _context_loaded: bool = False
 
 
+async def _fetch_posts():
+    """Use Apify dataset; fall back to Bright Data if Apify returns nothing."""
+    posts = await apify_fetch()
+    if posts:
+        return posts
+    return await brightdata_fetch()
+
+
+def _summarize(posts):
+    """Pick summarizer based on which service produced the posts."""
+    if posts and "diggCount" in posts[0]:
+        return apify_summarize(posts)
+    return brightdata_summarize(posts)
+
+
 async def _get_tiktok_context() -> str:
     """Lazy-load TikTok context on first chat message."""
     global _tiktok_context, _context_loaded
     if _context_loaded:
         return _tiktok_context
     try:
-        posts   = await fetch_tiktok_data()
-        summary = summarize_posts(posts)
+        posts   = await _fetch_posts()
+        summary = _summarize(posts)
         _tiktok_context = await analyze_tiktok_data(summary)
         logger.info("[chatbot] TikTok context ready")
     except Exception as exc:
@@ -61,7 +78,6 @@ async def chatbot_message(req: ChatRequest):
 
     tiktok_context = await _get_tiktok_context()
 
-    # Convert Pydantic models to plain dicts for the service layer
     messages = [{"role": m.role, "content": m.content} for m in req.messages[-10:]]
 
     try:
@@ -72,7 +88,6 @@ async def chatbot_message(req: ChatRequest):
         logger.error(f"[chatbot] chat() failed: {exc}")
         raise HTTPException(status_code=500, detail="Gagal mendapatkan respons AI")
 
-    from app.models.schemas import ScheduleRecommendation
     schedule_obj = ScheduleRecommendation(**schedule) if schedule else None
 
     return ChatResponse(
@@ -86,7 +101,7 @@ async def chatbot_message(req: ChatRequest):
 @router.post("/analyze-tiktok", response_model=TikTokAnalysisResponse)
 async def analyze_tiktok():
     """
-    Trigger a fresh Bright Data fetch + Claude analysis.
+    Trigger a fresh Apify fetch + Claude analysis.
     Clears the in-process cache so next /message call uses fresh context.
     """
     global _tiktok_context, _context_loaded
@@ -94,12 +109,12 @@ async def analyze_tiktok():
     clear_analysis_cache()
     _context_loaded = False
 
-    posts   = await fetch_tiktok_data()
-    summary = summarize_posts(posts)
+    posts   = await _fetch_posts()
+    summary = _summarize(posts)
 
     if not summary:
         return TikTokAnalysisResponse(
-            analysis="No TikTok data available. Set BRIGHTDATA_DATASET_ID in .env.",
+            analysis="No TikTok data available. Set APIFY_DATASET_ID in .env.",
             post_count=0,
             model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
         )
