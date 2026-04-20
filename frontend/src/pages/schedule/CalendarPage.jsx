@@ -27,6 +27,9 @@ import {
 } from '../../utils/formatDate';
 import { fetchMediaBySchedule, uploadMedia } from '../../services/mediaService';
 import AIChatbot from '../../components/common/AIChatbot';
+import TikTokLoginButton from '../../components/common/TikTokLoginButton';
+import { useNotification } from '../../context/NotificationContext';
+import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -607,6 +610,42 @@ const CalendarPage = () => {
   const [formLoading,    setFormLoading]    = useState(false);
   const [formError,      setFormError]      = useState(null);
 
+  // ── TikTok connect state ────────────────────────────────────
+  const { toast }                         = useNotification();
+  const [tiktokStatus,  setTiktokStatus]  = useState(null);  // null=unknown, object=connected, false=not connected
+  const [tiktokLoading, setTiktokLoading] = useState(false);
+
+  // Fetch TikTok connection status on mount
+  useEffect(() => {
+    if (!canEdit) return;
+    getTikTokStatus()
+      .then(row => setTiktokStatus(row || false))
+      .catch(() => setTiktokStatus(false));
+  }, [canEdit]);
+
+  const handleConnectTikTok = async () => {
+    setTiktokLoading(true);
+    try {
+      const { url } = await getTikTokAuthUrl();
+      window.location.href = url;
+    } catch {
+      toast.error('Failed to start TikTok login');
+      setTiktokLoading(false);
+    }
+  };
+
+  const handleDisconnectTikTok = async () => {
+    if (!window.confirm('Disconnect TikTok account?')) return;
+    try {
+      await disconnectTikTok();
+      setTiktokStatus(false);
+      toast.success('TikTok disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    }
+  };
+  // ────────────────────────────────────────────────────────────
+
   // Current week start (Monday WIB)
   const [weekStart, setWeekStart] = useState(() => {
     const today = dayjs().tz(TZ);
@@ -797,6 +836,17 @@ const CalendarPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
               </svg>
             </button>
+
+            {/* TikTok connect button */}
+            {canEdit && (
+              <TikTokLoginButton
+                connected={!!tiktokStatus}
+                accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
+                onConnect={handleConnectTikTok}
+                onDisconnect={handleDisconnectTikTok}
+                loading={tiktokLoading}
+              />
+            )}
 
             {/* New Post button */}
             {canEdit && (

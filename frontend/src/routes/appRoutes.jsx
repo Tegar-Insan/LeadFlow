@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage               from '../pages/auth/LoginPage.jsx';
 import RegisterPage            from '../pages/auth/RegisterPage.jsx';
 import OTPPage                 from '../pages/auth/OTPPage.jsx';
+import TikTokStatusPage        from '../pages/auth/TikTokStatusPage.jsx';
 import CalendarPage            from '../pages/schedule/CalendarPage.jsx';
 import ProfilePage             from '../pages/profile/ProfilePage.jsx';
 import AdminAllUsersPage       from '../pages/dashboard/AdminAllUsersPage.jsx';
@@ -32,8 +33,9 @@ export default function AppRoutes() {
       {/* ── Public routes (GuestRoute bounces authenticated users to their dashboard) */}
       <Route path="/login"    element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-      <Route path="/otp"      element={<OTPPage />} />
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/otp"              element={<OTPPage />} />
+      <Route path="/tiktok/callback"  element={<TikTokStatusPage />} />
+      <Route path="/unauthorized"     element={<UnauthorizedPage />} />
 
       {/* ── Admin — 3 separate pages, all admin-only ─────────── */}
       <Route
