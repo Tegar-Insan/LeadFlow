@@ -12,7 +12,7 @@
 
 const { success, error }    = require('../utils/responseHelper');
 const logger                = require('../utils/logger');
-const { chatWithGemini }    = require('../services/geminiService');
+const { chatWithGemini }    = require('../services/anthropicService');
 const { createSchedule }    = require('../services/scheduleService');
 
 // ─────────────────────────────────────────────────────────────────

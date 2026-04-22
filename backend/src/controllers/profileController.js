@@ -19,7 +19,7 @@ const supabaseStorage = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-const PHOTO_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'content-assets';
+const PHOTO_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
 
 // ── Multer — images only, 5 MB cap ───────────────────────────────────────────
 const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];

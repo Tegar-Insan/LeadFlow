@@ -9,7 +9,7 @@ export default function Navbar({ onMenuToggle }) {
   const timeNow = nowWIB().format('HH:mm');
 
   return (
-    <header className="sticky top-0 z-20 bg-[#0e0e0e]/90 backdrop-blur-md border-b border-white/[0.06] h-16 px-6 flex items-center gap-4">
+    <header className="sticky top-0 z-20 bg-[#0e0e0e]/90 backdrop-blur-md border-b border-white/[0.06] h-16 px-6 flex items-center">
       {/* Mobile menu toggle */}
       <button
         onClick={onMenuToggle}
@@ -21,21 +21,8 @@ export default function Navbar({ onMenuToggle }) {
         </svg>
       </button>
 
-      {/* Search bar */}
-      <div className="flex flex-1 items-center gap-2 bg-white/[0.04] rounded-lg px-3 py-2 border border-white/[0.08] backdrop-blur-sm">
-        <svg className="w-4 h-4 text-text-secondary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search..."
-          className="bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none w-full font-body"
-          readOnly
-        />
-      </div>
-
       {/* Right section */}
-      <div className="flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-4">
         {/* TikTok API status */}
         <div className="hidden sm:flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />

@@ -497,7 +497,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
 };
 
 // ─── Detail Modal ─────────────────────────────────────────────
-const DetailModal = ({ schedule, onClose, onEdit, onDelete, onMediaUpload, onMediaDeleted, assets, loadingAssets, canEdit }) => {
+const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLoading = false, onMediaUpload, onMediaDeleted, assets, loadingAssets, canEdit }) => {
   const cfg = STATUS_CONFIG[schedule.status] || STATUS_CONFIG.draft;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -566,6 +566,13 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onMediaUpload, onMed
 
         {canEdit && schedule.status !== 'published' && (
           <div className="flex gap-3 px-6 py-4 border-t border-surface-border">
+            <button
+              onClick={() => onPublish(schedule)}
+              disabled={publishLoading}
+              className="h-9 px-4 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-60 disabled:cursor-not-allowed text-xs font-body font-semibold transition-colors"
+            >
+              {publishLoading ? 'Publishing...' : 'Publish Now'}
+            </button>
             <button onClick={() => onDelete(schedule.id)}
               className="h-9 px-4 rounded-lg border border-brand/30 text-brand hover:bg-brand/10 text-xs font-body font-semibold transition-colors">
               Delete
@@ -597,10 +604,11 @@ const CalendarPage = () => {
     loading, error,
     prevMonth, nextMonth, goToToday,
     loadMonth,
-    addSchedule, editSchedule, removeSchedule, dragDrop,
+    addSchedule, editSchedule, removeSchedule, publishNow, dragDrop,
   } = useSchedule();
 
-  const [view,           setView]           = useState('week'); // 'week' | 'month'
+  const [view,           setView]           = useState('week'); // 'week' | 'month' | 'day'
+  const [selectedDay,    setSelectedDay]    = useState(() => dayjs().tz(TZ));
   const [modal,          setModal]          = useState(null);
   const [activeDate,     setActiveDate]     = useState(null);
   const [activeHour,     setActiveHour]     = useState(null);
@@ -609,6 +617,7 @@ const CalendarPage = () => {
   const [loadingAssets,  setLoadingAssets]  = useState(false);
   const [formLoading,    setFormLoading]    = useState(false);
   const [formError,      setFormError]      = useState(null);
+  const [publishLoadingId, setPublishLoadingId] = useState(null);
 
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
@@ -678,11 +687,14 @@ const CalendarPage = () => {
 
   const prevWeek = () => setWeekStart(w => w.subtract(7, 'day'));
   const nextWeek = () => setWeekStart(w => w.add(7, 'day'));
+  const prevDay  = () => setSelectedDay(d => d.subtract(1, 'day'));
+  const nextDay  = () => setSelectedDay(d => d.add(1, 'day'));
   const goToThisWeek = () => {
     const today = dayjs().tz(TZ);
     const dow   = today.day();
     const diff  = dow === 0 ? -6 : 1 - dow;
     setWeekStart(today.add(diff, 'day').startOf('day'));
+    setSelectedDay(today);
     goToToday();
   };
 
@@ -763,6 +775,26 @@ const CalendarPage = () => {
     catch (err) { alert(err.response?.data?.message || 'Failed to delete'); }
   };
 
+  const handlePublishNow = async (schedule) => {
+    if (!schedule?.id || publishLoadingId) return;
+    setPublishLoadingId(schedule.id);
+    const result = await publishNow(schedule.id);
+
+    if (result.ok) {
+      toast.success(result.message || 'Content published successfully');
+      if (activeSchedule?.id === schedule.id) {
+        setActiveSchedule(prev => (prev ? { ...prev, status: 'published' } : prev));
+      }
+    } else {
+      toast.error(result.message || 'Failed to publish content');
+      if (activeSchedule?.id === schedule.id) {
+        setActiveSchedule(prev => (prev ? { ...prev, status: 'failed' } : prev));
+      }
+    }
+
+    setPublishLoadingId(null);
+  };
+
   const handleMediaUpload = (newAssets) => {
     setAssets(prev => [...prev, ...newAssets]);
     loadMonth();
@@ -777,6 +809,8 @@ const CalendarPage = () => {
         schedules={schedules}
         onEdit={(s) => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
         onDelete={handleDelete}
+        onPublish={handlePublishNow}
+        publishLoadingId={publishLoadingId}
       />
 
       {/* ── Right: Main area ── */}
@@ -815,7 +849,7 @@ const CalendarPage = () => {
             </div>
 
             {/* Week navigation */}
-            <button onClick={view === 'week' ? prevWeek : prevMonth}
+            <button onClick={view === 'week' ? prevWeek : view === 'day' ? prevDay : prevMonth}
               className="w-8 h-8 rounded-lg border border-surface-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
@@ -826,11 +860,11 @@ const CalendarPage = () => {
               {view === 'week'
                 ? weekLabel
                 : view === 'day'
-                ? dayjs().tz(TZ).format('dddd, MMMM D, YYYY')
+                ? selectedDay.format('dddd, MMMM D, YYYY')
                 : dayjs(new Date(year, month-1)).format('MMMM YYYY')}
             </span>
 
-            <button onClick={view === 'week' ? nextWeek : nextMonth}
+            <button onClick={view === 'week' ? nextWeek : view === 'day' ? nextDay : nextMonth}
               className="w-8 h-8 rounded-lg border border-surface-border flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
@@ -893,7 +927,7 @@ const CalendarPage = () => {
               onCardClick={handleCardClick}
               loading={loading}
               mode={view}
-              selectedDay={view === 'day' ? dayjs().tz(TZ) : undefined}
+              selectedDay={view === 'day' ? selectedDay : undefined}
             />
           ) : (
             <div className="p-4 h-full overflow-auto bg-surface-raised">
@@ -927,6 +961,8 @@ const CalendarPage = () => {
           onClose={() => setModal(null)}
           onEdit={(s) => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
           onDelete={handleDelete}
+          onPublish={handlePublishNow}
+          publishLoading={publishLoadingId === activeSchedule.id}
           onMediaUpload={handleMediaUpload}
           onMediaDeleted={(id) => setAssets(prev => prev.filter(a => a.id !== id))}
           canEdit={canEdit} />

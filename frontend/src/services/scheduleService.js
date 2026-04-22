@@ -23,3 +23,6 @@ export const moveSchedule = (id, scheduledAt) =>
 
 export const deleteSchedule = (id) =>
   api.delete(`/calendar/${id}`);
+
+export const publishScheduleNow = (id) =>
+  api.post(`/tiktok/publish/${id}`);

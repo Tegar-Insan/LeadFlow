@@ -11,6 +11,7 @@ import ProfilePage             from '../pages/profile/ProfilePage.jsx';
 import AdminAllUsersPage       from '../pages/dashboard/AdminAllUsersPage.jsx';
 import AdminMarketingStaffPage from '../pages/dashboard/AdminMarketingStaffPage.jsx';
 import AdminBusinessOwnersPage from '../pages/dashboard/AdminBusinessOwnersPage.jsx';
+import AdminProfilePage        from '../pages/dashboard/AdminProfilePage.jsx';
 import ProtectedRoute, { GuestRoute } from '../components/common/ProtectedRoute.jsx';
 
 function UnauthorizedPage() {
@@ -31,8 +32,9 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* ── Public routes (GuestRoute bounces authenticated users to their dashboard) */}
-      <Route path="/login"    element={<GuestRoute><LoginPage /></GuestRoute>} />
-      <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+      <Route path="/login"       element={<GuestRoute><LoginPage /></GuestRoute>} />
+      <Route path="/login/admin" element={<GuestRoute><LoginPage /></GuestRoute>} />
+      <Route path="/register"    element={<GuestRoute><RegisterPage /></GuestRoute>} />
       <Route path="/otp"              element={<OTPPage />} />
       <Route path="/tiktok/callback"  element={<TikTokStatusPage />} />
       <Route path="/unauthorized"     element={<UnauthorizedPage />} />
@@ -62,6 +64,14 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin/profile"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminProfilePage />
+          </ProtectedRoute>
+        }
+      />
       {/* Legacy alias → Page 1 */}
       <Route path="/dashboard/admin" element={<Navigate to="/admin" replace />} />
 
@@ -77,7 +87,7 @@ export default function AppRoutes() {
       <Route
         path="/profile"
         element={
-          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
             <ProfilePage />
           </ProtectedRoute>
         }

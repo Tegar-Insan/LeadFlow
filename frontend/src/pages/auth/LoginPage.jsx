@@ -169,19 +169,108 @@ function AuthShell({ children }) {
   );
 }
 
+/* ─── Redirect loading overlay ─── */
+function RedirectLoader({ username }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const start = performance.now();
+    const duration = 2600;
+    let raf;
+    const tick = (now) => {
+      const pct = Math.min((now - start) / duration, 1);
+      setProgress(Math.round(100 * (1 - Math.pow(1 - pct, 3))));
+      if (pct < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const steps = [
+    { label: 'Verifying credentials',   done: progress >= 25  },
+    { label: 'Loading your workspace',  done: progress >= 55  },
+    { label: 'Syncing calendar data',   done: progress >= 80  },
+    { label: 'Launching dashboard',     done: progress >= 100 },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0e0e0e] font-body">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand/[0.06] blur-[160px] rounded-full" />
+      </div>
+
+      {/* Logo */}
+      <div className="mb-10 flex items-center gap-3 z-10">
+        <div className="w-10 h-10 bg-brand rounded-lg flex items-center justify-center shadow-[0_0_24px_rgba(246,183,10,0.35)]">
+          <span className="material-symbols-outlined text-black font-bold text-lg">bolt</span>
+        </div>
+        <img src="/logo.png" alt="Krench Chicken" className="h-9 w-auto object-contain" />
+      </div>
+
+      {/* Welcome text */}
+      <div className="text-center mb-10 z-10">
+        <h2 className="font-headline text-2xl font-bold text-white mb-1">
+          Welcome back{username ? `, ${username}` : ''}
+        </h2>
+        <p className="text-white/40 text-sm">Setting up your workspace…</p>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-72 z-10 mb-6">
+        <div className="h-1 bg-white/[0.07] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand rounded-full transition-none"
+            style={{
+              width: `${progress}%`,
+              boxShadow: '0 0 12px rgba(246,183,10,0.6)',
+              transition: 'width 0.1s linear',
+            }}
+          />
+        </div>
+        <p className="text-right text-[11px] text-white/30 mt-1 font-headline">{progress}%</p>
+      </div>
+
+      {/* Step list */}
+      <ul className="z-10 space-y-2 w-64">
+        {steps.map((s) => (
+          <li key={s.label} className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${s.done ? 'text-white/70' : 'text-white/20'}`}>
+            <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+              s.done ? 'border-brand bg-brand/20' : 'border-white/10'
+            }`}>
+              {s.done && (
+                <svg className="w-2 h-2 text-brand" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5"/>
+                </svg>
+              )}
+            </span>
+            {s.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /* ─── Login page ─── */
 export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { login, dashboardPath, isAuthenticated } = useAuth();
-  const [loading,   setLoading]   = useState(false);
-  const [apiError,  setApiError]  = useState('');
-  const [loginDone, setLoginDone] = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [apiError,    setApiError]    = useState('');
+  const [loginDone,   setLoginDone]   = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [username,    setUsername]    = useState('');
   const from = location.state?.from?.pathname || null;
 
   useEffect(() => {
     if (isAuthenticated && loginDone) {
-      navigate(from || dashboardPath || '/calendar', { replace: true });
+      const dest = from || dashboardPath || '/calendar';
+      const timer = setTimeout(() => {
+        navigate(dest, { replace: true });
+      }, 2700);
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, loginDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -189,6 +278,8 @@ export default function LoginPage() {
     setApiError(''); setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
+      setUsername(email.split('@')[0]);
+      setRedirecting(true);
       setLoginDone(true);
     } catch (err) {
       setApiError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
@@ -196,6 +287,8 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (redirecting) return <RedirectLoader username={username} />;
 
   return (
     <AuthShell>

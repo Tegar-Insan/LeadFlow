@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar  from '../../components/common/Sidebar';
 import Navbar   from '../../components/common/Navbar';
-import { getAllUsers, updateUserRole, toggleUserStatus } from '../../services/adminService';
+import { getAllUsers, updateUserRole, toggleUserStatus, deleteUser } from '../../services/adminService';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
 import { InlineLoader } from '../../components/common/KineticLoader';
@@ -188,7 +188,7 @@ function OverviewTab({ users, loading }) {
 
 // ── Tab: All Users ──────────────────────────────────────────────────────────
 
-function AllUsersTab({ users, loading }) {
+function AllUsersTab({ users, loading, onRemoveUser, deletingUserId }) {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
 
@@ -197,8 +197,8 @@ function AllUsersTab({ users, loading }) {
     const matchSearch =
       !q ||
       (u.full_name || '').toLowerCase().includes(q) ||
-      (u.email     || '').toLowerCase().includes(q) ||
-      (u.phone     || '').toLowerCase().includes(q);
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.phone || '').toLowerCase().includes(q);
     const matchRole = !filterRole || u.role_name === filterRole;
     return matchSearch && matchRole;
   });
@@ -247,7 +247,7 @@ function AllUsersTab({ users, loading }) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-border bg-surface-raised/30">
-                  {['User', 'Email', 'Phone', 'Role', 'Status', 'Verified', 'Joined'].map((h) => (
+                  {['User', 'Email', 'Phone', 'Role', 'Status', 'Verified', 'Joined', 'Actions'].map((h) => (
                     <th key={h} className="py-2.5 px-4 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
                       {h}
                     </th>
@@ -275,6 +275,16 @@ function AllUsersTab({ users, loading }) {
                     <td className="py-3 px-4 text-xs text-text-muted font-mono">
                       {fShortDate(u.created_at)}
                     </td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        onClick={() => onRemoveUser(u.id, u.full_name || u.email || 'this user')}
+                        disabled={deletingUserId === u.id}
+                        className="inline-flex items-center justify-center min-w-[82px] px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
+                      >
+                        {deletingUserId === u.id ? <InlineLoader size="sm" /> : 'Remove'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -298,7 +308,7 @@ function RoleManagementTab({ users, loading, onRoleChange, onStatusChange }) {
     return (
       !q ||
       (u.full_name || '').toLowerCase().includes(q) ||
-      (u.email     || '').toLowerCase().includes(q)
+      (u.email || '').toLowerCase().includes(q)
     );
   });
 
@@ -489,10 +499,11 @@ function DashboardTabBar({ active, onChange }) {
 
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab,   setActiveTab]   = useState('overview');
-  const [users,       setUsers]       = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [toast,       setToast]       = useState({ msg: '', type: 'success' });
+  const [activeTab, setActiveTab] = useState('overview');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState({ msg: '', type: 'success' });
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -545,6 +556,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRemoveUser = async (userId, label = 'this user') => {
+    const ok = window.confirm(`Remove ${label}? This action cannot be undone.`);
+    if (!ok) return;
+
+    setDeletingUserId(userId);
+    try {
+      const res = await deleteUser(userId);
+      if (res?.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        showToast('User removed successfully.');
+      } else {
+        showToast(res?.message || 'Failed to remove user.', 'error');
+      }
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Failed to remove user.', 'error');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -574,7 +605,12 @@ export default function AdminDashboard() {
             <OverviewTab users={users} loading={loading} />
           )}
           {activeTab === 'users' && (
-            <AllUsersTab users={users} loading={loading} />
+            <AllUsersTab
+              users={users}
+              loading={loading}
+              onRemoveUser={handleRemoveUser}
+              deletingUserId={deletingUserId}
+            />
           )}
           {activeTab === 'roles' && (
             <RoleManagementTab

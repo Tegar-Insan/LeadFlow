@@ -103,8 +103,10 @@ async function exchangeCodeForTokens(code, codeVerifier) {
 // ── User Info ──────────────────────────────────────────────────
 
 async function fetchUserInfo(accessToken) {
+  // Only request fields covered by user.info.basic scope.
+  // follower_count requires user.info.stats — not requested, so omitted.
   const { data } = await axios.get(
-    `${TIKTOK_CONFIG.userInfoUrl}?fields=open_id,display_name,avatar_url,follower_count`,
+    `${TIKTOK_CONFIG.userInfoUrl}?fields=open_id,display_name,avatar_url`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
@@ -113,7 +115,7 @@ async function fetchUserInfo(accessToken) {
     open_id:        user.open_id,
     display_name:   user.display_name,
     avatar_url:     user.avatar_url,
-    follower_count: user.follower_count || 0,
+    follower_count: 0,
   };
 }
 
@@ -167,6 +169,20 @@ async function getAccountStatusForUser(userId) {
   return data; // null if not connected
 }
 
+async function getConnectedAccountForUser(userId) {
+  const { data, error } = await supabaseAdmin
+    .from('tiktok_accounts')
+    .select('id, owner_user_id, connection_status, access_token_encrypted')
+    .eq('owner_user_id', userId)
+    .eq('connection_status', 'connected')
+    .order('connected_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 // ── Disconnect ─────────────────────────────────────────────────
 
 async function markDisconnected(userId, reason) {
@@ -190,5 +206,6 @@ module.exports = {
   fetchUserInfo,
   upsertTiktokAccount,
   getAccountStatusForUser,
+  getConnectedAccountForUser,
   markDisconnected,
 };

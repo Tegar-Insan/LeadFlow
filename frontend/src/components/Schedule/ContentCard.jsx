@@ -16,10 +16,11 @@ const STATUS_BADGE = {
 };
 
 // Library sidebar card (vertical)
-export const LibraryCard = ({ schedule, onEdit, onDelete, onDragStart }) => {
+export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart, publishLoading = false }) => {
   const badge = STATUS_BADGE[schedule.status] || STATUS_BADGE.draft;
   const hasImage = schedule.primary_asset_url;
   const slideCount = schedule.slide_count || 1;
+  const canPublish = ['draft', 'scheduled', 'uploaded', 'failed'].includes(schedule.status);
 
   return (
     <div
@@ -53,6 +54,25 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onDragStart }) => {
         </div>
         {/* Action buttons */}
         <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {canPublish && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPublish?.(schedule); }}
+              disabled={publishLoading}
+              className="w-6 h-6 rounded-md bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+              title={publishLoading ? 'Publishing...' : 'Publish now'}
+            >
+              {publishLoading ? (
+                <svg className="w-3 h-3 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+              ) : (
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+              )}
+            </button>
+          )}
           <button onClick={(e) => { e.stopPropagation(); onEdit?.(schedule); }}
             className="w-6 h-6 rounded-md bg-blue-500 hover:bg-blue-400 flex items-center justify-center transition-colors">
             <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>

@@ -13,6 +13,8 @@ const ContentLibrarySidebar = ({
   schedules = [],
   onEdit,
   onDelete,
+  onPublish,
+  publishLoadingId,
   totalContent,
   totalScheduled,
   totalUnscheduled,
@@ -54,6 +56,8 @@ const ContentLibrarySidebar = ({
               schedule={s}
               onEdit={onEdit}
               onDelete={onDelete}
+              onPublish={onPublish}
+              publishLoading={publishLoadingId === s.id}
             />
           ))
         )}

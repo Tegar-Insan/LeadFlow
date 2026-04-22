@@ -10,5 +10,11 @@ router.get ('/auth-url',   authMiddleware, roleMiddleware(['marketing_staff', 'a
 router.get ('/callback',                                                                  ctrl.handleCallback);
 router.get ('/status',     authMiddleware,                                                ctrl.getStatus);
 router.post('/disconnect', authMiddleware, roleMiddleware(['marketing_staff', 'admin']), ctrl.disconnect);
+router.post(
+  '/publish/:scheduleId',
+  authMiddleware,
+  roleMiddleware(['marketing_staff', 'admin']),
+  ctrl.directPublishBySchedule
+);
 
 module.exports = router;

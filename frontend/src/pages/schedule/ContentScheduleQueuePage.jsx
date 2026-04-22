@@ -6,7 +6,7 @@
  * LeadFlow – Krench Chicken
  */
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc      from 'dayjs/plugin/utc';
@@ -14,6 +14,7 @@ import timezone from 'dayjs/plugin/timezone';
 
 import { useSchedule }  from '../../hooks/useSchedule';
 import AuthContext       from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import { fLongDateTime } from '../../utils/formatDate';
 import { InlineLoader }  from '../../components/common/KineticLoader';
 
@@ -43,7 +44,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // ─── Queue row ────────────────────────────────────────────────
-const QueueRow = ({ schedule, onEdit, onDelete, onView }) => {
+const QueueRow = ({ schedule, onEdit, onDelete, onView, onPublish, publishing }) => {
   const hasThumb = !!schedule.primary_asset_url;
   const isVideo  = schedule.primary_asset_mime?.startsWith('video/');
 
@@ -114,6 +115,25 @@ const QueueRow = ({ schedule, onEdit, onDelete, onView }) => {
 
       {/* Actions */}
       <div className="flex gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {schedule.status !== 'published' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onPublish(schedule); }}
+            disabled={publishing}
+            className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-600/30 flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            title={publishing ? 'Publishing...' : 'Publish now'}
+          >
+            {publishing ? (
+              <svg className="w-3 h-3 text-emerald-300 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+            ) : (
+              <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            )}
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(schedule); }}
           className="w-7 h-7 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/30 flex items-center justify-center transition-colors"
@@ -143,6 +163,7 @@ const ContentScheduleQueuePage = () => {
   const authCtx  = useContext(AuthContext);
   const roleName = authCtx?.user?.roleName || authCtx?.user?.role_name;
   const canEdit  = ['marketing_staff', 'admin'].includes(roleName);
+  const { toast } = useNotification();
 
   const {
     year, month,
@@ -150,10 +171,12 @@ const ContentScheduleQueuePage = () => {
     loading, error,
     prevMonth, nextMonth, goToToday,
     removeSchedule,
+    publishNow,
   } = useSchedule();
 
   const [filter,  setFilter]  = useState('all');
   const [search,  setSearch]  = useState('');
+  const [publishingId, setPublishingId] = useState(null);
 
   // Merge schedules + drafts; deduplicate
   const allItems = (() => {
@@ -199,6 +222,15 @@ const ContentScheduleQueuePage = () => {
 
   const handleView = (s) => {
     navigate('/calendar', { state: { viewScheduleId: s.id } });
+  };
+
+  const handlePublish = async (schedule) => {
+    if (!schedule?.id || publishingId) return;
+    setPublishingId(schedule.id);
+    const result = await publishNow(schedule.id);
+    if (result.ok) toast.success(result.message || 'Content published successfully');
+    else toast.error(result.message || 'Failed to publish content');
+    setPublishingId(null);
   };
 
   const monthLabel = dayjs(new Date(year, month - 1)).tz(TZ).format('MMMM YYYY');
@@ -325,6 +357,8 @@ const ContentScheduleQueuePage = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onView={handleView}
+              onPublish={handlePublish}
+              publishing={publishingId === s.id}
             />
           ))
         )}

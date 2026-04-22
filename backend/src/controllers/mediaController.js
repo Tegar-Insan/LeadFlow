@@ -10,6 +10,7 @@ const path              = require('path');
 const { randomUUID }    = require('crypto');
 const { createClient }  = require('@supabase/supabase-js');
 const scheduleService   = require('../services/scheduleService');
+const { getConnectedAccountForUser } = require('../services/tiktokOAuthService');
 const { success, error } = require('../utils/responseHelper');
 const logger            = require('../utils/logger');
 
@@ -18,7 +19,7 @@ const supabaseStorage = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'content-assets';
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
 
 const ALLOWED_MIME = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -59,6 +60,29 @@ const uploadMedia = async (req, res) => {
       return error(res, { message: 'No files uploaded', statusCode: 400 });
     }
 
+    if (!schedule.tiktok_account_id) {
+      const connectedAccount = await getConnectedAccountForUser(req.user.userId);
+      if (connectedAccount?.id) {
+        const { error: linkError } = await supabaseStorage
+          .from('content_queue_schedules')
+          .update({
+            tiktok_account_id: connectedAccount.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', scheduleId);
+
+        if (linkError) {
+          logger.error('[mediaController] Failed to attach TikTok account to schedule', linkError);
+          return error(res, {
+            message: `Failed to attach TikTok account to schedule: ${linkError.message}`,
+            statusCode: 502,
+          });
+        }
+
+        schedule.tiktok_account_id = connectedAccount.id;
+      }
+    }
+
     const uploadedAssets = [];
 
     for (const file of req.files) {
@@ -96,7 +120,15 @@ const uploadMedia = async (req, res) => {
     }
 
     logger.info(`[Media] ${req.files.length} file(s) uploaded to schedule ${scheduleId}`);
-    return success(res, { message: 'Media uploaded', data: { assets: uploadedAssets }, statusCode: 201 });
+    return success(res, {
+      message: 'Media uploaded',
+      data: {
+        scheduleId,
+        tiktok_account_id: schedule.tiktok_account_id || null,
+        assets: uploadedAssets,
+      },
+      statusCode: 201,
+    });
   } catch (err) {
     logger.error('[mediaController.uploadMedia]', err);
     return error(res, { message: 'Media upload failed', statusCode: 500 });
@@ -111,7 +143,13 @@ const getMediaBySchedule = async (req, res) => {
     const schedule = await scheduleService.getScheduleById(req.params.scheduleId);
     if (!schedule) return error(res, { message: 'Schedule not found', statusCode: 404 });
     const assets = await scheduleService.getAssetsBySchedule(req.params.scheduleId);
-    return success(res, { message: 'Assets loaded', data: { assets } });
+    return success(res, {
+      message: 'Assets loaded',
+      data: {
+        schedule,
+        assets,
+      },
+    });
   } catch (err) {
     logger.error('[mediaController.getMediaBySchedule]', err);
     return error(res, { message: 'Failed to load media', statusCode: 500 });

@@ -11,11 +11,11 @@ import timezone from 'dayjs/plugin/timezone';
 import {
   fetchCalendarMonth,
   fetchDrafts,
-  fetchScheduleById,
   createSchedule,
   updateSchedule,
   moveSchedule,
   deleteSchedule,
+  publishScheduleNow,
 } from '../services/scheduleService';
 import { TZ, nowWIB } from '../utils/formatDate';
 
@@ -106,6 +106,27 @@ export const useSchedule = () => {
     setDrafts(prev    => prev.filter(x => x.id !== id));
   }, []);
 
+  const publishNow = useCallback(async (id) => {
+    try {
+      const res = await publishScheduleNow(id);
+      const data = res?.data?.data || {};
+      const nextStatus = data?.status === 'failed' ? 'failed' : 'published';
+
+      setSchedules(prev => prev.map(x => (x.id === id ? { ...x, status: nextStatus } : x)));
+      setDrafts(prev => prev.filter(x => x.id !== id));
+
+      return {
+        ok: nextStatus === 'published',
+        status: nextStatus,
+        message: res?.data?.message || data?.message || 'Publish request completed',
+      };
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Failed to publish content';
+      setSchedules(prev => prev.map(x => (x.id === id ? { ...x, status: 'failed' } : x)));
+      return { ok: false, status: 'failed', message };
+    }
+  }, []);
+
   const dragDrop = useCallback(async (id, newDateISO, timeStr = '10:00') => {
     // Combine date + time → WIB → UTC ISO
     const wibStr = `${newDateISO}T${timeStr}:00`;
@@ -161,6 +182,7 @@ export const useSchedule = () => {
     addSchedule,
     editSchedule,
     removeSchedule,
+    publishNow,
     dragDrop,
   };
 };

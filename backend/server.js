@@ -44,3 +44,6 @@ async function startServer() {
 }
 
 startServer();
+
+const { startAutoPublishJob } = require('./src/jobs/autoPublishJob');
+startAutoPublishJob();

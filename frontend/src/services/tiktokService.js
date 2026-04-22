@@ -21,3 +21,8 @@ export const disconnectTikTok = async () => {
   const res = await axios.post(`${API}/tiktok/disconnect`, {}, { headers: authHeader() });
   return res.data.data;
 };
+
+export const publishTikTokSchedule = async (scheduleId) => {
+  const res = await axios.post(`${API}/tiktok/publish/${scheduleId}`, {}, { headers: authHeader() });
+  return res.data;
+};
