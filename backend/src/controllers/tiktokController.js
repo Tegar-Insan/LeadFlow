@@ -13,8 +13,10 @@ function resolvePublishStatusCode(message = '') {
   if (text.includes('no media asset found')) return 400;
   if (text.includes('no tiktok account connected')) return 400;
   if (text.includes('tik tok account is not connected') || text.includes('tiktok account is not connected')) return 409;
+  if (text.includes('refresh token is expired') || text.includes('reconnect tiktok account')) return 401;
   if (text.includes('no valid image url could be resolved')) return 400;
   if (text.includes('unaudited_client_can_only_post_to_private_accounts')) return 403;
+  if (text.includes('content-sharing-guidelines') || text.includes('integration guidelines')) return 403;
   if (text.includes('privacy_level_option_mismatch')) return 400;
   if (text.includes('url_ownership_unverified')) return 400;
   if (text.includes('scope_not_authorized')) return 403;
@@ -101,7 +103,7 @@ exports.directPublishBySchedule = async (req, res) => {
       return error(res, { message: 'scheduleId is required', statusCode: 400 });
     }
 
-    const result = await tiktokPublishService.publishScheduledContent(scheduleId);
+    const result = await tiktokPublishService.publishNowBySchedule(scheduleId);
     if (!result?.success) {
       const statusCode = result?.statusCode || resolvePublishStatusCode(result?.message);
       return error(res, {

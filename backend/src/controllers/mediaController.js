@@ -11,6 +11,7 @@ const { randomUUID }    = require('crypto');
 const { createClient }  = require('@supabase/supabase-js');
 const scheduleService   = require('../services/scheduleService');
 const { getConnectedAccountForUser } = require('../services/tiktokOAuthService');
+const { TIKTOK_CONFIG } = require('../config/tiktok');
 const { success, error } = require('../utils/responseHelper');
 const logger            = require('../utils/logger');
 
@@ -43,6 +44,12 @@ const uploadMiddleware = upload.array('files', 10);
 // Map mime type → content_type_enum value
 const getContentType = (mimetype) =>
   mimetype.startsWith('video/') ? 'short_video' : 'poster_photo';
+
+const buildPublicMediaUrl = (assetId) => {
+  if (!assetId || !TIKTOK_CONFIG.mediaPublicBaseUrl) return null;
+  const base = TIKTOK_CONFIG.mediaPublicBaseUrl.replace(/\/$/, '');
+  return `${base}/tiktok/public/media/${assetId}`;
+};
 
 // ─────────────────────────────────────────────
 // POST /api/media/upload/:scheduleId
@@ -83,9 +90,7 @@ const uploadMedia = async (req, res) => {
       }
     }
 
-    const uploadedAssets = [];
-
-    for (const file of req.files) {
+    const uploadAsset = async (file) => {
       const ext         = path.extname(file.originalname) || '.bin';
       const storagePath = `schedules/${scheduleId}/${randomUUID()}${ext}`;
 
@@ -116,8 +121,21 @@ const uploadMedia = async (req, res) => {
         file_size_bytes:   file.size,
       });
 
-      uploadedAssets.push(asset);
-    }
+      const publicUrl = buildPublicMediaUrl(asset.id);
+      if (publicUrl) {
+        await supabaseStorage
+          .from('content_assets')
+          .update({ file_url: publicUrl })
+          .eq('id', asset.id);
+        asset.file_url = publicUrl;
+      }
+
+      return asset;
+    };
+
+    const uploadedAssets = req.files.length === 1
+      ? [await uploadAsset(req.files[0])]
+      : await Promise.all(req.files.map((file) => uploadAsset(file)));
 
     logger.info(`[Media] ${req.files.length} file(s) uploaded to schedule ${scheduleId}`);
     return success(res, {
@@ -161,10 +179,28 @@ const getMediaBySchedule = async (req, res) => {
 // ─────────────────────────────────────────────
 const deleteMedia = async (req, res) => {
   try {
-    const asset = await scheduleService.deleteAsset(req.params.assetId);
+    const asset = await scheduleService.getAssetById(req.params.assetId);
     if (!asset) return error(res, { message: 'Asset not found', statusCode: 404 });
 
-    await supabaseStorage.storage.from(STORAGE_BUCKET).remove([asset.storage_path]);
+    const schedule = await scheduleService.getScheduleById(asset.queue_schedule_id);
+    if (!schedule) return error(res, { message: 'Schedule not found', statusCode: 404 });
+    if (schedule.status === 'published') {
+      return error(res, {
+        message: 'Cannot delete media from a published schedule',
+        statusCode: 409,
+      });
+    }
+
+    await scheduleService.deleteAsset(req.params.assetId);
+
+    const { error: removeError } = await supabaseStorage
+      .storage.from(STORAGE_BUCKET)
+      .remove([asset.storage_path]);
+
+    if (removeError) {
+      logger.error('[mediaController] Storage delete warning', removeError);
+    }
+
     logger.info(`[Media] Asset deleted id=${asset.id}`);
     return success(res, { message: 'Media deleted', data: { assetId: asset.id } });
   } catch (err) {

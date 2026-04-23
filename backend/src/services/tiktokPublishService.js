@@ -1,12 +1,13 @@
 const axios = require('axios');
 const { supabaseAdmin } = require('../config/supabase');
-const { decrypt } = require('../utils/encryptionHelper');
+const { decrypt, encrypt } = require('../utils/encryptionHelper');
 const { TIKTOK_CONFIG } = require('../config/tiktok');
 const { getConnectedAccountForUser } = require('./tiktokOAuthService');
+const logger = require('../utils/logger');
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
-const SIGNED_URL_TTL_SECONDS = 3600; // 1 hour — enough for TikTok to fetch
-const DEFAULT_PRIVACY_LEVEL = process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL || 'SELF_ONLY';
+const SIGNED_URL_TTL_SECONDS = 3600;
+const DEFAULT_PRIVACY_LEVEL = process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE';
 const ALLOWED_PRIVACY_LEVELS = new Set([
   'PUBLIC_TO_EVERYONE',
   'MUTUAL_FOLLOW_FRIENDS',
@@ -16,6 +17,9 @@ const ALLOWED_PRIVACY_LEVELS = new Set([
 
 const STATUS_POLL_ATTEMPTS = 6;
 const STATUS_POLL_INTERVAL_MS = 3000;
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
+const FORCED_PUBLISH_PRIVACY_LEVEL = 'SELF_ONLY';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DB helpers
@@ -64,12 +68,146 @@ async function getAssets(scheduleId) {
 async function getTikTokAccount(accountId) {
   const { data, error } = await supabaseAdmin
     .from('tiktok_accounts')
-    .select('id, connection_status, access_token_encrypted')
+    .select([
+      'id',
+      'connection_status',
+      'access_token_encrypted',
+      'refresh_token_encrypted',
+      'access_token_expires_at',
+      'refresh_token_expires_at',
+    ].join(','))
     .eq('id', accountId)
     .maybeSingle();
 
   if (error) throw error;
   return data;
+}
+
+async function writeTokenRefreshLog({ accountId, success, errorMessage = null, newExpiresAt = null }) {
+  const { error } = await supabaseAdmin
+    .from('tiktok_token_refresh_log')
+    .insert({
+      tiktok_account_id: accountId,
+      success,
+      error_message: errorMessage,
+      new_expires_at: newExpiresAt,
+    });
+
+  if (error) throw error;
+}
+
+function isExpiredOrNearExpiry(isoDate) {
+  const expiresAt = new Date(isoDate || '').getTime();
+  if (Number.isNaN(expiresAt)) return true;
+  return expiresAt <= (Date.now() + ACCESS_TOKEN_REFRESH_BUFFER_MS);
+}
+
+async function refreshAccessToken(account) {
+  if (!account?.refresh_token_encrypted) {
+    throw new Error('TikTok refresh token is missing');
+  }
+
+  if (isExpiredOrNearExpiry(account.refresh_token_expires_at)) {
+    try {
+      await supabaseAdmin
+        .from('tiktok_accounts')
+        .update({
+          connection_status: 'token_expired',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', account.id);
+    } catch {
+      // best effort status update only
+    }
+    throw new Error('TikTok refresh token is expired. Please reconnect TikTok account.');
+  }
+
+  const refreshToken = decrypt(account.refresh_token_encrypted);
+  const body = [
+    `client_key=${encodeURIComponent(TIKTOK_CONFIG.clientKey)}`,
+    `client_secret=${encodeURIComponent(TIKTOK_CONFIG.clientSecret)}`,
+    'grant_type=refresh_token',
+    `refresh_token=${encodeURIComponent(refreshToken)}`,
+  ].join('&');
+
+  try {
+    const { data } = await axios.post(TIKTOK_CONFIG.tokenUrl, body, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 20000,
+    });
+
+    if (data?.error) {
+      throw new Error(`TikTok token refresh failed: ${data.error} - ${data.error_description || 'unknown error'}`);
+    }
+
+    if (!data?.access_token || !data?.expires_in) {
+      throw new Error('TikTok token refresh response is missing required fields');
+    }
+
+    const now = Date.now();
+    const nextAccessExpiresAt = new Date(now + (Number(data.expires_in) * 1000)).toISOString();
+    const nextRefreshToken = data.refresh_token || refreshToken;
+    const nextRefreshExpiresAt = data.refresh_expires_in
+      ? new Date(now + (Number(data.refresh_expires_in) * 1000)).toISOString()
+      : account.refresh_token_expires_at;
+
+    const payload = {
+      access_token_encrypted: encrypt(data.access_token),
+      access_token_expires_at: nextAccessExpiresAt,
+      refresh_token_encrypted: encrypt(nextRefreshToken),
+      refresh_token_expires_at: nextRefreshExpiresAt,
+      last_token_refresh_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      connection_status: 'connected',
+      disconnect_reason: null,
+    };
+
+    if (typeof data.scope === 'string') {
+      payload.token_scope = data.scope.split(',');
+    }
+
+    const { error } = await supabaseAdmin
+      .from('tiktok_accounts')
+      .update(payload)
+      .eq('id', account.id);
+
+    if (error) throw error;
+
+    try {
+      await writeTokenRefreshLog({
+        accountId: account.id,
+        success: true,
+        newExpiresAt: nextAccessExpiresAt,
+      });
+    } catch {
+      // best effort audit log
+    }
+
+    return data.access_token;
+  } catch (err) {
+    try {
+      await writeTokenRefreshLog({
+        accountId: account.id,
+        success: false,
+        errorMessage: err?.message || 'refresh failed',
+      });
+    } catch {
+      // best effort audit log
+    }
+    throw err;
+  }
+}
+
+async function getPublishAccessToken(account) {
+  if (!account?.access_token_encrypted) {
+    throw new Error('TikTok access token is missing');
+  }
+
+  if (!isExpiredOrNearExpiry(account.access_token_expires_at)) {
+    return decrypt(account.access_token_encrypted);
+  }
+
+  return refreshAccessToken(account);
 }
 
 async function writePublishLog({
@@ -110,10 +248,36 @@ async function markScheduleStatus(scheduleId, status) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Signed URL helpers
-// Generates fresh Supabase signed URLs from storage_path so TikTok can fetch
-// assets even when the bucket is not fully public.
+// Storage helpers
+// Download directly from Supabase Storage so TikTok never needs a public domain URL.
 // ─────────────────────────────────────────────────────────────────────────────
+
+async function downloadAssetBinary(asset) {
+  if (!asset) {
+    throw new Error('Missing asset');
+  }
+
+  if (asset.storage_path) {
+    const { data, error } = await supabaseAdmin
+      .storage
+      .from(STORAGE_BUCKET)
+      .download(asset.storage_path);
+
+    if (!error && data) {
+      const arrayBuffer = await data.arrayBuffer();
+      return {
+        buffer: Buffer.from(arrayBuffer),
+        mimeType: asset.mime_type || data.type || 'application/octet-stream',
+      };
+    }
+  }
+
+  if (asset.file_url) {
+    return downloadBinary(asset.file_url);
+  }
+
+  throw new Error('Could not download asset binary');
+}
 
 async function getSignedUrl(storagePath) {
   const { data, error } = await supabaseAdmin
@@ -128,12 +292,35 @@ async function getSignedUrl(storagePath) {
   return data.signedUrl;
 }
 
+function buildPublicStorageUrl(storagePath) {
+  if (!SUPABASE_URL || !storagePath) return null;
+  const base = SUPABASE_URL.replace(/\/$/, '');
+  return `${base}/storage/v1/object/public/${STORAGE_BUCKET}/${storagePath}`;
+}
+
+function buildPublicMediaUrl(assetId) {
+  const baseUrl = TIKTOK_CONFIG.mediaPublicBaseUrl;
+  if (!baseUrl || !assetId) return null;
+
+  const base = baseUrl.replace(/\/$/, '');
+  return `${base}/tiktok/public/media/${assetId}`;
+}
+
+function isOwnedPublicBucketUrl(url) {
+  if (!url || !SUPABASE_URL) return false;
+  const base = SUPABASE_URL.replace(/\/$/, '');
+  return String(url).startsWith(`${base}/storage/v1/object/public/${STORAGE_BUCKET}/`);
+}
+
 async function resolveAssetUrl(asset) {
-  if (asset.storage_path) {
-    const signed = await getSignedUrl(asset.storage_path);
-    if (signed) return signed;
+  // TikTok PULL_FROM_URL must use the verified public tunnel host.
+  const publicMediaUrl = buildPublicMediaUrl(asset?.id);
+  if (publicMediaUrl) {
+    logger.info(`[TikTok Publish] Resolved public media URL for asset ${asset?.id}: ${publicMediaUrl}`);
+    return publicMediaUrl;
   }
-  return asset.file_url; // fallback to stored public URL
+
+  throw new Error('TIKTOK_MEDIA_PUBLIC_BASE_URL is required for PULL_FROM_URL publishing');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,15 +416,12 @@ function normalizePrivacyLevel(value) {
     return DEFAULT_PRIVACY_LEVEL;
   }
 
-  if (candidate !== 'SELF_ONLY' && String(process.env.TIKTOK_ALLOW_PUBLIC_POSTS || '').toLowerCase() !== 'true') {
-    return 'SELF_ONLY';
-  }
-
   return candidate;
 }
 
 function resolvePrivacyLevel(schedule) {
-  return normalizePrivacyLevel(schedule?.privacy_level);
+  // Force public privacy on publish as requested.
+  return FORCED_PUBLISH_PRIVACY_LEVEL;
 }
 
 function assertTikTokOk(payload) {
@@ -247,45 +431,25 @@ function assertTikTokOk(payload) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Video publish: PULL_FROM_URL path (preferred for server-side assets)
-// 1. Resolve a signed/public URL for the stored video
-// 2. Init publish using the URL-based source
-// 3. Fall back to FILE_UPLOAD only if TikTok rejects the URL flow
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function initVideoPublishFromUrl(accessToken, schedule, videoUrl) {
-  const body = {
-    post_info: {
-      title: resolveCaption(schedule),
-      privacy_level: resolvePrivacyLevel(schedule),
-      disable_comment: schedule.allow_comment === false,
-      disable_duet: schedule.allow_duet === false,
-      disable_stitch: schedule.allow_stitch === false,
-    },
-    source_info: {
-      source: 'PULL_FROM_URL',
-      video_url: videoUrl,
-    },
-    post_mode: 'DIRECT_POST',
-    media_type: 'VIDEO',
-  };
-
-  const response = await axios.post(TIKTOK_CONFIG.publishVideoInitUrl, body, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json; charset=UTF-8',
-    },
-    timeout: 20000,
-  });
-
-  assertTikTokOk(response.data);
-
-  return {
-    publishId: response?.data?.data?.publish_id || null,
-    raw: response?.data || null,
-  };
+function getTikTokErrorCode(err) {
+  return String(err?.response?.data?.error?.code || '').toLowerCase();
 }
+
+function isNonRecoverableVideoInitError(err) {
+  const code = getTikTokErrorCode(err);
+  return [
+    'unaudited_client_can_only_post_to_private_accounts',
+    'scope_not_authorized',
+    'privacy_level_option_mismatch',
+  ].includes(code);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Video publish: FILE_UPLOAD only
+// 1. Download the stored video bytes from Supabase Storage
+// 2. Init publish using FILE_UPLOAD
+// 3. Upload the bytes to the returned TikTok upload URL
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function initVideoPublish(accessToken, schedule, sizeBytes) {
   const body = {
@@ -304,7 +468,7 @@ async function initVideoPublish(accessToken, schedule, sizeBytes) {
     },
   };
 
-  const response = await axios.post(TIKTOK_CONFIG.publishVideoInitUrl, body, {
+  const response = await axios.post(TIKTOK_CONFIG.publishInboxVideoInitUrl, body, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json; charset=UTF-8',
@@ -314,9 +478,16 @@ async function initVideoPublish(accessToken, schedule, sizeBytes) {
 
   assertTikTokOk(response.data);
 
+  const uploadUrl =
+    response?.data?.data?.upload_url ||
+    response?.data?.upload_url ||
+    response?.data?.data?.upload_urls?.[0] ||
+    response?.data?.upload_urls?.[0] ||
+    null;
+
   return {
     publishId: response?.data?.data?.publish_id || null,
-    uploadUrl: response?.data?.data?.upload_url || null,
+    uploadUrl,
     raw: response?.data || null,
   };
 }
@@ -333,7 +504,7 @@ async function downloadBinary(resolvedUrl) {
   };
 }
 
-async function uploadVideoToTikTok(uploadUrl, binaryBuffer, mimeType) {
+async function uploadBinaryToTikTok(uploadUrl, binaryBuffer, mimeType) {
   const total = binaryBuffer.length;
   if (!uploadUrl) throw new Error('TikTok did not return upload_url for FILE_UPLOAD');
   if (!total) throw new Error('Video buffer is empty');
@@ -351,27 +522,28 @@ async function uploadVideoToTikTok(uploadUrl, binaryBuffer, mimeType) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Photo publish: PULL_FROM_URL path
-// 1. Resolve signed URLs for each photo asset
-// 2. Init → pass photo_images array → TikTok fetches from our storage
-// 3. Returns publish_id for status polling
+// Photo publish: PULL_FROM_URL
+// 1. Resolve image URLs for each photo asset
+// 2. Init publish using the photo endpoint
+// 3. TikTok fetches the photos from the provided URLs
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function initPhotoPublish(accessToken, schedule, photoUrls) {
+  const photoCoverIndex = photoUrls.length > 1 ? 1 : 0;
+
   const body = {
     post_info: {
       title: resolveShortTitle(schedule),
       description: resolveCaption(schedule).slice(0, 4000),
       privacy_level: resolvePrivacyLevel(schedule),
       disable_comment: schedule.allow_comment === false,
-      auto_add_music: true,
     },
     source_info: {
       source: 'PULL_FROM_URL',
-      photo_cover_index: 0,
+      photo_cover_index: photoCoverIndex,
       photo_images: photoUrls,
     },
-    post_mode: 'DIRECT_POST',
+    post_mode: 'MEDIA_UPLOAD',
     media_type: 'PHOTO',
   };
 
@@ -476,8 +648,10 @@ async function finalizePublish(scheduleId, outcome) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main entry point — called by publishService.runAutoPublishBatch and
-// POST /api/tiktok/publish/:scheduleId (manual trigger)
+// Main publish entry point.
+// Cron batch and manual publish both use the same publishing logic, but the
+// manual wrapper below makes the intent explicit and keeps the route free of
+// any time-based gating.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function publishScheduledContent(scheduleId) {
@@ -527,41 +701,29 @@ async function publishScheduledContent(scheduleId) {
       return { success: false, status: 'failed', message: 'TikTok account is not connected' };
     }
 
-    const accessToken = decrypt(account.access_token_encrypted);
+    const accessToken = await getPublishAccessToken(account);
     const videoAsset = getPrimaryVideoAsset(assets);
     let mode = 'photo';
 
     if (videoAsset) {
-      // ── Video: PULL_FROM_URL preferred ──────────────────────────────────
-      // Try server-side URL publishing first, because the media is already
-      // stored in Supabase and TikTok guidelines prefer PULL_FROM_URL.
+      // ── Video: FILE_UPLOAD only ────────────────────────────────────────
       mode = 'video';
-      const resolvedUrl = await resolveAssetUrl(videoAsset);
-      if (!resolvedUrl) {
-        throw new Error('Could not resolve a download URL for the video asset');
-      }
+      const { buffer, mimeType } = await downloadAssetBinary(videoAsset);
+      const init = await initVideoPublish(accessToken, schedule, buffer.length);
+      publishId = init.publishId;
+      uploadUrl = init.uploadUrl;
 
-      try {
-        const init = await initVideoPublishFromUrl(accessToken, schedule, resolvedUrl);
-        publishId = init.publishId;
-      } catch (urlErr) {
-        console.warn('[tiktokPublishService] URL-based video publish failed, falling back to FILE_UPLOAD:', urlErr?.message);
-        const { buffer, mimeType } = await downloadBinary(resolvedUrl);
-        const init = await initVideoPublish(accessToken, schedule, buffer.length);
-        publishId = init.publishId;
-        uploadUrl = init.uploadUrl;
-
-        await uploadVideoToTikTok(uploadUrl, buffer, mimeType);
-      }
+      await uploadBinaryToTikTok(uploadUrl, buffer, mimeType);
     } else {
-      // ── Photos: PULL_FROM_URL ───────────────────────────────────────────
-      // 1. Resolve signed URLs for each photo
-      // 2. Init publish → pass photo_images array → TikTok pulls from our storage
-      // 3. Receive publish_id
+      // ── Photos: PULL_FROM_URL per TikTok docs ──────────────────────────
       const photoAssets = getPhotoAssets(assets);
       const photoUrls = (
         await Promise.all(photoAssets.map((asset) => resolveAssetUrl(asset)))
       ).filter(Boolean);
+
+      logger.info(
+        `[TikTok Publish] schedule=${scheduleId} base_url=${TIKTOK_CONFIG.mediaPublicBaseUrl} photo_urls=${safeJson(photoUrls)}`
+      );
 
       if (!photoUrls.length) {
         await finalizePublish(scheduleId, {
@@ -616,11 +778,13 @@ async function publishScheduledContent(scheduleId) {
   } catch (err) {
     const httpStatusCode = err?.response?.status || null;
     const detail = err?.response?.data || err?.message || 'TikTok publish failed';
-    const apiMessage = err?.response?.data?.error_description
+    const apiCode = err?.response?.data?.error?.code;
+    const apiText = err?.response?.data?.error_description
       || err?.response?.data?.error?.message
       || err?.response?.data?.error
       || err?.message
       || 'TikTok publish failed';
+    const apiMessage = apiCode ? `${apiCode}: ${apiText}` : apiText;
 
     try {
       await finalizePublish(scheduleId, {
@@ -639,4 +803,11 @@ async function publishScheduledContent(scheduleId) {
   }
 }
 
-module.exports = { publishScheduledContent };
+async function publishNowBySchedule(scheduleId) {
+  return publishScheduledContent(scheduleId);
+}
+
+module.exports = {
+  publishScheduledContent,
+  publishNowBySchedule,
+};

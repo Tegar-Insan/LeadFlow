@@ -16,12 +16,28 @@ const logger         = require('./utils/logger');
 const authRoutes     = require('./routes/authRoutes');
 const profileRoutes  = require('./routes/profileRoutes');
 const calendarRoutes = require('./routes/calendarRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
 const mediaRoutes    = require('./routes/mediaRoutes');
 const adminRoutes    = require('./routes/roleRoutes');
 const chatbotRoutes  = require('./routes/chatbotRoutes');
 const tiktokRoutes   = require('./routes/tiktokRoutes');
+const publicMediaRoutes = require('./routes/publicMediaRoutes');
 
 const app = express();
+const tiktokVerificationToken = (
+  process.env.TIKTOK_SITE_VERIFICATION_TOKEN
+  || ''
+).trim();
+const tiktokVerificationPayload = tiktokVerificationToken
+  ? `tiktok-developers-site-verification=${tiktokVerificationToken}`
+  : null;
+
+const sendTikTokVerification = (res) => {
+  if (!tiktokVerificationPayload) {
+    return res.status(404).type('text/plain').send('TikTok verification token is not configured');
+  }
+  return res.type('text/plain').send(tiktokVerificationPayload);
+};
 
 // ── Security headers ──────────────────────────────────────────
 app.use(helmet({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: false }));
@@ -80,10 +96,24 @@ app.get('/health', (req, res) =>
 app.use('/api/auth',     authRoutes);
 app.use('/api/profile',  profileRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/schedule', scheduleRoutes);
 app.use('/api/media',    mediaRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/chatbot',  chatbotRoutes);
 app.use('/api/tiktok',   tiktokRoutes);
+app.use('/tiktok/public', publicMediaRoutes);
+app.get('/', (req, res) => {
+  return sendTikTokVerification(res);
+});
+app.get('/tiktok-developers-site-verification.txt', (req, res) => {
+  return sendTikTokVerification(res);
+});
+app.get(/^\/tiktok[A-Za-z0-9]+\.txt$/, (req, res) => {
+  return sendTikTokVerification(res);
+});
+app.get(/^\/.+\/tiktok[A-Za-z0-9]+\.txt$/, (req, res) => {
+  return sendTikTokVerification(res);
+});
 
 // ── 404 — must be AFTER all routes ───────────────────────────
 app.use((req, res) => {

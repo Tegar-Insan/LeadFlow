@@ -8,6 +8,32 @@
 import React from 'react';
 import { LibraryCard } from './ContentCard';
 
+const getPrimaryAssetUrl = (item) => (
+  item?.primary_asset_url
+  || item?.assets?.[0]?.file_url
+  || item?.assets?.[0]?.url
+  || item?.file_url
+  || item?.preview_url
+  || null
+);
+
+const getPrimaryAssetType = (item) => {
+  const directType = item?.primary_asset_type || item?.content_type || item?.asset_type;
+  if (directType) return directType;
+
+  const mime = String(item?.primary_asset_mime || item?.assets?.[0]?.mime_type || '').toLowerCase();
+  if (mime.startsWith('video/')) return 'short_video';
+  if (mime.startsWith('image/')) return 'poster_photo';
+  return null;
+};
+
+const normalizeItem = (item) => ({
+  ...item,
+  primary_asset_url: getPrimaryAssetUrl(item),
+  primary_asset_type: getPrimaryAssetType(item),
+  slide_count: item?.slide_count ?? item?.assets?.length ?? 1,
+});
+
 const ContentLibrarySidebar = ({
   drafts = [],
   schedules = [],
@@ -25,7 +51,7 @@ const ContentLibrarySidebar = ({
   const items = [
     ...schedules.filter(s => s.status !== 'published'),
     ...drafts,
-  ].filter(s => {
+  ].map(normalizeItem).filter(s => {
     if (seen.has(s.id)) return false;
     seen.add(s.id);
     return true;

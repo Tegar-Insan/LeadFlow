@@ -12,7 +12,7 @@
 
 const { success, error }    = require('../utils/responseHelper');
 const logger                = require('../utils/logger');
-const { chatWithGemini }    = require('../services/anthropicService');
+const { chatWithAnthropic } = require('../services/anthropicService');
 const { createSchedule }    = require('../services/scheduleService');
 
 // ─────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ const sendMessage = async (req, res) => {
     // Keep last 10 messages to stay within token budget
     const trimmed = messages.slice(-10);
 
-    const { visibleText, schedule, model } = await chatWithGemini(trimmed);
+    const { visibleText, schedule, model } = await chatWithAnthropic(trimmed);
 
     return success(res, {
       message: 'Chat response generated',
@@ -51,10 +51,12 @@ const sendMessage = async (req, res) => {
   } catch (err) {
     logger.error('[chatbotController.sendMessage]', err.message);
 
-    if (err.message?.includes('authentication_error') || err.status === 400) {
+    const statusCode = err.status || err.response?.status;
+
+    if (err.message?.includes('authentication_error') || statusCode === 400) {
       return error(res, { message: 'Anthropic API key tidak valid. Periksa ANTHROPIC_API_KEY di server.', statusCode: 503 });
     }
-    if (err.status === 429) {
+    if (statusCode === 429) {
       return error(res, { message: 'AI service sedang rate-limited. Coba lagi sebentar.', statusCode: 429 });
     }
 

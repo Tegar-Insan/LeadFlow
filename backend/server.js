@@ -1,7 +1,9 @@
 // server.js
 require('dotenv').config();
 const { validateEnv } = require('./src/config/env');
+const { validateTikTokConfig } = require('./src/config/tiktok');
 validateEnv();
+validateTikTokConfig();
 
 const app    = require('./src/app');
 const logger = require('./src/utils/logger');

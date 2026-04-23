@@ -8,8 +8,16 @@ const jwt    = require('jsonwebtoken');
 const { TIKTOK_CONFIG }      = require('../config/tiktok');
 const { supabaseAdmin }      = require('../config/supabase');
 const { encrypt }            = require('../utils/encryptionHelper');
+const logger                 = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET;
+
+function getJwtSecret() {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is required for TikTok OAuth state signing');
+  }
+  return JWT_SECRET;
+}
 
 // ── PKCE helpers ───────────────────────────────────────────────
 // TikTok requires PKCE even for web server apps (S256 method).
@@ -32,13 +40,13 @@ function generateCodeChallenge(verifier) {
 function signOAuthState(userId, codeVerifier) {
   return jwt.sign(
     { userId, codeVerifier, nonce: crypto.randomBytes(16).toString('hex'), type: 'tiktok_oauth_state' },
-    JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: '10m', issuer: 'leadflow-api', audience: 'leadflow-client' }
   );
 }
 
 function verifyOAuthState(state) {
-  const payload = jwt.verify(state, JWT_SECRET, {
+  const payload = jwt.verify(state, getJwtSecret(), {
     issuer: 'leadflow-api',
     audience: 'leadflow-client',
   });
@@ -82,16 +90,14 @@ async function exchangeCodeForTokens(code, codeVerifier) {
     `code_verifier=${encodeURIComponent(codeVerifier)}`,
   ].join('&');
 
-  console.log('[tiktok token] code (raw)      :', code);
-  console.log('[tiktok token] code_verifier   :', codeVerifier);
-  console.log('[tiktok token] challenge (S256):', generateCodeChallenge(codeVerifier));
-  console.log('[tiktok token] raw body        :', rawBody);
+  logger.debug(
+    `[tiktok token] exchanging authorization code (len=${String(code || '').length}) ` +
+    `with verifier (len=${String(codeVerifier || '').length})`
+  );
 
   const { data } = await axios.post(TIKTOK_CONFIG.tokenUrl, rawBody, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-
-  console.log('[tiktok token] Response        :', JSON.stringify(data));
 
   if (data.error) {
     throw new Error(`TikTok token error: ${data.error} — ${data.error_description}`);
@@ -123,6 +129,17 @@ async function fetchUserInfo(accessToken) {
 
 async function upsertTiktokAccount(userId, tokens, userInfo) {
   const now = new Date();
+
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from('tiktok_accounts')
+    .select('id, owner_user_id')
+    .eq('tiktok_open_id', userInfo.open_id)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (existing && existing.owner_user_id !== userId) {
+    throw new Error('This TikTok account is already linked to another LeadFlow user');
+  }
 
   const row = {
     owner_user_id:              userId,

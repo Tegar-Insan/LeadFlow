@@ -265,6 +265,20 @@ const getAssetsBySchedule = async (scheduleId) => {
 };
 
 /**
+ * Get a single asset by ID.
+ */
+const getAssetById = async (assetId) => {
+  const { data, error } = await supabaseAdmin
+    .from('content_assets')
+    .select('*')
+    .eq('id', assetId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+};
+
+/**
  * Delete an asset record; returns the deleted row so the caller
  * can clean up Supabase Storage.
  */
@@ -297,5 +311,6 @@ module.exports = {
   deleteSchedule,
   createAsset,
   getAssetsBySchedule,
+  getAssetById,
   deleteAsset,
 };

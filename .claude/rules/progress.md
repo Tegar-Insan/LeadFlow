@@ -196,6 +196,7 @@ All 13 core tables are defined and deployed to Supabase:
 | Slot card titles always blank | Rendered `schedule.title` but DB column is `custom_caption` | Use `schedule.custom_caption \|\| schedule.title \|\| 'Untitled'` |
 | Test import paths broke on Linux | Lowercase import but folder is `Schedule/` (case-sensitive FS) | Match import paths exactly to filesystem casing |
 | `@apply` variant prefix error in CSS | Tailwind `@apply` can't use `hover:` etc. inside `@layer components` | Move pseudo-class states to raw CSS |
+| Render crash in schedule detail modal | Child modal referenced a parent-scoped delete handler that was never passed as a prop | Always thread action handlers through modal/component props; never rely on parent lexical scope inside child render code |
 | Vitest tests fail after past-date blocking | Hardcoded April 2026 dates are now `isPast=true` | Use future dates (May 2026+) in test mocks |
 | `Route not found: POST /api/api/chatbot/message` | `VITE_API_BASE_URL` already ends in `/api`; service added `/api/` again | Use `/chatbot/*` not `/api/chatbot/*` in service paths |
 | `GEMINI_MODEL=Gemini 2.0 Flash` invalid | Display name used instead of API model ID | Use `gemini-2.0-flash` (lowercase, hyphenated) |
@@ -204,6 +205,7 @@ All 13 core tables are defined and deployed to Supabase:
 | TikTok code body encoding | `URLSearchParams` corrupts `*` and `!` chars in TikTok auth codes | Use manual `encodeURIComponent()` body construction |
 | TikTok `scope_not_authorized` on token exchange | `video.publish`/`video.upload` require Content Posting API approval | Use `user.info.basic` only until TikTok app is approved for posting |
 | TikTok `scope_not_authorized` 401 on `/user/info` | `follower_count` field requires `user.info.stats` scope, not covered by `user.info.basic` | Remove `follower_count` from `fetchUserInfo` fields query; hardcode to `0` |
+| TikTok photo upload invalid_params | `FILE_UPLOAD` is only valid for video upload; photo upload requires `PULL_FROM_URL` + `MEDIA_UPLOAD` with `photo_images` | Keep photo requests on the documented URL-based photo post contract and do not send `photo_count` |
 
 ## Session 3 Update (2026-04-20) — Publish Automation + UI Cleanup
 
@@ -244,3 +246,43 @@ All 13 core tables are defined and deployed to Supabase:
   - remove action button + loading state + service call pattern.
 - Backend delete route still required for full end-to-end if not yet present:
   - `DELETE /api/admin/users/:id`.
+
+## Session 4 Update (2026-04-23) — Tunnel Verification + Resume Point
+
+### TikTok / Cloudflare Verification State
+- Cloudflare tunnel was used for TikTok property verification.
+- Verification failed with: `We couldn't find your verification signature, please confirm and resubmit.`
+- Backend verification response was updated in `backend/src/app.js` to return the new signature as plain text on both:
+  - `/`
+  - `/tiktok-developers-site-verification.txt`
+- Current verification token being served:
+  - `tiktok-developers-site-verification=PYQIFtZmCpI0FMJHKn5X1ZBA9pp5u2fY`
+
+### Important Note
+- If TikTok still cannot verify, the likely issue is tunnel routing or a stale backend process, not the token text itself.
+- The tunnel must point to the running Node.js backend server for the root path and txt path to resolve correctly.
+
+### Next Resume Point
+- Confirm the tunnel is forwarding to the backend process that loads `backend/src/app.js`.
+- Re-check the verification URL in a browser before trying TikTok property verification again.
+- Continue tomorrow from this tunnel verification checkpoint.
+
+## Session 5 Update (2026-04-23) — Tunnel 8000 Implementation Assets
+
+### Added scripts for Cloudflare + port split
+- `scripts/start_backend_8000.sh` — runs Express backend on `127.0.0.1:8000` for TikTok-facing tunnel.
+- `scripts/start_ai_8001.sh` — runs FastAPI analyzer on `127.0.0.1:8001` to avoid port collision.
+- `scripts/configure_cloudflare_tunnel_8000.sh` — writes `~/.cloudflared/leadflow-tiktok-8000.yml` and DNS route for a hostname to local `8000`.
+- `scripts/run_cloudflare_tunnel_8000.sh` — starts tunnel using that config.
+- `scripts/verify_tiktok_tunnel_endpoints.sh` — verifies `/`, `/tiktok-developers-site-verification.txt`, `/health`, `/api/tiktok/callback` and optional `/tiktok/public/media/:assetId`.
+
+### Added runbook
+- `docs/TIKTOK_SANDBOX_TUNNEL_8000.md` now documents full workflow:
+  - backend on `8000`, AI on `8001`
+  - Cloudflare tunnel creation + DNS route
+  - TikTok sandbox URL verification
+  - photo/video publish validation checklist
+
+### Supporting config updates
+- `backend/package.json` adds `dev:8000` and `start:8000` scripts.
+- `backend/.env.example` adds `TIKTOK_MEDIA_PUBLIC_BASE_URL` and clarifies `PORT=8000` usage for tunnel workflow.

@@ -6,6 +6,7 @@ const TIKTOK_CONFIG = {
   clientSecret: process.env.TIKTOK_CLIENT_SECRET || '',
   redirectUri: process.env.TIKTOK_REDIRECT_URI || 'http://localhost:5000/api/tiktok/callback',
   frontendUrl: process.env.FRONTEND_BASE_URL || 'http://localhost:5173',
+  mediaPublicBaseUrl: process.env.TIKTOK_MEDIA_PUBLIC_BASE_URL || '',
 
   authorizeUrl: 'https://www.tiktok.com/v2/auth/authorize/',
   tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
@@ -25,6 +26,7 @@ function validateTikTokConfig() {
   if (!TIKTOK_CONFIG.clientKey) missing.push('TIKTOK_CLIENT_KEY');
   if (!TIKTOK_CONFIG.clientSecret) missing.push('TIKTOK_CLIENT_SECRET');
   if (!process.env.TIKTOK_TOKEN_ENCRYPTION_KEY) missing.push('TIKTOK_TOKEN_ENCRYPTION_KEY');
+  if (!TIKTOK_CONFIG.mediaPublicBaseUrl) missing.push('TIKTOK_MEDIA_PUBLIC_BASE_URL');
 
   if (missing.length) {
     throw new Error(`Missing TikTok env vars: ${missing.join(', ')}`);

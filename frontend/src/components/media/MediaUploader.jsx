@@ -5,8 +5,17 @@
  * LeadFlow – Krench Chicken
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { uploadMedia, deleteMediaAsset } from '../../services/mediaService';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+const getBackendRoot = () => String(API_BASE).replace(/\/?api\/?$/, '').replace(/\/$/, '');
+
+const buildMediaUrl = (assetId) => {
+  if (!assetId) return '';
+  return `${getBackendRoot()}/tiktok/public/media/${assetId}`;
+};
 
 const ACCEPTED = '.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi';
 const MAX_SIZE_MB = 200;
@@ -62,12 +71,13 @@ const FilePreviewItem = ({ file, url, index, onRemove }) => {
 
 const ExistingAssetItem = ({ asset, onDelete }) => {
   const isVideo = asset.mime_type?.startsWith('video/');
+  const mediaUrl = asset.file_url || buildMediaUrl(asset?.id);
   return (
     <div className="relative group rounded-lg overflow-hidden bg-zinc-800 border border-white/10">
       {isVideo ? (
-        <video src={asset.file_url} className="w-full h-28 object-cover" muted />
+        <video src={mediaUrl} className="w-full h-28 object-cover" muted />
       ) : (
-        <img src={asset.file_url} alt={asset.file_name} className="w-full h-28 object-cover" />
+        <img src={mediaUrl} alt={asset.file_name} className="w-full h-28 object-cover" />
       )}
       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
         <button
@@ -105,6 +115,30 @@ const MediaUploader = ({
   const [progress,      setProgress]       = useState(0);
   const [uploadError,   setUploadError]    = useState(null);
   const [isDragOver,    setIsDragOver]     = useState(false);
+  const [uploadedAssets, setUploadedAssets] = useState([]);
+
+  useEffect(() => {
+    setUploadedAssets((prev) => {
+      const next = [...prev];
+      const seen = new Set(next.map((asset) => asset.id));
+      existingAssets.forEach((asset) => {
+        if (!seen.has(asset.id)) {
+          next.push(asset);
+          seen.add(asset.id);
+        }
+      });
+      return next;
+    });
+  }, [existingAssets]);
+
+  const visibleExistingAssets = useMemo(() => {
+    const seen = new Set();
+    return [...existingAssets, ...uploadedAssets].filter((asset) => {
+      if (seen.has(asset.id)) return false;
+      seen.add(asset.id);
+      return true;
+    });
+  }, [existingAssets, uploadedAssets]);
 
   const addFiles = useCallback((newFiles) => {
     const valid = Array.from(newFiles).filter(f => {
@@ -143,6 +177,17 @@ const MediaUploader = ({
       setFiles([]);
       setPreviews([]);
       setProgress(100);
+      setUploadedAssets(prev => {
+        const seen = new Set(prev.map((asset) => asset.id));
+        const next = [...prev];
+        (res.data.data.assets || []).forEach((asset) => {
+          if (!seen.has(asset.id)) {
+            next.push(asset);
+            seen.add(asset.id);
+          }
+        });
+        return next;
+      });
       onUploadComplete?.(res.data.data.assets);
     } catch (err) {
       setUploadError(err.response?.data?.message || 'Upload failed. Please try again.');
@@ -155,23 +200,30 @@ const MediaUploader = ({
     if (!confirm('Delete this media file?')) return;
     try {
       await deleteMediaAsset(assetId);
+      setUploadedAssets(prev => prev.filter((asset) => asset.id !== assetId));
       onAssetDeleted?.(assetId);
     } catch {
       alert('Failed to delete media. Please try again.');
     }
   };
 
+  const uploadButtonText = files.length === 1
+    ? 'Upload File'
+    : files.length > 2
+      ? `Upload ${files.length} Files as Batch`
+      : `Upload ${files.length} Files`;
+
   return (
     <div className="space-y-4">
 
       {/* Existing assets grid */}
-      {existingAssets.length > 0 && (
+      {visibleExistingAssets.length > 0 && (
         <div>
           <p className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest mb-2">
             Uploaded Media
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {existingAssets.map(asset => (
+            {visibleExistingAssets.map(asset => (
               <ExistingAssetItem
                 key={asset.id}
                 asset={asset}
@@ -216,6 +268,11 @@ const MediaUploader = ({
               <p className="text-xs text-zinc-500 mt-1">
                 Photos (JPG, PNG, WEBP) or Videos (MP4, MOV) · Max {MAX_SIZE_MB} MB each
               </p>
+              {files.length > 2 && (
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  Batch upload enabled: files will be sent together, not one by one.
+                </p>
+              )}
               <p className="text-xs text-zinc-600 mt-0.5">
                 Multiple images = Carousel post
               </p>
@@ -273,7 +330,7 @@ const MediaUploader = ({
           onClick={handleUpload}
           className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-all hover:shadow-[0_0_20px_rgba(246,183,10,0.3)]"
         >
-          Upload {files.length} File{files.length > 1 ? 's' : ''}
+          {uploadButtonText}
         </button>
       )}
     </div>

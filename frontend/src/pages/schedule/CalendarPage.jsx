@@ -25,7 +25,7 @@ import {
   fLongDateTime,
   TZ,
 } from '../../utils/formatDate';
-import { fetchMediaBySchedule, uploadMedia } from '../../services/mediaService';
+import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../services/mediaService';
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
 import { useNotification } from '../../context/NotificationContext';
@@ -497,7 +497,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
 };
 
 // ─── Detail Modal ─────────────────────────────────────────────
-const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLoading = false, onMediaUpload, onMediaDeleted, assets, loadingAssets, canEdit }) => {
+const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLoading = false, onMediaUpload, onMediaDeleted, onMediaDelete, assets, loadingAssets, canEdit }) => {
   const cfg = STATUS_CONFIG[schedule.status] || STATUS_CONFIG.draft;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -530,8 +530,8 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
         <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
           {schedule.custom_hashtags?.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {schedule.custom_hashtags.map(h => (
-                <span key={h} className="text-xs px-2 py-0.5 rounded-full bg-surface-overlay text-text-secondary font-body">{h}</span>
+              {schedule.custom_hashtags.map((h, idx) => (
+                <span key={`${h}-${idx}`} className="text-xs px-2 py-0.5 rounded-full bg-surface-overlay text-text-secondary font-body">{h}</span>
               ))}
             </div>
           )}
@@ -546,7 +546,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
                 </svg>
                 Loading media…
               </div>
-            ) : <MediaPreview assets={assets} />}
+            ) : <MediaPreview assets={assets} onDeleteAsset={canEdit && schedule.status !== 'published' ? onMediaDelete : undefined} />}
 
             {canEdit && schedule.status !== 'published' && (
               <div className="mt-3">
@@ -800,6 +800,17 @@ const CalendarPage = () => {
     loadMonth();
   };
 
+  const handleMediaDelete = async (asset) => {
+    try {
+      await deleteMediaAsset(asset.id);
+      setAssets(prev => prev.filter(item => item.id !== asset.id));
+      loadMonth();
+      toast.success('Media deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete media');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-surface overflow-hidden font-body">
 
@@ -965,6 +976,7 @@ const CalendarPage = () => {
           publishLoading={publishLoadingId === activeSchedule.id}
           onMediaUpload={handleMediaUpload}
           onMediaDeleted={(id) => setAssets(prev => prev.filter(a => a.id !== id))}
+          onMediaDelete={handleMediaDelete}
           canEdit={canEdit} />
       )}
 
