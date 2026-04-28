@@ -77,6 +77,10 @@
 }
 
 @layer utilities {
+  .pages-font-semibold :is(p, span, label, a, button, input, textarea, select, li) {
+    font-weight: 600;
+  }
+
   .text-gradient {
     background: linear-gradient(90deg, #f6b70a, #fecb00);
     -webkit-background-clip: text;

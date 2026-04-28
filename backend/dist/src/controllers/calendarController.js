@@ -1,0 +1,142 @@
+import { validationResult } from 'express-validator';
+import * as scheduleService from "../services/scheduleService.js";
+import { success, error } from "../utils/responseHelper.js";
+import logger from "../utils/logger.js";
+export const getCalendarByMonth = async (req, res) => {
+    try {
+        const year = parseInt(req.query['year'], 10) || new Date().getFullYear();
+        const month = parseInt(req.query['month'], 10) || (new Date().getMonth() + 1);
+        if (month < 1 || month > 12) {
+            error(res, { message: 'Invalid month value (1–12)', statusCode: 400 });
+            return;
+        }
+        const schedules = await scheduleService.getSchedulesByMonth(year, month);
+        success(res, { message: 'Calendar loaded', data: { year, month, schedules } });
+    }
+    catch (err) {
+        logger.error('[calendarController.getCalendarByMonth]', err);
+        error(res, { message: 'Failed to load calendar', statusCode: 500 });
+    }
+};
+export const getDrafts = async (_req, res) => {
+    try {
+        const drafts = await scheduleService.getDraftSchedules();
+        success(res, { message: 'Drafts loaded', data: { drafts } });
+    }
+    catch (err) {
+        logger.error('[calendarController.getDrafts]', err);
+        error(res, { message: 'Failed to load drafts', statusCode: 500 });
+    }
+};
+export const getScheduleById = async (req, res) => {
+    try {
+        const schedule = await scheduleService.getScheduleById(req.params['id']);
+        if (!schedule) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        success(res, { message: 'Schedule loaded', data: { schedule } });
+    }
+    catch (err) {
+        logger.error('[calendarController.getScheduleById]', err);
+        error(res, { message: 'Failed to load schedule', statusCode: 500 });
+    }
+};
+export const createSchedule = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        error(res, { message: 'Validation failed', errors: errors.array(), statusCode: 422 });
+        return;
+    }
+    try {
+        const authReq = req;
+        const { content_idea_id, title, description, caption, hashtags, scheduled_at, priority } = req.body;
+        const schedule = await scheduleService.createSchedule({
+            idea_id: content_idea_id ?? null,
+            created_by: authReq.user.userId,
+            title: title,
+            description: description,
+            caption: caption,
+            hashtags: hashtags ?? [],
+            scheduled_at: scheduled_at ?? null,
+            priority: priority ?? 0,
+        });
+        logger.info(`[Calendar] Schedule created id=${schedule.id} by user=${authReq.user.userId}`);
+        success(res, { message: 'Schedule created', data: { schedule }, statusCode: 201 });
+    }
+    catch (err) {
+        logger.error('[calendarController.createSchedule]', err);
+        error(res, { message: 'Failed to create schedule', statusCode: 500 });
+    }
+};
+export const updateSchedule = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        error(res, { message: 'Validation failed', errors: errors.array(), statusCode: 422 });
+        return;
+    }
+    try {
+        const existing = await scheduleService.getScheduleById(req.params['id']);
+        if (!existing) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        if (existing.status === 'published') {
+            error(res, { message: 'Cannot edit a published schedule', statusCode: 409 });
+            return;
+        }
+        const schedule = await scheduleService.updateSchedule(req.params['id'], req.body);
+        logger.info(`[Calendar] Schedule updated id=${schedule.id}`);
+        success(res, { message: 'Schedule updated', data: { schedule } });
+    }
+    catch (err) {
+        logger.error('[calendarController.updateSchedule]', err);
+        error(res, { message: 'Failed to update schedule', statusCode: 500 });
+    }
+};
+export const moveSchedule = async (req, res) => {
+    try {
+        const { scheduled_at } = req.body;
+        if (!scheduled_at) {
+            error(res, { message: 'scheduled_at is required for move', statusCode: 400 });
+            return;
+        }
+        const existing = await scheduleService.getScheduleById(req.params['id']);
+        if (!existing) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        if (existing.status === 'published') {
+            error(res, { message: 'Cannot move a published schedule', statusCode: 409 });
+            return;
+        }
+        const schedule = await scheduleService.moveSchedule(req.params['id'], scheduled_at);
+        logger.info(`[Calendar] Schedule moved id=${schedule.id} to ${scheduled_at}`);
+        success(res, { message: 'Schedule moved', data: { schedule } });
+    }
+    catch (err) {
+        logger.error('[calendarController.moveSchedule]', err);
+        error(res, { message: 'Failed to move schedule', statusCode: 500 });
+    }
+};
+export const deleteSchedule = async (req, res) => {
+    try {
+        const existing = await scheduleService.getScheduleById(req.params['id']);
+        if (!existing) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        if (existing.status === 'published') {
+            error(res, { message: 'Cannot delete a published schedule', statusCode: 409 });
+            return;
+        }
+        await scheduleService.deleteSchedule(req.params['id']);
+        logger.info(`[Calendar] Schedule deleted id=${req.params['id']}`);
+        success(res, { message: 'Schedule deleted' });
+    }
+    catch (err) {
+        logger.error('[calendarController.deleteSchedule]', err);
+        error(res, { message: 'Failed to delete schedule', statusCode: 500 });
+    }
+};
+//# sourceMappingURL=calendarController.js.map

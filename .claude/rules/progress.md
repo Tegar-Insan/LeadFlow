@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-04-20 (session 3)
+**Last updated:** 2026-04-25 (session 9)
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -40,6 +40,15 @@ All 13 core tables are defined and deployed to Supabase:
 | Calendar | `POST /api/calendar` | ✅ Done |
 | Calendar | `PUT /api/calendar/:id` | ✅ Done |
 | Calendar | `DELETE /api/calendar/:id` | ✅ Done |
+| Prompt | `GET /api/prompt/mine` | ✅ Done |
+| Prompt | `GET /api/prompt/:promptId` | ✅ Done |
+| Content | `POST /api/content/generate` | ✅ Done |
+| Content | `GET /api/content/pending` | ✅ Done |
+| Content | `POST /api/content/:ideaId/approve` | ✅ Done |
+| Content | `POST /api/content/:ideaId/reject` | ✅ Done |
+| Comments | `GET /api/comments/:scheduleId` | ✅ Done |
+| Comments | `POST /api/comments` | ✅ Done |
+| Comments | `DELETE /api/comments/:id` | ✅ Done |
 | Media | `POST /api/media/upload` | ✅ Done |
 | Media | `GET /api/media/:scheduleId` | ✅ Done |
 | Media | `DELETE /api/media/:id` | ✅ Done |
@@ -54,18 +63,20 @@ All 13 core tables are defined and deployed to Supabase:
 | TikTok | `GET /api/tiktok/status` | ✅ Done — queries tiktok_accounts, returns connected row or null |
 | TikTok | `POST /api/tiktok/disconnect` | ✅ Done — marks connection_status=disconnected |
 
-**Infrastructure done:**
+**Infrastructure done (all now TypeScript ESM):**
 - `authMiddleware` + `roleMiddleware` RBAC on all protected routes
 - `responseHelper` used consistently (never raw `res.json()`)
-- `jakartaTime.js` for all timestamps (store UTC, display WIB)
-- `passwordHelper` bcrypt throughout
-- `jwtHelper` access + refresh token rotation
-- `emailService` Gmail SMTP for OTP delivery
-- `rateLimiter`, `sanitizeInput`, `validateRequest` middleware
-- `autoPublishJob.js` + `fetchInteractionJob.js` job stubs wired in
-- `chatbotRoutes.js` mounted in `app.js` at `/api/chatbot`
-- `tiktokRoutes.js` mounted in `app.js` at `/api/tiktok`
-- `encryptionHelper.js` — AES-256-GCM encrypt/decrypt for TikTok token storage (verified round-trip)
+- `jakartaTime.ts` for all timestamps (store UTC, display WIB)
+- `passwordHelper.ts` bcrypt throughout
+- `jwtHelper.ts` access + refresh token rotation
+- `emailService.ts` Gmail SMTP for OTP delivery
+- `rateLimiter.ts`, `sanitizeInput.ts`, `validateRequest.ts` middleware
+- `autoPublishJob.ts` + `fetchInteractionJob.ts` job stubs wired in
+- `promptRoutes.ts`, `contentIdeaRoutes.ts`, `commentsRoutes.ts` mounted in `app.ts`
+- `chatbotRoutes.ts` mounted in `app.ts` at `/api/chatbot`
+- `tiktokRoutes.ts` mounted in `app.ts` at `/api/tiktok`
+- `encryptionHelper.ts` — AES-256-GCM encrypt/decrypt for TikTok token storage (verified round-trip)
+- `anthropic.ts` — Anthropic SDK client config (replaced `openai.js`)
 
 ### Frontend — Structure + Auth Flow Working
 | Page | Route | State |
@@ -74,15 +85,15 @@ All 13 core tables are defined and deployed to Supabase:
 | Register | `/register` | ✅ Working |
 | OTP Verification | `/otp` | ✅ Working |
 | Profile | `/profile` | ✅ Working |
-| Calendar | `/calendar` | ✅ Working + TikTok connect button in header |
+| Calendar | `/calendar` | ✅ Working + TikTok connect button in header + direct ideas CTA |
 | TikTok Status | `/tiktok/callback` | ✅ Working — success/error UI with 4s countdown redirect |
 | Admin — All Accounts | `/admin` | ✅ Working end-to-end |
 | Admin — Marketing Staff | `/admin/marketing-staff` | ✅ Working end-to-end |
 | Admin — Business Owners | `/admin/business-owners` | ✅ Working end-to-end |
 | Content Schedule Queue | `/schedule` | ✅ Working — list view wired to calendar API |
 | Prompt Input | `/content/prompt` | ⚠️ UI exists, backend stub |
-| Generated Ideas | `/content/ideas` | ⚠️ UI exists, backend stub |
-| Idea Validation | `/content/validate` | ⚠️ UI exists, backend stub |
+| Generated Ideas | `/calendar/ideas` | ✅ Working — same-page AI ideas flow with approve/reject |
+| Idea Validation | `/content/validate` | ✅ Working — approve/reject wired to draft validation |
 | Media Upload | `/media` | ✅ UI exists, backend connected |
 | Publish Status | `/publish` | ⚠️ UI exists, backend stub |
 | Interaction Inbox | `/interaction` | ⚠️ UI exists, backend stub |
@@ -113,11 +124,11 @@ All 13 core tables are defined and deployed to Supabase:
 ### What Was Built
 | File | Status |
 |---|---|
-| `backend/src/config/tiktok.js` | ✅ Rewritten — Login Kit v2 endpoints, `scopes: user.info.basic,video.publish,video.upload` (updated after TikTok app approval) |
-| `backend/src/utils/encryptionHelper.js` | ✅ AES-256-GCM, `iv:authTag:ciphertext` format |
-| `backend/src/services/tiktokOAuthService.js` | ✅ Full OAuth + PKCE (hex SHA256 challenge) |
-| `backend/src/controllers/tiktokController.js` | ✅ 4 endpoints wired |
-| `backend/src/routes/tiktokRoutes.js` | ✅ Mounted in app.js |
+| `backend/src/config/tiktok.ts` | ✅ Rewritten — Login Kit v2 endpoints, `scopes: user.info.basic,video.publish,video.upload` (updated after TikTok app approval) |
+| `backend/src/utils/encryptionHelper.ts` | ✅ AES-256-GCM, `iv:authTag:ciphertext` format |
+| `backend/src/services/tiktokOAuthService.ts` | ✅ Full OAuth + PKCE (hex SHA256 challenge) |
+| `backend/src/controllers/tiktokController.ts` | ✅ 4 endpoints wired |
+| `backend/src/routes/tiktokRoutes.ts` | ✅ Mounted in app.ts |
 | `frontend/src/services/tiktokService.js` | ✅ 3 exports: authUrl, status, disconnect |
 | `frontend/src/components/common/TikTokLoginButton.jsx` | ✅ Connect/connected badge |
 | `frontend/src/pages/auth/TikTokStatusPage.jsx` | ✅ Success/error callback page |
@@ -136,9 +147,16 @@ All 13 core tables are defined and deployed to Supabase:
 - **Current scope: `user.info.basic,video.publish,video.upload`** — TikTok app approved for all three (2026-04-20)
 - `follower_count` field in `/user/info` requires separate `user.info.stats` scope — **omitted from fetchUserInfo**, field hardcoded to `0` until that scope is approved
 
+### Redirect URI — Lessons Learned
+- TikTok Login Kit redirect URI in development should stay `http://localhost:5000/api/tiktok/callback`.
+- The Cloudflare tunnel is for public media / posting endpoints only, not for OAuth redirect handling.
+- `dotenv.config({ override: true })` is required in `backend/server.ts` so a stale shell value does not silently keep the tunnel URI active.
+- `backend/src/services/tiktokOAuthService.ts` must use one normalized `TIKTOK_REDIRECT_URI` for both authorize URL generation and token exchange.
+- Do not switch `TIKTOK_REDIRECT_URI` to the tunnel unless the TikTok Developer Console is re-registered byte-for-byte for that exact URI.
+
 ---
 
-## Current State (2026-04-20)
+## Current State (2026-04-25)
 
 ### What Actually Works End-to-End
 1. Register → OTP email → verify → JWT login → protected routes
@@ -149,38 +167,42 @@ All 13 core tables are defined and deployed to Supabase:
 6. Admin panel: 3 pages, search, role change, active toggle — fully connected
 7. AI Chatbot: Claude + Apify TikTok intelligence, schedule approval card
 8. **TikTok OAuth connect: full flow working** — button in calendar header → TikTok authorize → callback → encrypted tokens in DB → success page with countdown → badge shows connected account
+9. **UC005 Ideas flow: full flow working** — Calendar header / dashboard / sidebar all point to `/calendar/ideas`; generated cards render on the same page; approve removes the card; reject soft-deletes
+10. **Draft comments: full flow working** — draft schedules in the calendar detail modal expose comment threads; published schedules stay locked
 
 ### What Is Wired Up but Blocked on Backend Stubs
-- Content idea generation (UC004–UC005) — frontend UI ready, Node controller/service empty
-- Idea validation approve/reject (UC006) — frontend UI ready, no backend logic
-- Interaction inbox (UC010–UC012) — frontend UI ready, no TikTok fetch logic
-- Weekly dashboard (UC013) — frontend UI ready, no aggregation queries
-- Publish status (UC009) — frontend UI ready, no TikTok publish integration
+- Prompt input (UC004) — route mounted and readable prompt history available, but the standalone page still follows the older layout
+- Interaction inbox (UC010–UC012) — frontend UI ready, no TikTok fetch logic in `interactionService.ts`
+- Weekly dashboard (UC013) — frontend UI ready, `dashboardService.ts` exists but aggregation queries not wired
+- Publish status (UC009) — frontend UI ready, `publishService.ts` exists, TikTok publish flow in `tiktokPublishService.ts`
 
 ---
 
 ## Next Steps (Priority Order)
 
-### Phase 1 — Core Content Pipeline (UC004–UC006) ← NEXT
-1. **Backend: Prompt input** — `promptController.js` + `promptRoutes.js`, save to `prompts` table
-2. **Backend: Content idea generation** — `contentIdeaController.js` + `contentIdeaService.js`, call Python FastAPI to generate exactly 3 ideas, save to `content_ideas` with `status=pending_validation`
-3. **Backend: Idea validation** — `IdeaValidationController.js`, approve → auto-create draft in `content_queue_schedules` (DB trigger in migration 006 handles this), reject → status=rejected
-4. **Mount all three route groups in `app.js`**
-5. **Wire frontend pages**: `/content/prompt`, `/content/ideas`, `/content/validate`
+### Phase 1 — Core Content Pipeline (UC004–UC006) ✅ Complete
+1. Prompt input routes are mounted and prompt history is readable.
+2. Content idea generation now returns structured drafts and persists `pending_validation` ideas.
+3. Idea validation approve/reject is wired, with approve creating the draft schedule via DB trigger and reject soft-deleting.
+4. Route groups are mounted in `app.ts` for prompt, content, and comments.
+5. Frontend entry points now all point to `/calendar/ideas`.
 
 ### Phase 2 — TikTok Publish + Interactions (UC009–UC012)
-6. Publish to TikTok — `publishService.js`, write to `publish_status_logs` (requires Content Posting API approval first)
-7. Fetch interactions — `fetchInteractionJob.js` implementation
+6. Publish to TikTok — `tiktokPublishService.ts` exists, wire `publishRoutes.ts` in `app.ts`, write to `publish_status_logs`
+7. Fetch interactions — `fetchInteractionJob.ts` implementation
 8. Interaction inbox — view, reply (push to TikTok), delete
 
 ### Phase 3 — Weekly Dashboard (UC013)
 9. Weekly dashboard backend — aggregation queries (current/last/2 weeks ago), restrict to `business_owner`
 10. Wire up `WeeklyDashboardPage.jsx`
 
-### Phase 4 — Testing + CI/CD
-11. Backend tests — Jest + Supertest covering full auth flow, calendar CRUD, media validation
-12. GitHub Actions — `.github/workflows/ci-backend.yml`, `ci-frontend.yml`, `ci-ai.yml`
-13. Move `/github/` folder to `/.github/` (currently in wrong location — CI never triggers)
+### Phase 4 — TypeScript Compiler Fix ✅ Complete
+11. `jakartaTime.ts` dayjs plugin typing is resolved and backend `npm run typecheck` passes.
+
+### Phase 5 — Testing + CI/CD
+12. Backend tests — Jest + Supertest covering full auth flow, calendar CRUD, media validation
+13. GitHub Actions — `.github/workflows/ci-backend.yml`, `ci-frontend.yml`, `ci-ai.yml`
+14. Move `/github/` folder to `/.github/` (currently in wrong location — CI never triggers)
 
 ---
 
@@ -286,3 +308,173 @@ All 13 core tables are defined and deployed to Supabase:
 ### Supporting config updates
 - `backend/package.json` adds `dev:8000` and `start:8000` scripts.
 - `backend/.env.example` adds `TIKTOK_MEDIA_PUBLIC_BASE_URL` and clarifies `PORT=8000` usage for tunnel workflow.
+
+## Session 6 Update (2026-04-23) — Redirect URI Normalization
+
+### Backend OAuth summary
+- TikTok Login Kit now resolves the redirect URI from `TIKTOK_REDIRECT_URI=http://localhost:5000/api/tiktok/callback` in local development.
+- The OAuth service uses the same redirect URI for the authorize URL and the token exchange body, so the value cannot drift between steps.
+- `backend/server.ts` now loads `.env` with `override: true` and logs the resolved redirect URI at startup to surface stale tunnel values immediately.
+
+### Do not do this forward
+- Do not point the OAuth redirect URI at the Cloudflare tunnel just because the tunnel is already used for content posting/public media.
+- Keep the tunnel for `TIKTOK_MEDIA_PUBLIC_BASE_URL` and other public endpoints only.
+- If TikTok throws `redirect_uri`, re-check the TikTok Developer Console registration before changing backend code again.
+
+---
+
+## Session 7 Update (2026-04-24) — Backend TypeScript Migration
+
+### What Was Done
+Full backend migration from CommonJS JavaScript to strict TypeScript ESM (`module: NodeNext`, `moduleResolution: NodeNext`, `strict: true`).
+
+**tsconfig.json** — at `backend/tsconfig.json`, covers `server.ts`, `app.ts`, and all `src/**/*.ts`. Key flags:
+- `rewriteRelativeImportExtensions: true` — source files keep `.ts` specifiers; dist output uses `.js`
+- `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`
+
+**Files migrated (all now `.ts`, CommonJS `require/module.exports` removed):**
+
+| Layer | Files |
+|---|---|
+| Entry points | `server.ts`, `app.ts` (root-level), `src/app.ts` |
+| Config | `config/db.ts`, `config/env.ts`, `config/supabase.ts`, `config/tiktok.ts`, `config/anthropic.ts` (replaces `openai.js`) |
+| Middleware | `authMiddleware.ts`, `errorHandler.ts`, `rateLimiter.ts`, `roleMiddleware.ts`, `sanitizeInput.ts`, `validateRequest.ts` |
+| Utils | `responseHelper.ts`, `jwtHelper.ts`, `jakartaTime.ts`, `passwordHelper.ts`, `encryptionHelper.ts`, `logger.ts`, `dayjsPlugins.ts` |
+| Controllers | `authController.ts`, `calendarController.ts`, `chatbotController.ts`, `tiktokController.ts`, `mediaController.ts`, `profileController.ts`, `contentIdeaController.ts`, `IdeaValidationController.ts`, `dashboardController.ts`, `InteractionMessageController.ts`, `InteractionCommentController.ts`, `promptController.ts`, `publishStatusController.ts`, `roleController.ts`, `contentScheduleQueueController.ts`, `publicMediaController.ts` |
+| Services | `anthropicService.ts`, `authService.ts`, `contentIdeaService.ts`, `dashboardService.ts`, `emailService.ts`, `interactionService.ts`, `otpService.ts`, `publishService.ts`, `scheduleService.ts`, `tiktokOAuthService.ts`, `tiktokPublishService.ts` |
+| Routes | All `.ts` — `authRoutes`, `calendarRoutes`, `chatbotRoutes`, `contentIdeaRoutes`, `dashboardRoutes`, `interactionRoutes`, `mediaRoutes`, `profileRoutes`, `promptRoutes`, `publicMediaRoutes`, `publishRoutes`, `roleRoutes`, `scheduleRoutes`, `tiktokRoutes` |
+| Models | All `.ts` — `User`, `UserProfile`, `UserPhoto`, `Prompt`, `ContentIdea`, `ContentQueueSchedule`, `ContentAsset`, `PublishStatus`, `TiktokAccount`, `InteractionMessage`, `ClassifyTypeMessage`, `WeeklyDashboardReport`, `Role` |
+| Jobs | `autoPublishJob.ts`, `fetchInteractionJob.ts` |
+
+**AI client switch:** `config/anthropic.ts` replaces the old `openai.js`. All AI calls in `anthropicService.ts` and `chatbotController.ts` now use the Anthropic SDK.
+
+**Key shared types added:**
+- `ChatMessage` interface (`{ role: 'user' | 'assistant'; content: string }`)
+- `ParsedSchedule` interface (in `anthropicService.ts`)
+- All controller handlers use `Request`, `Response` from express with inline body casts
+
+### Known Open Issue
+- `jakartaTime.ts` has 2 TypeScript errors: `Property 'tz' does not exist on type 'Dayjs'` and `Property 'utc' does not exist on type 'Dayjs'`
+- Root cause: `dayjsPlugins.ts` extends dayjs globally but TypeScript strict mode requires the augmented type to be imported in the same file
+- Fix: add `import './dayjsPlugins.ts'` at the top of `jakartaTime.ts`, OR re-export a pre-extended dayjs instance from `dayjsPlugins.ts` and import that instead of raw `dayjs`
+
+### Routes Currently Mounted in app.ts
+```
+/api/auth        → authRoutes
+/api/profile     → profileRoutes
+/api/calendar    → calendarRoutes
+/api/schedule    → scheduleRoutes
+/api/media       → mediaRoutes
+/api/admin       → roleRoutes
+/api/chatbot     → chatbotRoutes
+/api/tiktok      → tiktokRoutes
+/tiktok/public   → publicMediaRoutes
+```
+
+**Not yet mounted** (route files exist but unreachable):
+- `/api/prompt` — `promptRoutes.ts`
+- `/api/content` — `contentIdeaRoutes.ts`
+- `/api/interaction` — `interactionRoutes.ts`
+- `/api/dashboard` — `dashboardRoutes.ts`
+- `/api/publish` — `publishRoutes.ts`
+
+---
+
+## Session 8 Update (2026-04-24) — Auth Redirect Fix + Business Owner Dashboard Route
+
+### Problem Identified
+Business owners were being misdirected after login. The auth flow had a critical inconsistency:
+1. **AuthContext** was redirecting `business_owner` role to `/calendar` (a page designed for marketing staff/admin)
+2. **appRoutes.tsx** did not expose a `/dashboard` route, making the correct destination unreachable
+3. **LoginPage** fallback redirect was partly hardcoded, reducing role-aware flexibility
+
+This meant business owners would either land on the wrong page or encounter a 404 after successful login.
+
+### Root Cause Analysis
+The three-part redirect system was misaligned:
+- **Auth State (AuthContext.tsx)** — determined where each role should go after login
+- **Route Table (appRoutes.tsx)** — determined which pages actually existed
+- **UI Fallback (LoginPage.tsx)** — was a backup path if auth state didn't settle in time
+
+Business owner redirect path `'/calendar'` vs. non-existent `/dashboard` route meant the system was broken for that user type.
+
+### Solution Implemented
+
+#### 1. Fixed AuthContext.tsx (line 115)
+**Before:**
+```tsx
+role === 'business_owner' ? '/calendar' : '/dashboard'
+```
+**After:**
+```tsx
+role === 'business_owner' ? '/dashboard' : '/calendar'
+```
+This ensures the login return value correctly points business owners to their own dashboard instead of the marketing staff calendar.
+
+#### 2. Added Missing Route in appRoutes.tsx
+Added new protected route definition:
+```tsx
+<Route
+  path="/dashboard"
+  element={
+    <ProtectedRoute allowedRoles={['business_owner']}>
+      <OwnerDashboard />
+    </ProtectedRoute>
+  }
+/>
+```
+This exposes the existing `OwnerDashboard.tsx` component (which was orphaned—implemented but unreachable) and restricts access to business owners only via `ProtectedRoute` role guard.
+
+#### 3. Updated LoginPage.tsx (line 268)
+**Before:**
+```tsx
+const dest = from || '/calendar'; // hardcoded fallback
+```
+**After:**
+```tsx
+const dest = from || dashboardPath || '/calendar';
+```
+This makes the fallback redirect use the dynamic, role-aware `dashboardPath` computed in the auth context, ensuring all user types get the correct page even if `location.state.from` is not set.
+
+### Validation Results
+- **TypeScript compilation**: ✅ All three modified files compile with zero errors
+- **Import verification**: ✅ `OwnerDashboard` correctly imported in `appRoutes.tsx`
+- **Route protection**: ✅ `ProtectedRoute` guard checks `allowedRoles=['business_owner']` correctly
+- **Auth state logic**: ✅ Role-to-path mapping now consistent: `admin → /admin`, `business_owner → /dashboard`, `marketing_staff → /calendar`
+
+### Impact
+- **Before**: Business owners login → redirect to `/calendar` → see marketing calendar (wrong page) or 404
+- **After**: Business owners login → redirect to `/dashboard` → see OwnerDashboard with their KPI analytics (correct page)
+
+### Files Modified in Session 8
+1. `/frontend/src/context/AuthContext.tsx` — fixed business_owner redirect destination
+2. `/frontend/src/routes/appRoutes.tsx` — exposed `/dashboard` protected route with OwnerDashboard
+3. `/frontend/src/pages/auth/LoginPage.tsx` — updated fallback to use dynamic dashboardPath
+
+### Technical Notes
+- The fix was minimal and surgical—no LoginPage UI changes, no form submission logic changes
+- The OwnerDashboard component was already fully implemented (fetches API, renders KPI cards, charts) but was orphaned in the route table
+- This fix demonstrates the importance of coordinating auth state (where), routes (what exists), and UI fallback (safety net) as a cohesive system
+- No new dependencies or migrations required—all pieces were already in place, just misaligned
+
+## Session 9 Update (2026-04-25) — UC005 Route Finalization + Same-Page Ideas Flow
+
+### What Was Done
+- Moved the canonical UC005 ideas page to `/calendar/ideas`.
+- Updated the Calendar header CTA text to `Generate ideas` and made it navigate directly to `/calendar/ideas`.
+- Updated the dashboard quick action and sidebar navigation to point to `/calendar/ideas`.
+- Kept `/ideas` and `/content/ideas` as redirects so old bookmarks do not break.
+- Mounted `promptRoutes.ts`, `contentIdeaRoutes.ts`, and `commentsRoutes.ts` in `backend/src/app.ts`.
+- Finished the content generation pipeline so `contentIdeaService.ts` returns structured schedule drafts instead of text.
+- Wired approve/reject validation so approved ideas become draft schedules and rejected ideas soft-delete.
+- Added draft-only schedule comments inside the calendar detail modal.
+
+### Validation Results
+- `npm run typecheck` in `backend/` passes.
+- Edited frontend files for the route change compile cleanly.
+- The UI entry points now consistently lead to the same UC005 page.
+
+### Impact
+- The user-facing route confusion around `/ideas` is removed.
+- Marketing staff now has one direct path for UC005: calendar header, dashboard quick action, and sidebar all land on `/calendar/ideas`.
+- The implementation aligns with the same-page approval flow and draft-only comment rule already documented in the tracker.

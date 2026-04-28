@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    /* File Layout */
+    "rootDir": ".",
+    "outDir": "./dist",
+
+    /* Environment Settings */
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ESNext",
+    "types": ["node"],
+    "allowJs": false,
+
+    /* Emitter Options */
+    // TypeScript rewrites relative .ts imports to .js in emitted output,
+    // so source files can keep .ts specifiers while dist stays runnable.
+    "noEmit": false, 
+    "rewriteRelativeImportExtensions": true,
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    /* Stricter Typechecking Options */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    /* Recommended Options */
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true
+  },
+  "include": [
+    "server.ts", 
+    "app.ts", 
+    "src/**/*.ts", 
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules", 
+    "dist"
+  ]
+}

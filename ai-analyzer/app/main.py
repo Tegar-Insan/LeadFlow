@@ -44,7 +44,7 @@ async def health():
     return {
         "status": "healthy",
         "service": "LeadFlow AI Microservice",
-        "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+        "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
         "brightdata_configured": bool(os.getenv("BRIGHTDATA_DATASET_ID", "").strip()),
     }
 
@@ -52,5 +52,5 @@ async def health():
 @app.on_event("startup")
 async def on_startup():
     logger.info("LeadFlow AI Microservice started on port 8000")
-    logger.info(f"Anthropic model: {os.getenv('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001')}")
+    logger.info(f"Anthropic model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-6')}")
     logger.info(f"Bright Data dataset: {os.getenv('BRIGHTDATA_DATASET_ID', 'NOT SET')}")

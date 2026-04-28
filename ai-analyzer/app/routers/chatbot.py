@@ -73,7 +73,7 @@ async def chatbot_message(req: ChatRequest):
             reply="AI Assistant belum dikonfigurasi. Silakan hubungi admin untuk mengatur ANTHROPIC_API_KEY.",
             type="text",
             schedule=None,
-            model="stub",
+            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
         )
 
     tiktok_context = await _get_tiktok_context()
@@ -116,7 +116,7 @@ async def analyze_tiktok():
         return TikTokAnalysisResponse(
             analysis="No TikTok data available. Set APIFY_DATASET_ID in .env.",
             post_count=0,
-            model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+            model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
         )
 
     analysis = await analyze_tiktok_data(summary)
@@ -126,5 +126,5 @@ async def analyze_tiktok():
     return TikTokAnalysisResponse(
         analysis=analysis,
         post_count=len(posts),
-        model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+        model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
     )

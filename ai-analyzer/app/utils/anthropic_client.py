@@ -33,4 +33,4 @@ def get_client() -> anthropic.AsyncAnthropic:
 
 
 def get_model_id() -> str:
-    return os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001").strip()
+    return os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip()
