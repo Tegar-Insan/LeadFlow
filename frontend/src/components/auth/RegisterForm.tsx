@@ -22,8 +22,8 @@ type FieldProps = {
 
 function Field({ id, label, type = 'text', placeholder, autoComplete, value, onChange, error, hint }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest">
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-xs font-headline font-bold text-text-secondary uppercase tracking-widest">
         {label} <span className="text-brand">*</span>
       </label>
       <input
@@ -33,9 +33,9 @@ function Field({ id, label, type = 'text', placeholder, autoComplete, value, onC
         autoComplete={autoComplete}
         value={value}
         onChange={onChange}
-        className={`input-field ${error ? 'input-error' : ''}`}
+        className={`input-field text-base py-3.5 ${error ? 'input-error' : ''}`}
       />
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
       {!error && hint && <p className="text-xs text-text-muted">{hint}</p>}
     </div>
   );
@@ -53,18 +53,18 @@ function PasswordStrength({ password }) {
   const colors = ['', 'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-green-500'];
   const labels = ['', 'Very weak', 'Weak', 'Fair', 'Good', 'Strong'];
   return (
-    <div className="mt-1.5">
-      <div className="flex gap-1 mb-1">
+    <div className="mt-2">
+      <div className="flex gap-1 mb-1.5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
               i < score ? colors[score] : 'bg-surface-overlay'
             }`}
           />
         ))}
       </div>
-      <p className="text-xs text-text-muted">{labels[score]}</p>
+      <p className="text-xs text-text-muted font-medium">{labels[score]}</p>
     </div>
   );
 }
@@ -139,11 +139,11 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
 
       {/* API error banner */}
       {apiError && (
-        <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm animate-slide-up
+        <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium animate-slide-up
           ${apiError.startsWith('[DEV')
             ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
             : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
@@ -173,8 +173,8 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
       />
 
       {/* Password with strength meter */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="password" className="text-xs font-headline font-bold text-text-secondary uppercase tracking-widest">
           Password <span className="text-brand">*</span>
         </label>
         <div className="relative">
@@ -185,7 +185,7 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
             placeholder="Min. 8 chars, A-Z, 0-9, @$!%"
             value={form.password}
             onChange={handle('password')}
-            className={`input-field pr-11 ${errors.password ? 'input-error' : ''}`}
+            className={`input-field pr-12 text-base py-3.5 ${errors.password ? 'input-error' : ''}`}
           />
           <button
             type="button"
@@ -193,7 +193,7 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
             tabIndex={-1}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               {showPw
                 ? <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" strokeLinecap="round" strokeLinejoin="round"/>
                 : <>
@@ -205,7 +205,7 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
           </button>
         </div>
         <PasswordStrength password={form.password} />
-        {errors.password && <p className="text-xs text-red-400">{errors.password}</p>}
+        {errors.password && <p className="text-xs text-red-400 font-medium">{errors.password}</p>}
       </div>
 
       <Field
@@ -217,31 +217,31 @@ export default function RegisterForm({ onSubmit, loading = false, apiError = '' 
 
       {/* Role selector */}
       <div>
-        <label className="text-[10px] font-headline font-bold text-text-secondary uppercase tracking-widest block mb-3">
+        <label className="text-xs font-headline font-bold text-text-secondary uppercase tracking-widest block mb-4">
           Select role <span className="text-brand">*</span>
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {ROLE_OPTIONS.map(({ value, label, desc }) => (
             <button
               key={value}
               type="button"
               onClick={() => selectRole(value)}
-              className={`p-3 rounded-xl border text-left transition-all duration-200 backdrop-blur-sm
+              className={`p-4 rounded-xl border text-left transition-all duration-200 backdrop-blur-sm
                 ${form.role === value
                   ? 'border-brand/60 bg-brand/[0.08] shadow-[0_0_16px_rgba(246,183,10,0.15)]'
                   : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.05]'}`}
             >
-              <p className={`text-sm font-semibold mb-0.5 ${form.role === value ? 'text-brand' : 'text-text-primary'}`}>
+              <p className={`text-base font-semibold mb-1 ${form.role === value ? 'text-brand' : 'text-text-primary'}`}>
                 {label}
               </p>
-              <p className="text-xs text-text-muted leading-tight">{desc}</p>
+              <p className="text-sm text-text-muted leading-tight">{desc}</p>
             </button>
           ))}
         </div>
-        {errors.role && <p className="text-xs text-red-400 mt-1.5">{errors.role}</p>}
+        {errors.role && <p className="text-xs text-red-400 mt-2 font-medium">{errors.role}</p>}
       </div>
 
-      <Button type="submit" variant="primary" loading={loading} className="w-full">
+      <Button type="submit" variant="primary" loading={loading} className="w-full py-4 text-base font-semibold">
         Continue — Verify Email
       </Button>
     </form>

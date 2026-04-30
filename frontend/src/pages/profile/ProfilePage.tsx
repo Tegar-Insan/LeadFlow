@@ -1,358 +1,505 @@
-/**
- * ProfilePage.jsx
- * User profile — read + CRUD (name, phone, password)
- * LeadFlow – Krench Chicken
- */
-
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
-import Sidebar from '../../components/common/Sidebar';
-import Navbar  from '../../components/common/Navbar';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { getProfile, updateProfile, changePassword, uploadPhoto, deletePhoto } from '../../services/profileService';
 
-const ROLE_CONFIG = {
-  admin:           { label: 'Admin',           cls: 'status-scheduled' },
-  business_owner:  { label: 'Business Owner',  cls: 'status-draft' },
-  marketing_staff: { label: 'Marketing Staff', cls: 'status-live' },
+/* ─── Dot background ─────────────────────────────────────────── */
+interface Dot { ox: number; oy: number; x: number; y: number; phase: number; }
+const COLS = 40, RADIUS = 1.8, REPEL = 120, STRENGTH = 18, WAVE_SPEED = 0.0012;
+
+const DotBackground: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glowRef   = useRef<HTMLDivElement>(null);
+  const dotsRef   = useRef<Dot[]>([]);
+  const mouseRef  = useRef({ mx: -9999, my: -9999, targetMx: -9999, targetMy: -9999 });
+  const rafRef    = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx    = canvas.getContext('2d')!;
+
+    const resize = () => {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const gap  = canvas.width / COLS;
+      const rows = Math.ceil(canvas.height / gap) + 1;
+      dotsRef.current = [];
+      for (let r = 0; r <= rows; r++)
+        for (let c = 0; c <= COLS; c++)
+          dotsRef.current.push({ ox: c * gap, oy: r * gap, x: c * gap, y: r * gap, phase: Math.random() * Math.PI * 2 });
+    };
+
+    let t = 0;
+    const draw = () => {
+      const { mx: pmx, my: pmy, targetMx, targetMy } = mouseRef.current;
+      mouseRef.current.mx = pmx + (targetMx - pmx) * 0.12;
+      mouseRef.current.my = pmy + (targetMy - pmy) * 0.12;
+      const { mx, my } = mouseRef.current;
+      t += WAVE_SPEED;
+
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      const colGap = W / COLS;
+      // Brand red: [227, 24, 55]
+      const [ar, ag, ab] = [227, 24, 55];
+
+      for (const d of dotsRef.current) {
+        const dx = d.ox - mx, dy = d.oy - my;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        let waveOffset = 0;
+        if (dist < REPEL * 3)
+          waveOffset = Math.sin(dist * 0.06 - t * 60) * 3 * Math.max(0, 1 - dist / (REPEL * 3));
+        let rx = 0, ry = 0;
+        if (dist < REPEL && dist > 0) {
+          const force = (1 - dist / REPEL) * STRENGTH;
+          rx = (dx / dist) * -force; ry = (dy / dist) * -force;
+        }
+        d.x = d.ox + rx + Math.sin(t * 30 + d.phase) * 0.5;
+        d.y = d.oy + ry + waveOffset;
+        const prox  = Math.max(0, 1 - dist / REPEL);
+        const alpha = 0.15 + prox * 0.5;
+        if (prox > 0.01) {
+          const r = Math.round(ar * prox + 200 * (1 - prox));
+          const g = Math.round(ag * prox + 200 * (1 - prox));
+          const b = Math.round(ab * prox + 200 * (1 - prox));
+          ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        } else {
+          ctx.fillStyle = `rgba(190,190,190,0.35)`;
+        }
+        ctx.beginPath(); ctx.arc(d.x, d.y, RADIUS, 0, Math.PI * 2); ctx.fill();
+      }
+
+      ctx.save();
+      const near = dotsRef.current.filter(d => {
+        const dx = d.ox - mx, dy = d.oy - my;
+        return Math.sqrt(dx * dx + dy * dy) < REPEL * 1.6;
+      });
+      for (const d of near) {
+        const right = dotsRef.current.find(o => Math.abs(o.oy - d.oy) < 1 && Math.abs(o.ox - d.ox - colGap) < 1);
+        if (right) {
+          const prox = Math.max(0, 1 - ((Math.sqrt((d.ox - mx) ** 2 + (d.oy - my) ** 2) + Math.sqrt((right.ox - mx) ** 2 + (right.oy - my) ** 2)) / (2 * REPEL * 1.6)));
+          ctx.setLineDash([2, colGap - 4]); ctx.lineDashOffset = -t * 600 % colGap;
+          ctx.strokeStyle = `rgba(${ar},${ag},${ab},${prox * 0.5})`; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(right.x, right.y); ctx.stroke();
+        }
+        const below = dotsRef.current.find(o => Math.abs(o.ox - d.ox) < 1 && Math.abs(o.oy - d.oy - colGap) < 1);
+        if (below) {
+          const prox = Math.max(0, 1 - ((Math.sqrt((d.ox - mx) ** 2 + (d.oy - my) ** 2) + Math.sqrt((below.ox - mx) ** 2 + (below.oy - my) ** 2)) / (2 * REPEL * 1.6)));
+          ctx.setLineDash([2, colGap - 4]); ctx.lineDashOffset = -t * 600 % colGap;
+          ctx.strokeStyle = `rgba(${ar},${ag},${ab},${prox * 0.5})`; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(below.x, below.y); ctx.stroke();
+        }
+      }
+      ctx.restore();
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    const onMove = (e: MouseEvent) => {
+      mouseRef.current.targetMx = e.clientX;
+      mouseRef.current.targetMy = e.clientY;
+      if (glowRef.current) {
+        glowRef.current.style.left = e.clientX + 'px';
+        glowRef.current.style.top  = e.clientY + 'px';
+      }
+    };
+    const onLeave = () => { mouseRef.current.targetMx = -9999; mouseRef.current.targetMy = -9999; };
+
+    resize();
+    draw();
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseleave', onLeave);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
+  return (
+    <>
+      <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
+      <div ref={glowRef} style={{
+        position: 'fixed', width: 320, height: 320, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(227,24,55,0.08) 0%, transparent 70%)',
+        pointerEvents: 'none', transform: 'translate(-50%,-50%)', zIndex: 0,
+      }} />
+    </>
+  );
 };
 
-const InfoRow = ({ icon, label, value, placeholder = '—' }) => (
-  <div className="flex items-center gap-4 py-4 border-b border-surface-border last:border-b-0">
-    <div className="w-10 h-10 rounded-xl bg-surface-overlay border border-surface-border flex items-center justify-center flex-shrink-0 text-text-secondary">
-      {icon}
+/* ─── Field row ──────────────────────────────────────────────── */
+interface FieldRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  last?: boolean;
+}
+const FieldRow: React.FC<FieldRowProps> = ({ icon, label, value, last }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center',
+        padding: '18px 28px',
+        borderBottom: last ? 'none' : '1px solid #f0f0f0',
+        background: hovered ? 'rgba(227,24,55,0.02)' : 'transparent',
+        transition: 'background 0.15s',
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 10,
+        background: '#f8f8f8', border: '1.5px solid #eee',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginRight: 16, flexShrink: 0, color: '#888',
+      }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#aaa', marginBottom: 3 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>{value}</div>
+      </div>
     </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-xs font-body font-semibold text-text-secondary uppercase tracking-widest mb-0.5">{label}</p>
-      <p className="text-sm font-body font-medium text-text-primary truncate">
-        {value || <span className="text-text-muted italic">{placeholder || '—'}</span>}
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
-const ProfilePage = () => {
+/* ─── Role config ────────────────────────────────────────────── */
+const ROLE_CONFIG: Record<string, { label: string }> = {
+  admin:           { label: 'Admin' },
+  business_owner:  { label: 'Business Owner' },
+  marketing_staff: { label: 'Marketing Staff' },
+};
+
+/* ─── Profile Page ───────────────────────────────────────────── */
+const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const authCtx   = useContext(AuthContext);
+  const authCtx   = useContext(AuthContext) as any;
   const { updateUser } = authCtx;
 
-  // ── Local profile state (fresh from API) ──────────────────────
-  const [profile, setProfile]   = useState(null);
+  const [profile, setProfile]   = useState<any>(null);
   const [fetching, setFetching] = useState(true);
+  const [clock, setClock]       = useState('');
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setClock(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     getProfile()
-      .then(r => setProfile(r.data?.data || r.data))
+      .then((r: any) => setProfile(r.data?.data || r.data))
       .catch(() => setProfile(authCtx?.user))
       .finally(() => setFetching(false));
   }, []);
 
   const user     = profile || authCtx?.user;
   const roleName = user?.roleName || user?.role_name;
-  const roleCfg  = ROLE_CONFIG[roleName] || { label: roleName || 'User', cls: 'status-draft' };
+  const roleCfg  = ROLE_CONFIG[roleName] || { label: roleName || 'User' };
   const initials = (user?.fullName || user?.email || 'U')
-    .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    .split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
-  const photoInputRef = useRef(null);
+  /* ─── Photo ──────────────────────────────────────────────────── */
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoDeleting,  setPhotoDeleting]  = useState(false);
-  const [photoError,     setPhotoError]     = useState(null);
+  const [photoError,     setPhotoError]     = useState<string | null>(null);
 
-  const handlePhotoChange = async (e) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!ALLOWED.includes(file.type)) {
-      setPhotoError('Only JPEG, PNG or WEBP images are allowed.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setPhotoError('Photo must be under 5 MB.');
-      return;
-    }
-
-    setPhotoUploading(true);
-    setPhotoError(null);
+    if (!ALLOWED.includes(file.type)) { setPhotoError('Only JPEG, PNG or WEBP images are allowed.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setPhotoError('Photo must be under 5 MB.'); return; }
+    setPhotoUploading(true); setPhotoError(null);
     try {
-      const r        = await uploadPhoto(file);
+      const r        = await uploadPhoto(file) as any;
       const photoUrl = r.data?.data?.photoUrl;
-      setProfile(prev => ({ ...prev, photoUrl }));
+      setProfile((prev: any) => ({ ...prev, photoUrl }));
       updateUser({ ...authCtx.user, photoUrl });
-    } catch (err) {
+    } catch (err: any) {
       setPhotoError(err.response?.data?.message || 'Photo upload failed.');
     } finally {
       setPhotoUploading(false);
-      // reset input so the same file can be re-selected after an error
       if (photoInputRef.current) photoInputRef.current.value = '';
     }
   };
 
   const handlePhotoDelete = async () => {
-    setPhotoDeleting(true);
-    setPhotoError(null);
+    setPhotoDeleting(true); setPhotoError(null);
     try {
       await deletePhoto();
-      setProfile(prev => ({ ...prev, photoUrl: null }));
+      setProfile((prev: any) => ({ ...prev, photoUrl: null }));
       updateUser({ ...authCtx.user, photoUrl: null });
-    } catch (err) {
+    } catch (err: any) {
       setPhotoError(err.response?.data?.message || 'Failed to delete photo.');
     } finally {
       setPhotoDeleting(false);
     }
   };
 
-  // ── Edit profile state ────────────────────────────────────────
+  /* ─── Edit profile ───────────────────────────────────────────── */
   const [editMode,   setEditMode]   = useState(false);
   const [editForm,   setEditForm]   = useState({ fullName: '', phone: '' });
   const [editSaving, setEditSaving] = useState(false);
-  const [editError,  setEditError]  = useState(null);
+  const [editError,  setEditError]  = useState<string | null>(null);
   const [editOk,     setEditOk]     = useState(false);
 
   const openEdit = () => {
     setEditForm({ fullName: user?.fullName || '', phone: user?.phone || '' });
-    setEditError(null);
-    setEditOk(false);
-    setEditMode(true);
+    setEditError(null); setEditOk(false); setEditMode(true);
   };
 
-  const handleEditSave = async (e) => {
+  const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setEditSaving(true); setEditError(null); setEditOk(false);
     try {
-      const r = await updateProfile({
-        fullName: editForm.fullName.trim(),
-        phone:    editForm.phone.trim() || null,
-      });
+      const r       = await updateProfile({ fullName: editForm.fullName.trim(), phone: editForm.phone.trim() || null }) as any;
       const updated = r.data?.data;
-      setProfile(prev => ({ ...prev, fullName: updated.fullName, phone: updated.phone }));
+      setProfile((prev: any) => ({ ...prev, fullName: updated.fullName, phone: updated.phone }));
       updateUser({ ...authCtx.user, fullName: updated.fullName, phone: updated.phone });
       setEditOk(true);
       setTimeout(() => setEditMode(false), 900);
-    } catch (err) {
+    } catch (err: any) {
       setEditError(err.response?.data?.message || 'Failed to update profile');
     } finally {
       setEditSaving(false);
     }
   };
 
-  // ── Change password state ─────────────────────────────────────
-  const [pwMode,    setPwMode]    = useState(false);
-  const [pwForm,    setPwForm]    = useState({ currentPassword: '', newPassword: '', confirm: '' });
-  const [pwSaving,  setPwSaving]  = useState(false);
-  const [pwError,   setPwError]   = useState(null);
-  const [pwOk,      setPwOk]      = useState(false);
+  /* ─── Change password ────────────────────────────────────────── */
+  const [pwMode,   setPwMode]   = useState(false);
+  const [pwForm,   setPwForm]   = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError,  setPwError]  = useState<string | null>(null);
+  const [pwOk,     setPwOk]     = useState(false);
+  const [logoutSaving, setLogoutSaving] = useState(false);
 
-  const handlePwSave = async (e) => {
+  const handlePwSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pwForm.newPassword !== pwForm.confirm) {
-      setPwError('New passwords do not match'); return;
-    }
-    if (pwForm.newPassword.length < 8) {
-      setPwError('New password must be at least 8 characters'); return;
-    }
+    if (pwForm.newPassword !== pwForm.confirm) { setPwError('New passwords do not match'); return; }
+    if (pwForm.newPassword.length < 8)          { setPwError('New password must be at least 8 characters'); return; }
     setPwSaving(true); setPwError(null); setPwOk(false);
     try {
-      await changePassword({
-        currentPassword: pwForm.currentPassword,
-        newPassword:     pwForm.newPassword,
-      });
+      await changePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
       setPwOk(true);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
       setTimeout(() => setPwMode(false), 900);
-    } catch (err) {
+    } catch (err: any) {
       setPwError(err.response?.data?.message || 'Failed to change password');
     } finally {
       setPwSaving(false);
     }
   };
 
-  if (fetching) {
-    return <KineticLoader message="Loading Profile…" />;
-  }
+  const handleLogout = async () => {
+    setLogoutSaving(true);
+    try {
+      await authCtx.logout();
+      navigate('/login', { replace: true });
+    } finally {
+      setLogoutSaving(false);
+    }
+  };
+
+  if (fetching) return <KineticLoader message="Loading Profile…" />;
+
+  /* ─── Dotted centered container (LoginPage-like) ───────────── */
+  const outer: React.CSSProperties = {
+    minHeight: '100vh',
+    background: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '48px',
+  };
+
+  const dottedWrapper: React.CSSProperties = {
+    width: '100%',
+    maxWidth: 980,
+    borderRadius: 12,
+    padding: 28,
+    boxSizing: 'border-box',
+    background: '#ffffff',
+    boxShadow: '0 8px 40px rgba(16,24,40,0.06)',
+  };
+
+  /* ─── Shared card style ──────────────────────────────────────── */
+  const card: React.CSSProperties = {
+    background: '#ffffff',
+    border: '1.5px solid #eee',
+    borderRadius: 20,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.05)',
+  };
 
   return (
-    <div className="min-h-screen bg-surface flex">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen(o => !o)} />
-        <main className="flex-1 p-8 animate-fade-in">
-          <div className="max-w-2xl mx-auto space-y-6">
+    <div style={{ position: 'relative' }}>
+      <div style={outer}>
+        <div style={dottedWrapper}>
+          <main style={{ width: '100%', padding: '20px 8px' }}>
 
-            {/* Page header */}
-            <div>
-              <p className="text-text-secondary text-xs font-body font-semibold uppercase tracking-widest mb-2">Account</p>
-              <h1 className="font-headline font-bold text-4xl text-text-primary tracking-tight">My Profile</h1>
-              <p className="text-text-secondary font-body text-base mt-1">Your Krench Chicken account information</p>
+            {/* Topbar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#aaa', marginBottom: 6 }}>Account</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: '#111', lineHeight: 1 }}>My Profile</div>
+                <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Your Krench Chicken account information</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.85)', border: '1.5px solid #e8e8e8', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, backdropFilter: 'blur(8px)', color: '#111' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                  Active Account
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid #e8e8e8', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, backdropFilter: 'blur(8px)', color: '#111', fontVariantNumeric: 'tabular-nums' }}>
+                  {clock}
+                </div>
+              </div>
             </div>
 
-            {/* ── Profile card ── */}
-            <div className="card overflow-hidden">
-              {/* Banner */}
-              <div className="h-24 bg-gradient-to-r from-brand via-brand-dark to-[#7b0000]" />
+            {/* ── Profile hero card ── */}
+            <div style={{ ...card, overflow: 'hidden', marginBottom: 18 }}>
+              <div style={{ height: 110, background: 'linear-gradient(110deg,#9b0000 0%,#c80000 40%,#e31837 100%)', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(45deg,transparent,transparent 18px,rgba(255,255,255,0.05) 18px,rgba(255,255,255,0.05) 20px)' }} />
+              </div>
 
-              {/* Avatar + role + edit button */}
-              <div className="px-6 pb-5">
-                <div className="flex items-end justify-between -mt-10 mb-5">
-
-                  {/* ── Clickable avatar ── */}
-                  <div className="relative group">
+              <div style={{ padding: '0 32px 24px', position: 'relative' }}>
+                {/* Avatar */}
+                <div style={{ position: 'relative', width: 72, marginTop: -36, marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={photoUploading}
+                    title="Click to change photo"
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: '#fff', border: '3px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#111', cursor: 'pointer', overflow: 'hidden', padding: 0, position: 'relative' }}
+                  >
+                    {user?.photoUrl ? (
+                      <img src={user.photoUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontWeight: 700 }}>{initials}</span>
+                    )}
+                    {photoUploading && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                        <svg style={{ width: 20, height: 20, color: '#fff', animation: 'spin 1s linear infinite' }} fill="none" viewBox="0 0 24 24">
+                          <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                  <div style={{ position: 'absolute', bottom: 3, right: 3, width: 14, height: 14, borderRadius: '50%', background: '#22c55e', border: '2.5px solid #fff' }} />
+                  {user?.photoUrl && !photoUploading && (
                     <button
                       type="button"
-                      onClick={() => photoInputRef.current?.click()}
-                      disabled={photoUploading}
-                      className="w-20 h-20 rounded-full border-4 border-surface-raised overflow-hidden flex items-center justify-center glow-red focus:outline-none"
-                      title="Click to change photo"
+                      onClick={handlePhotoDelete}
+                      disabled={photoDeleting}
+                      title="Remove photo"
+                      style={{ position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: '#e31837', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 700 }}
                     >
-                      {user?.photoUrl ? (
-                        <img
-                          src={user.photoUrl}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-brand flex items-center justify-center">
-                          <span className="font-headline font-bold text-2xl text-white">{initials}</span>
-                        </div>
-                      )}
-
-                      {/* Hover / uploading overlay */}
-                      <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity
-                        ${photoUploading
-                          ? 'bg-black/60 opacity-100'
-                          : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}>
-                        {photoUploading ? (
-                          <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                          </svg>
-                        )}
-                      </div>
+                      ×
                     </button>
+                  )}
+                </div>
+                <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhotoChange} />
 
-                    {/* Hidden file input */}
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handlePhotoChange}
-                    />
-
-                    {/* Delete photo button — only shown when a photo exists */}
-                    {user?.photoUrl && (
-                      <button
-                        type="button"
-                        onClick={handlePhotoDelete}
-                        disabled={photoDeleting || photoUploading}
-                        title="Remove photo"
-                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand border-2 border-surface-raised flex items-center justify-center hover:bg-brand-dark transition-colors focus:outline-none"
-                      >
-                        {photoDeleting ? (
-                          <svg className="w-3 h-3 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/>
-                          </svg>
-                        )}
-                      </button>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#111', marginBottom: 2 }}>{user?.fullName || user?.email || 'User'}</div>
+                    <div style={{ fontSize: 13, color: '#888' }}>Krench Chicken · Bogor, Indonesia</div>
+                    {photoError && <div style={{ fontSize: 12, color: '#e31837', marginTop: 6 }}>{photoError}</div>}
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className={roleCfg.cls}>{roleCfg.label}</span>
-                    <button onClick={openEdit}
-                      className="px-3 h-8 rounded-lg border border-surface-border text-xs font-body font-semibold text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-colors flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828A2 2 0 0110 16H8v-2a2 2 0 01.586-1.414z"/>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ background: '#e31837', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '5px 12px', borderRadius: 6 }}>
+                      {roleCfg.label}
+                    </span>
+                    <button
+                      onClick={openEdit}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: '1.5px solid #e0e0e0', borderRadius: 8, padding: '6px 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: '#555', cursor: 'pointer' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
                       Edit
                     </button>
                   </div>
                 </div>
-                <h2 className="font-headline font-bold text-xl text-text-primary tracking-tight">{user?.fullName || 'User'}</h2>
-                <p className="text-sm text-text-secondary font-body mt-0.5">Krench Chicken · Bogor, Indonesia</p>
-                {photoError && (
-                  <p className="text-xs text-brand font-body mt-2">{photoError}</p>
-                )}
-              </div>
-
-              <div className="h-px bg-surface-border" />
-
-              {/* Info rows — read-only fields */}
-              <div className="px-6">
-                <InfoRow label="Email Address" value={user?.email} placeholder="No email set"
-                  icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>}
-                />
-                <InfoRow label="Role" value={roleCfg.label}
-                  icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>}
-                />
-                <InfoRow label="Phone Number" value={user?.phone} placeholder="No phone number set"
-                  icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>}
-                />
-                <InfoRow label="Account Status" value={user?.isActive !== false ? 'Active' : 'Inactive'}
-                  icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>}
-                />
               </div>
             </div>
 
-            {/* ── Change Password card ── */}
-            <div className="card px-6 py-5">
-              <div className="flex items-center justify-between mb-1">
-                <div>
-                  <p className="text-sm font-body font-semibold text-text-primary">Password</p>
-                  <p className="text-xs text-text-muted font-body mt-0.5">Update your account password</p>
-                </div>
-                {!pwMode && (
-                  <button onClick={() => { setPwMode(true); setPwError(null); setPwOk(false); }}
-                    className="px-3 h-8 rounded-lg border border-surface-border text-xs font-body font-semibold text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-colors">
+            {/* ── Fields card ── */}
+            <div style={{ ...card, padding: '8px 0', marginBottom: 18 }}>
+              <FieldRow label="Email Address" value={user?.email || '—'}
+                icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>}
+              />
+              <FieldRow label="Role" value={roleCfg.label}
+                icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>}
+              />
+              <FieldRow label="Phone Number" value={user?.phone || <span style={{ color: '#bbb', fontStyle: 'italic' }}>No phone number set</span>}
+                icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z" /></svg>}
+              />
+              <FieldRow last label="Account Status"
+                value={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: user?.isActive !== false ? '#22c55e' : '#e31837' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: user?.isActive !== false ? '#22c55e' : '#e31837', display: 'inline-block' }} />
+                    {user?.isActive !== false ? 'Active' : 'Inactive'}
+                  </span>
+                }
+                icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>}
+              />
+            </div>
+
+            {/* ── Password card ── */}
+            <div style={{ ...card, padding: '22px 28px', marginBottom: 22 }}>
+              {!pwMode ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 3 }}>Password</div>
+                    <div style={{ fontSize: 12, color: '#999' }}>Update your account password</div>
+                  </div>
+                  <button
+                    onClick={() => { setPwMode(true); setPwError(null); setPwOk(false); }}
+                    style={{ background: 'none', border: '1.5px solid #e0e0e0', borderRadius: 8, padding: '8px 18px', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#555', cursor: 'pointer' }}
+                  >
                     Change
                   </button>
-                )}
-              </div>
-
-              {pwMode && (
-                <form onSubmit={handlePwSave} className="mt-4 space-y-3">
-                  <div>
-                    <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">Current Password</label>
-                    <input type="password" required value={pwForm.currentPassword}
-                      onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
-                      placeholder="Enter current password"
-                      className="input-field" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">New Password</label>
-                    <input type="password" required value={pwForm.newPassword}
-                      onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
-                      placeholder="Min. 8 characters"
-                      className="input-field" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">Confirm New Password</label>
-                    <input type="password" required value={pwForm.confirm}
-                      onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
-                      placeholder="Repeat new password"
-                      className="input-field" />
-                  </div>
-
-                  {pwError && <p className="text-xs text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 font-body">{pwError}</p>}
-                  {pwOk    && <p className="text-xs text-success bg-success/10 border border-success/20 rounded-lg px-3 py-2 font-body">Password changed successfully!</p>}
-
-                  <div className="flex gap-3 pt-1">
+                </div>
+              ) : (
+                <form onSubmit={handlePwSave} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 4 }}>Change Password</div>
+                  {['currentPassword', 'newPassword', 'confirm'].map(field => (
+                    <div key={field}>
+                      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#aaa', marginBottom: 6 }}>
+                        {field === 'currentPassword' ? 'Current Password' : field === 'newPassword' ? 'New Password' : 'Confirm New Password'}
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={pwForm[field as keyof typeof pwForm]}
+                        onChange={e => setPwForm(f => ({ ...f, [field]: e.target.value }))}
+                        placeholder={field === 'newPassword' ? 'Min. 8 characters' : field === 'confirm' ? 'Repeat new password' : 'Enter current password'}
+                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e8e8e8', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, color: '#111', background: '#fafafa', outline: 'none' }}
+                      />
+                    </div>
+                  ))}
+                  {pwError && <div style={{ fontSize: 12, color: '#e31837', background: 'rgba(227,24,55,0.06)', border: '1px solid rgba(227,24,55,0.15)', borderRadius: 8, padding: '8px 12px' }}>{pwError}</div>}
+                  {pwOk    && <div style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 8, padding: '8px 12px' }}>Password changed successfully!</div>}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                     <button type="button" onClick={() => setPwMode(false)}
-                      className="btn-secondary flex-1 h-9 text-xs">Cancel</button>
+                      style={{ flex: 1, padding: '10px', border: '1.5px solid #e0e0e0', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#555', background: 'none', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
                     <button type="submit" disabled={pwSaving}
-                      className="btn-primary flex-1 h-9 text-xs">
+                      style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: '#e31837', cursor: 'pointer', opacity: pwSaving ? 0.7 : 1 }}>
                       {pwSaving ? 'Saving…' : 'Update Password'}
                     </button>
                   </div>
@@ -361,105 +508,99 @@ const ProfilePage = () => {
             </div>
 
             {/* Back link */}
-            <div className="text-center">
-              <button onClick={() => navigate('/calendar')}
-                className="text-sm text-brand hover:text-brand-light font-body font-semibold transition-colors">
-                ← Back to Calendar
+            <div style={{ marginTop: 6 }}>
+              <button
+                onClick={() => navigate('/calendar')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+                Back to Calendar
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={logoutSaving}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 16,
+                  fontSize: 12, fontWeight: 700, color: '#e31837', background: 'none',
+                  border: '1px solid rgba(227,24,55,0.18)', borderRadius: 999,
+                  padding: '8px 14px', cursor: logoutSaving ? 'not-allowed' : 'pointer',
+                  opacity: logoutSaving ? 0.7 : 1, fontFamily: 'inherit'
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 17l5-5-5-5" />
+                  <path d="M15 12H3" />
+                  <path d="M21 3v18" />
+                </svg>
+                {logoutSaving ? 'Logging out…' : 'Logout'}
               </button>
             </div>
-          </div>
-        </main>
+
+          </main>
+        </div>
       </div>
 
       {/* ── Edit Profile Modal ── */}
       {editMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-surface-raised rounded-2xl shadow-2xl overflow-hidden border border-surface-border">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
-              <h2 className="font-headline font-bold text-lg text-text-primary">Edit Profile</h2>
-              <button onClick={() => setEditMode(false)} className="text-text-muted hover:text-text-primary transition-colors">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ width: '100%', maxWidth: 440, background: '#fff', borderRadius: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.12)', border: '1.5px solid #eee', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #f0f0f0' }}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#111' }}>Edit Profile</div>
+              <button onClick={() => setEditMode(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
 
-            <form onSubmit={handleEditSave} className="px-6 py-5 space-y-4">
-              {/* Photo upload inside modal */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={photoUploading}
-                    className="w-20 h-20 rounded-full border-4 border-surface-border overflow-hidden flex items-center justify-center focus:outline-none"
-                    title="Click to change photo"
-                  >
+            <form onSubmit={handleEditSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Avatar in modal */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ position: 'relative' }}>
+                  <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: '#f0f0f0', border: '3px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#111', cursor: 'pointer', overflow: 'hidden', padding: 0 }}>
                     {user?.photoUrl ? (
-                      <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={user.photoUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <div className="w-full h-full bg-brand flex items-center justify-center">
-                        <span className="font-headline font-bold text-2xl text-white">{initials}</span>
-                      </div>
+                      <span>{initials}</span>
                     )}
-                    <div className={`absolute inset-0 rounded-full flex items-center justify-center transition-opacity
-                      ${photoUploading ? 'bg-black/60 opacity-100' : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}>
-                      {photoUploading ? (
-                        <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                      )}
-                    </div>
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-text-muted font-body">
-                    {photoUploading ? 'Uploading…' : photoDeleting ? 'Removing…' : 'Click photo to change'}
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#aaa' }}>{photoUploading ? 'Uploading…' : photoDeleting ? 'Removing…' : 'Click photo to change'}</span>
                   {user?.photoUrl && !photoUploading && !photoDeleting && (
-                    <button
-                      type="button"
-                      onClick={handlePhotoDelete}
-                      className="text-xs text-brand hover:text-brand-light font-body font-semibold transition-colors"
-                    >
+                    <button type="button" onClick={handlePhotoDelete} style={{ fontSize: 12, fontWeight: 600, color: '#e31837', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                       Remove
                     </button>
                   )}
                 </div>
-                {photoError && (
-                  <p className="text-xs text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-1.5 font-body text-center">{photoError}</p>
-                )}
+                {photoError && <div style={{ fontSize: 12, color: '#e31837' }}>{photoError}</div>}
               </div>
 
-              <div>
-                <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">Full Name</label>
-                <input type="text" required value={editForm.fullName}
-                  onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))}
-                  placeholder="Your full name"
-                  className="input-field" />
-              </div>
-              <div>
-                <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">Phone Number</label>
-                <input type="tel" value={editForm.phone}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  placeholder="+62 812 3456 7890"
-                  className="input-field" />
-              </div>
+              {[
+                { field: 'fullName', label: 'Full Name', type: 'text', placeholder: 'Your full name', required: true },
+                { field: 'phone',    label: 'Phone Number', type: 'tel', placeholder: '+62 812 3456 7890', required: false },
+              ].map(({ field, label, type, placeholder, required }) => (
+                <div key={field}>
+                  <label style={{ display: 'block', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#aaa', marginBottom: 6 }}>{label}</label>
+                  <input
+                    type={type}
+                    required={required}
+                    value={editForm[field as keyof typeof editForm]}
+                    onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
+                    placeholder={placeholder}
+                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e8e8e8', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, color: '#111', background: '#fafafa', outline: 'none' }}
+                  />
+                </div>
+              ))}
 
-              {editError && <p className="text-xs text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-2 font-body">{editError}</p>}
-              {editOk    && <p className="text-xs text-success bg-success/10 border border-success/20 rounded-lg px-3 py-2 font-body">Profile updated!</p>}
+              {editError && <div style={{ fontSize: 12, color: '#e31837', background: 'rgba(227,24,55,0.06)', border: '1px solid rgba(227,24,55,0.15)', borderRadius: 8, padding: '8px 12px' }}>{editError}</div>}
+              {editOk    && <div style={{ fontSize: 12, color: '#22c55e', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 8, padding: '8px 12px' }}>Profile updated!</div>}
 
-              <div className="flex gap-3 pt-1">
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={() => setEditMode(false)}
-                  className="btn-secondary flex-1 h-10">Cancel</button>
+                  style={{ flex: 1, padding: '11px', border: '1.5px solid #e0e0e0', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#555', background: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
                 <button type="submit" disabled={editSaving}
-                  className="btn-primary flex-1 h-10">
+                  style={{ flex: 1, padding: '11px', border: 'none', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: '#fff', background: '#e31837', cursor: 'pointer', opacity: editSaving ? 0.7 : 1 }}>
                   {editSaving ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
@@ -467,6 +608,11 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+      `}</style>
     </div>
   );
 };
