@@ -10,6 +10,7 @@ import OwnerDashboard          from '../pages/dashboard/OwnerDashboard';
 import PromptPage              from '../pages/content/PromptPage';
 import GeneratedIdeasPage      from '../pages/content/GeneratedIdeasPage';
 import IdeaValidationPage      from '../pages/content/IdeaValidationPage';
+import ListPage                from '../pages/schedule/ListPage';
 import ProfilePage             from '../pages/profile/ProfilePage';
 import AdminAllUsersPage       from '../pages/dashboard/AdminAllUsersPage';
 import AdminMarketingStaffPage from '../pages/dashboard/AdminMarketingStaffPage';
@@ -97,6 +98,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
             <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar/list"
+        element={
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+            <ListPage />
           </ProtectedRoute>
         }
       />

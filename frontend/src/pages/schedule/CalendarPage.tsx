@@ -5,7 +5,7 @@
  * LeadFlow – Krench Chicken
  */
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc      from 'dayjs/plugin/utc';
@@ -28,6 +28,7 @@ import {
 import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../services/mediaService';
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
+import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
 import { useNotification } from '../../context/NotificationContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
@@ -920,11 +921,24 @@ const CalendarPage = () => {
   const [formError,      setFormError]      = useState(null);
   const [publishLoadingId, setPublishLoadingId] = useState(null);
   const [chatbotDrawerOpen, setChatbotDrawerOpen] = useState(false);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);  // null=unknown, object=connected, false=not connected
   const [tiktokLoading, setTiktokLoading] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setIsFilterDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch TikTok connection status on mount
   useEffect(() => {
@@ -960,11 +974,6 @@ const CalendarPage = () => {
     navigate('/calendar/ideas');
   };
 
-  const handleOpenDraftList = () => {
-    setPostFilter('drafts');
-    setView('week');
-  };
-
   const filteredSchedules = schedules.filter((schedule) => {
     if (postFilter === 'allpost') return true;
     if (postFilter === 'drafts') return schedule.status === 'draft';
@@ -992,6 +1001,14 @@ const CalendarPage = () => {
   const draftCount = drafts.length;
   const scheduledCount = schedules.filter((schedule) => schedule.status === 'scheduled' || schedule.status === 'uploaded').length;
   const publishedCount = schedules.filter((schedule) => schedule.status === 'published').length;
+  const currentFilter = POST_FILTER_OPTIONS.find((item) => item.key === postFilter) || POST_FILTER_OPTIONS[0];
+  const currentFilterCount = currentFilter.key === 'allpost'
+    ? allPostCount
+    : currentFilter.key === 'drafts'
+      ? draftCount
+      : currentFilter.key === 'scheduled'
+        ? scheduledCount
+        : publishedCount;
   // ────────────────────────────────────────────────────────────
 
   // Current week start (Monday WIB)
@@ -1343,7 +1360,7 @@ const CalendarPage = () => {
       <div className="calendar-main flex-1 flex flex-col overflow-hidden">
 
         {/* Top nav bar */}
-        <header className="calendar-topbar flex items-center gap-3 px-5 py-3 flex-shrink-0">
+        <header className="calendar-topbar relative z-40 flex items-center gap-3 px-5 py-3 flex-shrink-0">
           {/* Logo */}
           <div className="flex items-center mr-2">
             <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain" />
@@ -1354,38 +1371,62 @@ const CalendarPage = () => {
             <p className="calendar-title text-xs font-body font-semibold uppercase tracking-[0.28em]">Marketing Calendar</p>
           </div>
 
-          <div className="hidden lg:flex items-center ml-2 rounded-full border border-slate-300 bg-white p-0.5 gap-0.5">
-            {POST_FILTER_OPTIONS.map((item) => {
-              const active = postFilter === item.key;
-              const count = item.key === 'allpost'
-                ? allPostCount
-                : item.key === 'drafts'
-                  ? draftCount
-                  : item.key === 'scheduled'
-                    ? scheduledCount
-                    : publishedCount;
+          <div className="relative z-50 ml-2" ref={filterDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsFilterDropdownOpen((prev) => !prev)}
+              className="toolbar-pill px-4 h-9 text-xs font-body font-semibold inline-flex items-center gap-2"
+              title="Filter posts"
+            >
+              <span>{currentFilter.label}</span>
+              <span className="inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] bg-slate-100 text-slate-600">
+                {currentFilterCount}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
 
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => {
-                    setPostFilter(item.key);
-                    if (item.key === 'drafts') setView('week');
-                  }}
-                  className={`h-8 px-3 rounded-full text-xs font-body font-semibold inline-flex items-center gap-1.5 transition-colors ${
-                    active
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  <span className={`inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] ${active ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+            {isFilterDropdownOpen && (
+              <div className="absolute top-full left-0 mt-2 min-w-[160px] bg-white border border-slate-300 rounded-xl shadow-lg z-[70] overflow-hidden">
+                {POST_FILTER_OPTIONS.map((item) => {
+                  const active = postFilter === item.key;
+                  const count = item.key === 'allpost'
+                    ? allPostCount
+                    : item.key === 'drafts'
+                      ? draftCount
+                      : item.key === 'scheduled'
+                        ? scheduledCount
+                        : publishedCount;
+
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        setPostFilter(item.key);
+                        setIsFilterDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs font-body font-semibold flex items-center justify-between transition-colors ${
+                        active
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className={`inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] ${active ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -1407,6 +1448,16 @@ const CalendarPage = () => {
                 </button>
               ))}
             </div>
+
+            {/* List/Calendar view toggle */}
+            <ViewModeToggle 
+              currentMode="grid" 
+              onModeChange={(mode) => {
+                if (mode === 'list') {
+                  navigate('/calendar/list');
+                }
+              }}
+            />
 
             {/* Week navigation */}
             <button onClick={view === 'week' ? prevWeek : view === 'day' ? prevDay : prevMonth}
@@ -1430,16 +1481,6 @@ const CalendarPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
               </svg>
             </button>
-
-            {canEdit && (
-              <button
-                onClick={handleOpenDraftList}
-                className="h-9 px-4 rounded-full border border-slate-300 bg-white text-slate-700 text-xs font-headline font-bold transition-colors hover:bg-slate-50"
-                title="Open draft list"
-              >
-                Draft List
-              </button>
-            )}
 
             {/* TikTok connect button */}
             {canEdit && (
