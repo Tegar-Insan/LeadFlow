@@ -3,7 +3,7 @@ import { isScheduleTimeReached } from '../utils/jakartaTime.ts';
 import * as tiktokPublishService from './tiktokPublishService.ts';
 
 const DEFAULT_BATCH_SIZE = 20;
-const PUBLISH_TIMEOUT_MS = 10_000;
+const PUBLISH_TIMEOUT_MS = 180_000;
 
 type PublishResult = {
   scheduleId: string;
@@ -44,7 +44,7 @@ async function publishSingleWithTimeout(schedule: ScheduleRow): Promise<PublishR
   }
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('TikTok publish timeout after 10s')), PUBLISH_TIMEOUT_MS)
+    setTimeout(() => reject(new Error('TikTok publish timeout after 180s')), PUBLISH_TIMEOUT_MS)
   );
 
   try {

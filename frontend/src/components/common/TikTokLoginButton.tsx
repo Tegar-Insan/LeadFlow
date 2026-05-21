@@ -1,7 +1,7 @@
 // src/components/common/TikTokLoginButton.jsx
 // Compact TikTok connect/connected badge for CalendarPage header
 
-import React from 'react';
+// React is used implicitly via JSX transform
 
 // Glyph extracted pixel-perfect from Button_Black.svg (viewBox 0 0 315 44)
 // Cropped to the logo mark region (~x:14-33, y:10-31)
@@ -22,7 +22,25 @@ const TikTokGlyph = ({ className = 'w-3.5 h-3.5' }) => (
   </svg>
 );
 
-export default function TikTokLoginButton({ connected, accountName, onConnect, onDisconnect, loading }) {
+export default function TikTokLoginButton({ connected, needsReconnect = false, accountName, onConnect, onDisconnect, loading }) {
+  if (connected && needsReconnect) {
+    return (
+      <div className="flex items-center gap-2 px-3 h-8 rounded-lg bg-amber-600/20 border border-amber-500/50 text-amber-400 text-xs font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" aria-hidden />
+        <TikTokGlyph className="w-3.5 h-3.5 opacity-70" />
+        <span className="truncate max-w-[100px]">Token expired</span>
+        <button
+          type="button"
+          onClick={onConnect}
+          title="Reconnect TikTok"
+          className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/30 hover:bg-amber-500/50 text-amber-300 transition-colors"
+        >
+          Reconnect
+        </button>
+      </div>
+    );
+  }
+
   if (connected) {
     return (
       <div className="flex items-center gap-2 px-3 h-8 rounded-lg bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-semibold shadow-[0_6px_14px_rgba(246,183,10,0.28)]">

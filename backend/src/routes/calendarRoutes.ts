@@ -30,6 +30,12 @@ router.get(
 );
 
 router.get(
+  '/list',
+  requireRole(['marketing_staff', 'business_owner']),
+  controller.getListView
+);
+
+router.get(
   '/:id',
   requireRole(['marketing_staff', 'business_owner', 'admin']),
   controller.getScheduleById

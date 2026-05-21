@@ -7,6 +7,7 @@
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { uploadMedia, deleteMediaAsset } from '../../services/mediaService';
+import { KineticLoader, InlineLoader } from '../common/KineticLoader';
 
 const ACCEPTED = '.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi';
 const MAX_SIZE_MB = 200;
@@ -60,9 +61,10 @@ const FilePreviewItem = ({ file, url, index, onRemove }) => {
   );
 };
 
-const ExistingAssetItem = ({ asset, onDelete }) => {
+const ExistingAssetItem = ({ asset, onDelete, deletingId }) => {
   const isVideo = asset.mime_type?.startsWith('video/');
   const mediaUrl = asset.preview_url || asset.file_url || asset.url || asset.signed_url || '';
+  const isThisDeleting = deletingId === asset.id;
   return (
     <div className="relative group rounded-lg overflow-hidden bg-zinc-800 border border-white/10">
       {isVideo ? (
@@ -70,16 +72,24 @@ const ExistingAssetItem = ({ asset, onDelete }) => {
       ) : (
         <img src={mediaUrl} alt={asset.file_name} className="w-full h-28 object-cover" />
       )}
-      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <button
-          onClick={() => onDelete(asset.id)}
-          className="w-8 h-8 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      </div>
+
+      {/* Per-item delete overlay — shows spinner on targeted asset */}
+      {isThisDeleting ? (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+          <InlineLoader size="md" className="text-red-400" />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <button
+            onClick={() => onDelete(asset.id)}
+            className="w-8 h-8 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      )}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 px-2 py-1">
         <p className="text-[10px] text-white truncate">{asset.file_name}</p>
       </div>
@@ -103,6 +113,7 @@ const MediaUploader = ({
   const [files,         setFiles]         = useState([]);  // pending File objects
   const [previews,      setPreviews]       = useState([]);  // object URLs
   const [uploading,     setUploading]      = useState(false);
+  const [deletingId,    setDeletingId]     = useState<string | null>(null);
   const [progress,      setProgress]       = useState(0);
   const [uploadError,   setUploadError]    = useState(null);
   const [isDragOver,    setIsDragOver]     = useState(false);
@@ -187,14 +198,17 @@ const MediaUploader = ({
     }
   };
 
-  const handleDeleteExisting = async (assetId) => {
+  const handleDeleteExisting = async (assetId: string) => {
     if (!confirm('Delete this media file?')) return;
+    setDeletingId(assetId);
     try {
       await deleteMediaAsset(assetId);
       setUploadedAssets(prev => prev.filter((asset) => asset.id !== assetId));
       onAssetDeleted?.(assetId);
     } catch {
       alert('Failed to delete media. Please try again.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -205,7 +219,11 @@ const MediaUploader = ({
       : `Upload ${files.length} Files`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Full overlay only while uploading — delete is handled per-item */}
+      {uploading && (
+        <KineticLoader message="Uploading Media…" overlay />
+      )}
 
       {/* Existing assets grid */}
       {visibleExistingAssets.length > 0 && (
@@ -219,6 +237,7 @@ const MediaUploader = ({
                 key={asset.id}
                 asset={asset}
                 onDelete={handleDeleteExisting}
+                deletingId={deletingId}
               />
             ))}
           </div>
@@ -315,13 +334,19 @@ const MediaUploader = ({
         </p>
       )}
 
-      {/* Upload button */}
-      {files.length > 0 && !uploading && (
+      {/* Upload button — InlineLoader shown while uploading */}
+      {files.length > 0 && (
         <button
           onClick={handleUpload}
-          className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-all hover:shadow-[0_0_20px_rgba(246,183,10,0.3)]"
+          disabled={uploading}
+          className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-all hover:shadow-[0_0_20px_rgba(246,183,10,0.3)] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {uploadButtonText}
+          {uploading ? (
+            <>
+              <InlineLoader size="sm" className="text-black" />
+              <span>Uploading…</span>
+            </>
+          ) : uploadButtonText}
         </button>
       )}
     </div>

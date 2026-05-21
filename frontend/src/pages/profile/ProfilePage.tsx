@@ -41,8 +41,8 @@ const DotBackground: React.FC = () => {
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
       const colGap = W / COLS;
-      // Brand red: [227, 24, 55]
-      const [ar, ag, ab] = [227, 24, 55];
+      // Brand gold (from tailwind): [246, 183, 10]
+      const [ar, ag, ab] = [246, 183, 10];
 
       for (const d of dotsRef.current) {
         const dx = d.ox - mx, dy = d.oy - my;
@@ -123,7 +123,7 @@ const DotBackground: React.FC = () => {
       <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
       <div ref={glowRef} style={{
         position: 'fixed', width: 320, height: 320, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(227,24,55,0.08) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(246,183,10,0.08) 0%, transparent 70%)',
         pointerEvents: 'none', transform: 'translate(-50%,-50%)', zIndex: 0,
       }} />
     </>
@@ -147,7 +147,7 @@ const FieldRow: React.FC<FieldRowProps> = ({ icon, label, value, last }) => {
         display: 'flex', alignItems: 'center',
         padding: '18px 28px',
         borderBottom: last ? 'none' : '1px solid #f0f0f0',
-        background: hovered ? 'rgba(227,24,55,0.02)' : 'transparent',
+        background: hovered ? 'rgba(246,183,10,0.02)' : 'transparent',
         transition: 'background 0.15s',
       }}
     >
@@ -314,23 +314,14 @@ const ProfilePage: React.FC = () => {
 
   if (fetching) return <KineticLoader message="Loading Profile…" />;
 
-  /* ─── Dotted centered container (LoginPage-like) ───────────── */
-  const outer: React.CSSProperties = {
-    minHeight: '100vh',
-    background: '#ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '48px',
-  };
-
+  /* ─── Centered container with dotted animated background ───────── */
   const dottedWrapper: React.CSSProperties = {
     width: '100%',
     maxWidth: 980,
     borderRadius: 12,
     padding: 28,
     boxSizing: 'border-box',
-    background: '#ffffff',
+    background: 'transparent',
     boxShadow: '0 8px 40px rgba(16,24,40,0.06)',
   };
 
@@ -343,8 +334,12 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div style={outer}>
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+        <DotBackground />
+      </div>
+
+      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px', zIndex: 10, background: 'transparent' }}>
         <div style={dottedWrapper}>
           <main style={{ width: '100%', padding: '20px 8px' }}>
 
@@ -368,7 +363,7 @@ const ProfilePage: React.FC = () => {
 
             {/* ── Profile hero card ── */}
             <div style={{ ...card, overflow: 'hidden', marginBottom: 18 }}>
-              <div style={{ height: 110, background: 'linear-gradient(110deg,#9b0000 0%,#c80000 40%,#e31837 100%)', position: 'relative' }}>
+              <div style={{ height: 110, background: 'linear-gradient(110deg,#ffd04d 0%,#f6b70a 40%,#d4960a 100%)', position: 'relative' }}>
                 <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(45deg,transparent,transparent 18px,rgba(255,255,255,0.05) 18px,rgba(255,255,255,0.05) 20px)' }} />
               </div>
 
@@ -418,7 +413,7 @@ const ProfilePage: React.FC = () => {
                     {photoError && <div style={{ fontSize: 12, color: '#e31837', marginTop: 6 }}>{photoError}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ background: '#e31837', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '5px 12px', borderRadius: 6 }}>
+                    <span style={{ background: '#f6b70a', color: '#111', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '5px 12px', borderRadius: 6 }}>
                       {roleCfg.label}
                     </span>
                     <button
@@ -613,7 +608,7 @@ const ProfilePage: React.FC = () => {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         * { box-sizing: border-box; }
       `}</style>
-    </div>
+    </>
   );
 };
 

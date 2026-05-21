@@ -29,6 +29,7 @@ import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../servi
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
 import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
+import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
@@ -904,6 +905,7 @@ const CalendarPage = () => {
     drafts,
     loading, error,
     prevMonth, nextMonth, goToToday,
+    navigateToDate,
     loadMonth,
     addSchedule, editSchedule, removeSchedule, publishNow, dragDrop,
   } = useSchedule();
@@ -920,9 +922,11 @@ const CalendarPage = () => {
   const [formLoading,    setFormLoading]    = useState(false);
   const [formError,      setFormError]      = useState(null);
   const [publishLoadingId, setPublishLoadingId] = useState(null);
+  const [mediaDeleting,  setMediaDeleting]  = useState(false);
   const [chatbotDrawerOpen, setChatbotDrawerOpen] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement | null>(null);
+  const createdIdReloadedRef = useRef<string | null>(null);
 
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
@@ -1033,15 +1037,23 @@ const CalendarPage = () => {
 
   useEffect(() => {
     const createdScheduleId = location.state?.createdScheduleId;
-    if (!createdScheduleId || schedules.length === 0) return;
+    if (!createdScheduleId) return;
 
-    const createdSchedule = schedules.find((schedule) => schedule.id === createdScheduleId);
-    if (!createdSchedule) return;
+    const createdSchedule =
+      schedules.find((s) => s.id === createdScheduleId) ||
+      drafts.find((s) => s.id === createdScheduleId);
 
-    setActiveSchedule(createdSchedule);
-    setModal('detail');
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.state?.createdScheduleId, navigate, location.pathname, schedules]);
+    if (createdSchedule) {
+      createdIdReloadedRef.current = null;
+      setActiveSchedule(createdSchedule);
+      setModal('detail');
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (createdIdReloadedRef.current !== createdScheduleId) {
+      // Draft was just created via DB trigger — refresh from DB once to pick it up
+      createdIdReloadedRef.current = createdScheduleId;
+      loadMonth();
+    }
+  }, [location.state?.createdScheduleId, navigate, location.pathname, schedules, drafts, loadMonth]);
 
   useEffect(() => {
     const editScheduleId = location.state?.editScheduleId;
@@ -1070,10 +1082,30 @@ const CalendarPage = () => {
     }
   }, [modal, activeSchedule?.id]);
 
-  const prevWeek = () => setWeekStart(w => w.subtract(7, 'day'));
-  const nextWeek = () => setWeekStart(w => w.add(7, 'day'));
-  const prevDay  = () => setSelectedDay(d => d.subtract(1, 'day'));
-  const nextDay  = () => setSelectedDay(d => d.add(1, 'day'));
+  const prevWeek = () => {
+    const next = weekStart.subtract(7, 'day');
+    setWeekStart(next);
+    const ny = next.year(), nm = next.month() + 1;
+    if (ny !== year || nm !== month) navigateToDate(ny, nm);
+  };
+  const nextWeek = () => {
+    const next = weekStart.add(7, 'day');
+    setWeekStart(next);
+    const ny = next.year(), nm = next.month() + 1;
+    if (ny !== year || nm !== month) navigateToDate(ny, nm);
+  };
+  const prevDay = () => {
+    const next = selectedDay.subtract(1, 'day');
+    setSelectedDay(next);
+    const ny = next.year(), nm = next.month() + 1;
+    if (ny !== year || nm !== month) navigateToDate(ny, nm);
+  };
+  const nextDay = () => {
+    const next = selectedDay.add(1, 'day');
+    setSelectedDay(next);
+    const ny = next.year(), nm = next.month() + 1;
+    if (ny !== year || nm !== month) navigateToDate(ny, nm);
+  };
   const goToThisWeek = () => {
     const today = dayjs().tz(TZ);
     const dow   = today.day();
@@ -1186,6 +1218,7 @@ const CalendarPage = () => {
   };
 
   const handleMediaDelete = async (asset) => {
+    setMediaDeleting(true);
     try {
       await deleteMediaAsset(asset.id);
       setAssets(prev => prev.filter(item => item.id !== asset.id));
@@ -1193,11 +1226,17 @@ const CalendarPage = () => {
       toast.success('Media deleted');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete media');
+    } finally {
+      setMediaDeleting(false);
     }
   };
 
   return (
     <div className="calendar-reframe flex h-screen overflow-hidden font-body">
+      {/* Loading overlay for media operations */}
+      {mediaDeleting && (
+        <KineticLoader message="Deleting Media…" overlay />
+      )}
 
       <style>{`
         .calendar-reframe {
@@ -1454,7 +1493,7 @@ const CalendarPage = () => {
               currentMode="grid" 
               onModeChange={(mode) => {
                 if (mode === 'list') {
-                  navigate('/calendar/list');
+                  navigate(`/calendar/list?year=${year}&month=${month}`);
                 }
               }}
             />
@@ -1486,6 +1525,7 @@ const CalendarPage = () => {
             {canEdit && (
               <TikTokLoginButton
                 connected={!!tiktokStatus}
+                needsReconnect={tiktokStatus?.needs_reconnect === true}
                 accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
                 onConnect={handleConnectTikTok}
                 onDisconnect={handleDisconnectTikTok}

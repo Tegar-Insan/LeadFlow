@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -25,9 +25,11 @@ import {
   TZ,
 } from '../../utils/formatDate';
 import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../services/mediaService';
+import { fetchSchedulesForList } from '../../services/scheduleService';
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
 import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
+import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
@@ -497,15 +499,19 @@ const formatDateHeader = (dateKey: string) => {
 export default function ListPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
+  const [searchParams] = useSearchParams();
   const authCtx   = useContext(AuthContext);
   const user      = authCtx?.user;
   const roleName  = user?.roleName || user?.role_name;
   const canEdit   = ['marketing_staff', 'admin'].includes(roleName);
 
+  const urlYear  = parseInt(searchParams.get('year')  ?? '', 10) || undefined;
+  const urlMonth = parseInt(searchParams.get('month') ?? '', 10) || undefined;
+
   const {
     schedules, drafts, loading, error,
     loadMonth, addSchedule, editSchedule, removeSchedule, publishNow,
-  } = useSchedule();
+  } = useSchedule(urlYear, urlMonth);
 
   const [listTab,          setListTab]          = useState<'scheduled' | 'drafts'>('scheduled');
   const [modal,            setModal]            = useState(null);
@@ -517,8 +523,13 @@ export default function ListPage() {
   const [formError,        setFormError]        = useState(null);
   const [publishLoadingId, setPublishLoadingId] = useState(null);
   const [chatbotDrawerOpen,setChatbotDrawerOpen]= useState(false);
+  const [mediaDeleting,    setMediaDeleting]    = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // List view filter state
+  const [listViewFilter, setListViewFilter] = useState<'day' | 'week' | 'month'>('month');
+  const [listViewDate, setListViewDate] = useState(dayjs().tz('Asia/Jakarta').format('YYYY-MM-DD'));
 
   const { toast } = useNotification();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);
@@ -533,6 +544,21 @@ export default function ListPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch list view data when filter or date changes
+  useEffect(() => {
+    const fetchListData = async () => {
+      try {
+        const response = await fetchSchedulesForList(listViewFilter, listViewDate);
+        const data = response.data?.data || [];
+        console.log('list', data); // Validation: log list data to console
+        console.info(`[ListPage] List view loaded: filter=${listViewFilter}, date=${listViewDate}, count=${data.length}`);
+      } catch (err) {
+        console.error('[ListPage] Failed to fetch list view data:', err);
+      }
+    };
+    fetchListData();
+  }, [listViewFilter, listViewDate]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -661,16 +687,25 @@ export default function ListPage() {
 
   const handleMediaUpload = (newAssets) => { setAssets(prev => [...prev, ...newAssets]); loadMonth(); };
   const handleMediaDelete = async (asset) => {
+    setMediaDeleting(true);
     try {
       await deleteMediaAsset(asset.id);
       setAssets(prev => prev.filter(item => item.id !== asset.id));
       loadMonth();
       toast.success('Media deleted');
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to delete media'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete media');
+    } finally {
+      setMediaDeleting(false);
+    }
   };
 
   return (
     <div className="calendar-reframe flex h-screen overflow-hidden font-body">
+      {/* Loading overlay for media operations */}
+      {mediaDeleting && (
+        <KineticLoader message="Deleting Media…" overlay />
+      )}
 
       <style>{`
         .calendar-reframe {
@@ -820,6 +855,7 @@ export default function ListPage() {
             {canEdit && (
               <TikTokLoginButton
                 connected={!!tiktokStatus}
+                needsReconnect={tiktokStatus?.needs_reconnect === true}
                 accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
                 onConnect={handleConnectTikTok}
                 onDisconnect={handleDisconnectTikTok}
@@ -865,6 +901,24 @@ export default function ListPage() {
 
         {/* List content */}
         <div className="list-shell flex-1 flex flex-col overflow-hidden">
+
+          {/* Filter buttons: day/week/month */}
+          <div className="flex items-center gap-2 px-6 pt-4 pb-3 bg-white border-b border-slate-100">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter:</span>
+            {['day', 'week', 'month'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setListViewFilter(f as 'day' | 'week' | 'month')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  listViewFilter === f
+                    ? 'bg-[#f6b70a] text-black shadow-sm'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
 
           {/* Tabs: Scheduled | Drafts */}
           <div className="flex items-center gap-6 px-6 pt-4 pb-0 border-b border-slate-200 bg-white">

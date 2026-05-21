@@ -127,3 +127,30 @@ export const deleteSchedule = async (req: Request, res: Response): Promise<void>
     error(res, { message: 'Failed to delete schedule', statusCode: 500 });
   }
 };
+
+export const getListView = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.userId;
+    if (!userId) { error(res, { message: 'Unauthorized', statusCode: 401 }); return; }
+
+    const filter = (req.query['filter'] as string) || 'month';
+    const date = (req.query['date'] as string) || new Date().toISOString().split('T')[0];
+
+    if (!['day', 'week', 'month'].includes(filter)) {
+      error(res, { message: 'Invalid filter. Must be day, week, or month', statusCode: 400 }); return;
+    }
+
+    const schedules = await scheduleService.getSchedulesForListView(
+      userId,
+      filter as 'day' | 'week' | 'month',
+      date,
+    );
+
+    logger.info(`[Calendar] List view filter=${filter} date=${date} count=${schedules.length}`);
+    success(res, { message: 'Schedules retrieved', data: schedules });
+  } catch (err) {
+    logger.error('[calendarController.getListView]', err);
+    error(res, { message: 'Failed to fetch schedules', statusCode: 500 });
+  }
+};

@@ -5,6 +5,7 @@ import { decrypt, encrypt } from '../utils/encryptionHelper.ts';
 import { TIKTOK_CONFIG } from '../config/tiktok.ts';
 import { getConnectedAccountForUser } from './tiktokOAuthService.ts';
 import logger from '../utils/logger.ts';
+import { retryWithBackoff, TIKTOK_RETRY } from '../utils/retryHelper.ts';
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
 const SIGNED_URL_TTL_SECONDS = 3600;
@@ -21,6 +22,8 @@ const STATUS_POLL_INTERVAL_MS = 3000;
 const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
 const FORCED_PUBLISH_PRIVACY_LEVEL = 'SELF_ONLY';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const VALIDATION_TIMEOUT_MS = 5000;
+const REQUIRED_VIDEO_SCOPE = 'video.publish';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DB helpers
@@ -76,6 +79,7 @@ async function getTikTokAccount(accountId) {
       'refresh_token_encrypted',
       'access_token_expires_at',
       'refresh_token_expires_at',
+      'token_scope',
     ].join(','))
     .eq('id', accountId)
     .maybeSingle();
@@ -101,6 +105,44 @@ function isExpiredOrNearExpiry(isoDate) {
   const expiresAt = new Date(isoDate || '').getTime();
   if (Number.isNaN(expiresAt)) return true;
   return expiresAt <= (Date.now() + ACCESS_TOKEN_REFRESH_BUFFER_MS);
+}
+
+function isFullyExpired(account) {
+  return isExpiredOrNearExpiry(account?.access_token_expires_at)
+    && isExpiredOrNearExpiry(account?.refresh_token_expires_at);
+}
+
+function hasVideoPublishScope(account) {
+  const scope = Array.isArray(account?.token_scope) ? account.token_scope : [];
+  return scope.includes(REQUIRED_VIDEO_SCOPE);
+}
+
+function validateBeforePublish(account) {
+  if (!account || account.connection_status !== 'connected') {
+    return {
+      valid: false,
+      message: 'TikTok account is not connected. Please reconnect your TikTok account.',
+      reason: 'account_not_connected',
+    };
+  }
+
+  if (isFullyExpired(account)) {
+    return {
+      valid: false,
+      message: 'TikTok refresh token is expired. Please reconnect your TikTok account.',
+      reason: 'tokens_expired',
+    };
+  }
+
+  if (!hasVideoPublishScope(account)) {
+    return {
+      valid: false,
+      message: `TikTok account is missing the '${REQUIRED_VIDEO_SCOPE}' permission. Please reconnect TikTok to grant publish access.`,
+      reason: 'missing_scope',
+    };
+  }
+
+  return { valid: true };
 }
 
 async function refreshAccessToken(account) {
@@ -469,13 +511,20 @@ async function initVideoPublish(accessToken, schedule, sizeBytes) {
     },
   };
 
-  const response = await axios.post(TIKTOK_CONFIG.publishInboxVideoInitUrl, body, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json; charset=UTF-8',
+  const response = await retryWithBackoff(
+    () => axios.post(TIKTOK_CONFIG.publishVideoInitUrl, body, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      timeout: 20000,
+    }),
+    {
+      ...TIKTOK_RETRY,
+      onRetry: (attempt, delayMs) =>
+        logger.warn(`[tiktokPublish] initVideoPublish rate-limited — retry ${attempt} in ${delayMs}ms`),
     },
-    timeout: 20000,
-  });
+  );
 
   assertTikTokOk(response.data);
 
@@ -523,14 +572,23 @@ async function uploadBinaryToTikTok(uploadUrl, binaryBuffer, mimeType) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Photo publish: PULL_FROM_URL
-// 1. Resolve image URLs for each photo asset
-// 2. Init publish using the photo endpoint
-// 3. TikTok fetches the photos from the provided URLs
+// Photo publish: PULL_FROM_URL (TikTok photo API only supports this method —
+// FILE_UPLOAD is not available for /v2/post/publish/content/init/)
+// 1. Resolve a public URL for each photo via TIKTOK_MEDIA_PUBLIC_BASE_URL tunnel
+// 2. Init publish — TikTok fetches the images from the provided URLs
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function initPhotoPublish(accessToken, schedule, photoUrls) {
-  const photoCoverIndex = photoUrls.length > 1 ? 1 : 0;
+async function initPhotoPublish(accessToken, schedule, photoAssets) {
+  const photoUrls = photoAssets
+    .map((asset) => buildPublicMediaUrl(asset?.id))
+    .filter(Boolean) as string[];
+
+  if (photoUrls.length === 0) {
+    throw new Error(
+      'Photo publish failed: TIKTOK_MEDIA_PUBLIC_BASE_URL is not set — ' +
+      'PULL_FROM_URL requires a publicly reachable URL (set up the Cloudflare tunnel)',
+    );
+  }
 
   const body = {
     post_info: {
@@ -538,23 +596,35 @@ async function initPhotoPublish(accessToken, schedule, photoUrls) {
       description: resolveCaption(schedule).slice(0, 4000),
       privacy_level: resolvePrivacyLevel(schedule),
       disable_comment: schedule.allow_comment === false,
+      auto_add_music: false,
     },
     source_info: {
       source: 'PULL_FROM_URL',
-      photo_cover_index: photoCoverIndex,
       photo_images: photoUrls,
+      photo_cover_index: 0,
     },
     post_mode: 'MEDIA_UPLOAD',
     media_type: 'PHOTO',
   };
 
-  const response = await axios.post(TIKTOK_CONFIG.publishPhotoInitUrl, body, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json; charset=UTF-8',
+  logger.info(
+    `[tiktokPublish] initPhotoPublish PULL_FROM_URL: ${photoUrls.length} photo(s) via tunnel ${TIKTOK_CONFIG.mediaPublicBaseUrl}`,
+  );
+
+  const response = await retryWithBackoff(
+    () => axios.post(TIKTOK_CONFIG.publishPhotoInitUrl, body, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      timeout: 20000,
+    }),
+    {
+      ...TIKTOK_RETRY,
+      onRetry: (attempt, delayMs) =>
+        logger.warn(`[tiktokPublish] initPhotoPublish rate-limited — retry ${attempt} in ${delayMs}ms`),
     },
-    timeout: 20000,
-  });
+  );
 
   assertTikTokOk(response.data);
 
@@ -571,16 +641,23 @@ async function initPhotoPublish(accessToken, schedule, photoUrls) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function fetchPublishStatus(accessToken, publishId) {
-  const response = await axios.post(
-    TIKTOK_CONFIG.publishStatusFetchUrl,
-    { publish_id: publishId },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json; charset=UTF-8',
+  const response = await retryWithBackoff(
+    () => axios.post(
+      TIKTOK_CONFIG.publishStatusFetchUrl,
+      { publish_id: publishId },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        timeout: 20000,
       },
-      timeout: 20000,
-    }
+    ),
+    {
+      ...TIKTOK_RETRY,
+      onRetry: (attempt, delayMs) =>
+        logger.warn(`[tiktokPublish] fetchPublishStatus rate-limited — retry ${attempt} in ${delayMs}ms`),
+    },
   );
 
   assertTikTokOk(response.data);
@@ -693,13 +770,14 @@ export async function publishScheduledContent(scheduleId) {
     }
 
     const account = await getTikTokAccount(schedule.tiktok_account_id);
-    if (!account || account.connection_status !== 'connected') {
+    const preflightCheck = validateBeforePublish(account);
+    if (!preflightCheck.valid) {
       await finalizePublish(scheduleId, {
         state: 'failed',
-        message: 'TikTok account is not connected',
-        detail: { reason: 'account_not_connected' },
+        message: preflightCheck.message,
+        detail: { reason: preflightCheck.reason },
       });
-      return { success: false, status: 'failed', message: 'TikTok account is not connected' };
+      return { success: false, status: 'failed', message: preflightCheck.message };
     }
 
     const accessToken = await getPublishAccessToken(account);
@@ -716,26 +794,21 @@ export async function publishScheduledContent(scheduleId) {
 
       await uploadBinaryToTikTok(uploadUrl, buffer, mimeType);
     } else {
-      // ── Photos: PULL_FROM_URL per TikTok docs ──────────────────────────
+      // ── Photos: PULL_FROM_URL (TikTok photo API does not support FILE_UPLOAD)
       const photoAssets = getPhotoAssets(assets);
-      const photoUrls = (
-        await Promise.all(photoAssets.map((asset) => resolveAssetUrl(asset)))
-      ).filter(Boolean);
 
-      logger.info(
-        `[TikTok Publish] schedule=${scheduleId} base_url=${TIKTOK_CONFIG.mediaPublicBaseUrl} photo_urls=${safeJson(photoUrls)}`
-      );
-
-      if (!photoUrls.length) {
+      if (!photoAssets.length) {
         await finalizePublish(scheduleId, {
           state: 'failed',
-          message: 'Photo publish failed: no valid image URL could be resolved',
-          detail: { reason: 'missing_photo_urls' },
+          message: 'Photo publish failed: no photo assets found for this schedule',
+          detail: { reason: 'missing_photo_assets' },
         });
-        return { success: false, status: 'failed', message: 'Photo publish failed: no valid image URL could be resolved' };
+        return { success: false, status: 'failed', message: 'Photo publish failed: no photo assets found for this schedule' };
       }
 
-      const init = await initPhotoPublish(accessToken, schedule, photoUrls);
+      logger.info(`[TikTok Publish] schedule=${scheduleId} publishing ${photoAssets.length} photo(s) via PULL_FROM_URL`);
+
+      const init = await initPhotoPublish(accessToken, schedule, photoAssets);
       publishId = init.publishId;
     }
 

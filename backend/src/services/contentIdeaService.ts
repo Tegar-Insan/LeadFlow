@@ -11,6 +11,7 @@
 import { getAnthropicClient, ANTHROPIC_MODEL } from '../config/anthropic.ts';
 import { supabaseAdmin as supabase } from '../config/supabase.ts';
 import logger from '../utils/logger.ts';
+import { retryWithBackoff, ANTHROPIC_RETRY } from '../utils/retryHelper.ts';
 
 // ---------------------------------------------------------------------------
 // Public contract — what the frontend consumes
@@ -158,12 +159,19 @@ export async function generateScheduleDraftsFromBrief(
       throw new Error('Anthropic client not available');
     }
 
-    const response = await anthropic.messages.create({
-      model: MODEL_ID,
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: brief.trim() }],
-    });
+    const response = await retryWithBackoff(
+      () => anthropic.messages.create({
+        model: MODEL_ID,
+        max_tokens: 2048,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: brief.trim() }],
+      }),
+      {
+        ...ANTHROPIC_RETRY,
+        onRetry: (attempt, delayMs) =>
+          logger.warn(`[contentIdeaService] rate-limited — retry ${attempt} in ${delayMs}ms`),
+      },
+    );
 
     const textBlock = response.content.find((b: { type: string }) => b.type === 'text') as
       | { type: 'text'; text: string }

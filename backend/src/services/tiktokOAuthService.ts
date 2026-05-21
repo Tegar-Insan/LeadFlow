@@ -146,6 +146,14 @@ export async function upsertTiktokAccount(
   if (error) throw error;
 }
 
+const TOKEN_EXPIRY_BUFFER_MS = 60 * 1000;
+
+function isTokenExpired(isoDate: string | null | undefined): boolean {
+  const expiresAt = new Date(isoDate ?? '').getTime();
+  if (Number.isNaN(expiresAt)) return true;
+  return expiresAt <= Date.now() + TOKEN_EXPIRY_BUFFER_MS;
+}
+
 export async function getAccountStatusForUser(userId: string): Promise<Record<string, unknown> | null> {
   const { data, error } = await supabaseAdmin
     .from('tiktok_accounts')
@@ -161,13 +169,25 @@ export async function getAccountStatusForUser(userId: string): Promise<Record<st
     .maybeSingle();
 
   if (error) throw error;
-  return (data as Record<string, unknown> | null) ?? null;
+  if (!data) return null;
+
+  const row = data as unknown as Record<string, unknown>;
+  const accessExpired = isTokenExpired(row['access_token_expires_at'] as string | null);
+  const refreshExpired = isTokenExpired(row['refresh_token_expires_at'] as string | null);
+
+  return {
+    ...row,
+    needs_reconnect: accessExpired && refreshExpired,
+  };
 }
 
 export async function getConnectedAccountForUser(userId: string): Promise<Record<string, unknown> | null> {
   const { data, error } = await supabaseAdmin
     .from('tiktok_accounts')
-    .select('id, owner_user_id, connection_status, access_token_encrypted')
+    .select(
+      'id, owner_user_id, connection_status, access_token_encrypted, ' +
+        'refresh_token_encrypted, token_scope, access_token_expires_at, refresh_token_expires_at',
+    )
     .eq('owner_user_id', userId)
     .eq('connection_status', 'connected')
     .order('connected_at', { ascending: false })

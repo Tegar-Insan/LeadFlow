@@ -22,11 +22,11 @@ import { TZ, nowWIB } from '../utils/formatDate';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export const useSchedule = () => {
+export const useSchedule = (initialYear?: number, initialMonth?: number) => {
   const today = nowWIB();
 
-  const [year,         setYear]         = useState(today.year());
-  const [month,        setMonth]        = useState(today.month() + 1); // 1-indexed
+  const [year,         setYear]         = useState(initialYear  ?? today.year());
+  const [month,        setMonth]        = useState(initialMonth ?? today.month() + 1); // 1-indexed
   const [schedules,    setSchedules]    = useState([]);
   const [drafts,       setDrafts]       = useState([]);
   const [loading,      setLoading]      = useState(false);
@@ -77,6 +77,12 @@ export const useSchedule = () => {
     setMonth(t.month() + 1);
   };
 
+  // Sync data range when week/day navigation crosses a month boundary
+  const navigateToDate = useCallback((y: number, m: number) => {
+    setYear(y);
+    setMonth(m);
+  }, []);
+
   // ── CRUD helpers (optimistic updates) ─────────────────────
   const addSchedule = useCallback(async (payload) => {
     const status = payload?.status || (payload?.scheduled_at ? 'scheduled' : 'draft');
@@ -88,16 +94,15 @@ export const useSchedule = () => {
 
     const res = await createSchedule(normalizedPayload);
     const s   = res.data.data.schedule;
+    // Always add to state — view rendering filters by date so out-of-range
+    // schedules are invisible but the data is present without needing a reload.
     if (s.scheduled_at) {
-      const d = dayjs(s.scheduled_at).tz(TZ);
-      if (d.year() === year && d.month() + 1 === month) {
-        setSchedules(prev => [...prev, s]);
-      }
+      setSchedules(prev => [...prev, s]);
     } else {
       setDrafts(prev => [s, ...prev]);
     }
     return s;
-  }, [year, month]);
+  }, []);
 
   const editSchedule = useCallback(async (id, payload) => {
     const res = await updateSchedule(id, payload);
@@ -195,6 +200,7 @@ export const useSchedule = () => {
     drafts,
     loading, error,
     prevMonth, nextMonth, goToToday,
+    navigateToDate,
     loadMonth: () => loadMonth(year, month),
     addSchedule,
     editSchedule,

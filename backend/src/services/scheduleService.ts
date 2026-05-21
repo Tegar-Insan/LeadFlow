@@ -1,4 +1,10 @@
 import { supabaseAdmin } from '../config/supabase.ts';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 type ScheduleRow = Record<string, unknown>;
 type AssetRow = Record<string, unknown>;
@@ -20,7 +26,11 @@ export const getSchedulesByMonth = async (year: number, month: number): Promise<
 
   const { data: schedules, error } = await supabaseAdmin
     .from('content_queue_schedules')
-    .select('*, content_assets(id, content_type, file_url, mime_type)')
+    .select(`
+      *,
+      content_assets(id, content_type, file_url, mime_type),
+      content_ideas(idea_title, hook, caption, hashtags, suggested_music, estimated_duration, estimated_engagement, best_time_to_post_wib, category, ai_model_used)
+    `)
     .gte('scheduled_at', startUTC.toISOString())
     .lt('scheduled_at', endUTC.toISOString())
     .order('scheduled_at', { ascending: true, nullsFirst: false })
@@ -28,17 +38,20 @@ export const getSchedulesByMonth = async (year: number, month: number): Promise<
 
   if (error) throw error;
 
-  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[] }>;
+  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[]; content_ideas?: any }>;
   const profiles = await _profileMap(
     [...new Set(rows.map((s) => s.created_by).filter(Boolean) as string[])],
   );
 
   return rows.map((s) => {
     const assets = (s.content_assets as AssetRow[] | undefined) ?? [];
-    const { content_assets, ...rest } = s;
+    const idea = (s.content_ideas as any) ?? {};
+    const { content_assets, content_ideas, ...rest } = s;
     void content_assets;
+    void content_ideas;
     return {
       ...rest,
+      ...idea,
       created_by_name: profiles[s.created_by as string] ?? null,
       primary_asset_id: (assets[0] as AssetRow | undefined)?.['id'] ?? null,
       primary_asset_type: (assets[0] as AssetRow | undefined)?.['content_type'] ?? null,
@@ -51,23 +64,30 @@ export const getSchedulesByMonth = async (year: number, month: number): Promise<
 export const getDraftSchedules = async (): Promise<ScheduleRow[]> => {
   const { data: schedules, error } = await supabaseAdmin
     .from('content_queue_schedules')
-    .select('*, content_assets(id, content_type, file_url, mime_type)')
+    .select(`
+      *,
+      content_assets(id, content_type, file_url, mime_type),
+      content_ideas(idea_title, hook, caption, hashtags, suggested_music, estimated_duration, estimated_engagement, best_time_to_post_wib, category, ai_model_used)
+    `)
     .eq('status', 'draft')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
 
-  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[] }>;
+  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[]; content_ideas?: any }>;
   const profiles = await _profileMap(
     [...new Set(rows.map((s) => s.created_by).filter(Boolean) as string[])],
   );
 
   return rows.map((s) => {
     const assets = (s.content_assets as AssetRow[] | undefined) ?? [];
-    const { content_assets, ...rest } = s;
+    const idea = (s.content_ideas as any) ?? {};
+    const { content_assets, content_ideas, ...rest } = s;
     void content_assets;
+    void content_ideas;
     return {
       ...rest,
+      ...idea,
       created_by_name: profiles[s.created_by as string] ?? null,
       primary_asset_id:   (assets[0] as AssetRow | undefined)?.['id']           ?? null,
       primary_asset_type: (assets[0] as AssetRow | undefined)?.['content_type'] ?? null,
@@ -269,4 +289,57 @@ export const deleteAsset = async (assetId: string): Promise<AssetRow | null> => 
   const { error } = await supabaseAdmin.from('content_assets').delete().eq('id', assetId);
   if (error) throw error;
   return asset as AssetRow;
+};
+
+export const getSchedulesForListView = async (
+  userId: string,
+  filter: 'day' | 'week' | 'month',
+  dateStr: string, // YYYY-MM-DD in WIB
+): Promise<ScheduleRow[]> => {
+  const dateWIB = dayjs(dateStr).tz('Asia/Jakarta');
+  let startUTC: string;
+  let endUTC: string;
+
+  // Calculate date range based on filter type
+  if (filter === 'day') {
+    startUTC = dateWIB.startOf('day').utc().toISOString();
+    endUTC = dateWIB.endOf('day').utc().toISOString();
+  } else if (filter === 'week') {
+    startUTC = dateWIB.startOf('week').utc().toISOString();
+    endUTC = dateWIB.endOf('week').utc().toISOString();
+  } else {
+    // 'month' = rolling 30 days
+    startUTC = dateWIB.subtract(30, 'day').startOf('day').utc().toISOString();
+    endUTC = dateWIB.endOf('day').utc().toISOString();
+  }
+
+  const { data: schedules, error } = await supabaseAdmin
+    .from('content_queue_schedules')
+    .select('*, content_assets(id, content_type, file_url, mime_type)')
+    .eq('created_by', userId)
+    .gte('scheduled_at', startUTC)
+    .lte('scheduled_at', endUTC)
+    .in('status', ['draft', 'uploaded', 'scheduled', 'published', 'failed'])
+    .order('scheduled_at', { ascending: false });
+
+  if (error) throw error;
+
+  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[] }>;
+  const profiles = await _profileMap(
+    [...new Set(rows.map((s) => s.created_by).filter(Boolean) as string[])],
+  );
+
+  return rows.map((s) => {
+    const assets = (s.content_assets as AssetRow[] | undefined) ?? [];
+    const { content_assets, ...rest } = s;
+    void content_assets;
+    return {
+      ...rest,
+      created_by_name: profiles[s.created_by as string] ?? null,
+      primary_asset_id: (assets[0] as AssetRow | undefined)?.['id'] ?? null,
+      primary_asset_type: (assets[0] as AssetRow | undefined)?.['content_type'] ?? null,
+      primary_asset_url: (assets[0] as AssetRow | undefined)?.['file_url'] ?? null,
+      primary_asset_mime: (assets[0] as AssetRow | undefined)?.['mime_type'] ?? null,
+    };
+  });
 };

@@ -71,6 +71,7 @@ describe('CalendarPage post filter dropdown', () => {
       prevMonth: vi.fn(),
       nextMonth: vi.fn(),
       goToToday: vi.fn(),
+      navigateToDate: vi.fn(),
       loadMonth: vi.fn(),
       addSchedule: vi.fn(),
       editSchedule: vi.fn(),

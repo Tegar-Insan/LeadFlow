@@ -26,3 +26,6 @@ export const deleteSchedule = (id) =>
 
 export const publishScheduleNow = (id) =>
   api.post(`/tiktok/publish/${id}`);
+
+export const fetchSchedulesForList = (filter = 'month', date) =>
+  api.get('/calendar/list', { params: { filter, date } });

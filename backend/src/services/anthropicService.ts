@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import logger from '../utils/logger.ts';
+import { retryWithBackoff, ANTHROPIC_RETRY } from '../utils/retryHelper.ts';
 
 interface ChatMessage {
   role: string;
@@ -85,26 +86,36 @@ export const chatWithAnthropic = async (
   const anthropicMsgs = _toAnthropicMessages(messages);
 
   try {
-    const response = await client.messages.create({
-      model: modelId,
-      max_tokens: 1024,
-      system: _SYSTEM_PROMPT,
-      messages: anthropicMsgs,
-    });
+    const response = await retryWithBackoff(
+      () => client.messages.create({
+        model: modelId,
+        max_tokens: 1024,
+        system: _SYSTEM_PROMPT,
+        messages: anthropicMsgs,
+      }),
+      {
+        ...ANTHROPIC_RETRY,
+        onRetry: (attempt, delayMs) =>
+          logger.warn(`[anthropicService] rate-limited — retry ${attempt} in ${delayMs}ms`),
+      },
+    );
 
     const block = response.content[0];
     const raw = block && 'text' in block ? block.text : '';
     const { visible, schedule } = _parseSchedule(raw);
     return { visibleText: visible, schedule, model: modelId };
   } catch (err: unknown) {
-    const e = err as { message?: string };
+    const e = err as { message?: string; status?: number };
     const msg = e.message ?? '';
     logger.error(`[anthropicService] API error: ${msg}`);
     if (msg.includes('authentication_error') || msg.includes('invalid x-api-key')) {
       throw Object.assign(new Error('ANTHROPIC_API_KEY tidak valid.'), { status: 400 });
     }
-    if (msg.includes('rate_limit') || msg.includes('overloaded')) {
-      throw Object.assign(new Error('AI service sedang rate-limited. Coba lagi nanti.'), { status: 429 });
+    if (e.status === 429 || msg.includes('rate_limit') || msg.includes('overloaded')) {
+      throw Object.assign(
+        new Error('AI service sedang rate-limited setelah beberapa percobaan. Coba lagi dalam beberapa menit.'),
+        { status: 429 },
+      );
     }
     throw new Error(msg || 'Anthropic API error');
   }
