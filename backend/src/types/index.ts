@@ -57,6 +57,15 @@ export interface ConversationDTO {
   unreadCount: number;
 }
 
+export interface ActiveUserDTO {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
 export interface SendMessageRequest {
   receiverId: string;
   messageText: string;

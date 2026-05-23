@@ -18,7 +18,7 @@ interface UseInteractionReturn {
   getUnreadCount: () => Promise<void>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 export function useInteraction(): UseInteractionReturn {
   const authContext: any = useContext(AuthContext);
@@ -42,7 +42,7 @@ export function useInteraction(): UseInteractionReturn {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/message`, {
+      const response = await fetch(`${API_BASE_URL}/message`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,7 +84,7 @@ export function useInteraction(): UseInteractionReturn {
           offset: '0',
         });
 
-        const response = await fetch(`${API_BASE_URL}/api/message/${recipientId}?${params}`, {
+        const response = await fetch(`${API_BASE_URL}/message/${recipientId}?${params}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -124,7 +124,7 @@ export function useInteraction(): UseInteractionReturn {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/message`, {
+        const response = await fetch(`${API_BASE_URL}/message`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -170,7 +170,7 @@ export function useInteraction(): UseInteractionReturn {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/message/${messageId}`, {
+        const response = await fetch(`${API_BASE_URL}/message/${messageId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -200,7 +200,7 @@ export function useInteraction(): UseInteractionReturn {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/message/unread/count`, {
+      const response = await fetch(`${API_BASE_URL}/message/unread/count`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

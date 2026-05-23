@@ -6,6 +6,12 @@ import type { AuthenticatedRequest } from '../types/index.ts';
  */
 export declare function getConversations(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 /**
+ * GET /api/message/users/active
+ * Get all active users (marketing_staff + business_owner combined)
+ * Used to populate the user list in sidebar
+ */
+export declare function getActiveUsers(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+/**
  * GET /api/message/:userId
  * Get message history with a specific user
  */
@@ -15,6 +21,11 @@ export declare function getMessages(req: AuthenticatedRequest, res: Response, ne
  * Send a new message
  */
 export declare function sendMessage(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
+/**
+ * PUT /api/message/:messageId
+ * Update message (mark as read, edit text)
+ */
+export declare function updateMessage(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void>;
 /**
  * DELETE /api/message/:messageId
  * Delete a message (sender only)

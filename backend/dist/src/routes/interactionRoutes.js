@@ -13,6 +13,12 @@ router.use(authMiddleware);
  */
 router.get('/', InteractionMessageController.getConversations);
 /**
+ * GET /api/message/users/active
+ * Get all active users (marketing_staff + business_owner combined)
+ * Note: Place this BEFORE /:userId route to avoid treating "users" as userId
+ */
+router.get('/users/active', InteractionMessageController.getActiveUsers);
+/**
  * GET /api/message/unread/count
  * Get unread message count
  * Note: Place this BEFORE /:userId route to avoid treating "unread" as userId
@@ -28,6 +34,11 @@ router.get('/:userId', InteractionMessageController.getMessages);
  * Send a new message
  */
 router.post('/', InteractionMessageController.sendMessage);
+/**
+ * PUT /api/message/:messageId
+ * Update message (mark as read, edit text)
+ */
+router.put('/:messageId', InteractionMessageController.updateMessage);
 /**
  * DELETE /api/message/:messageId
  * Delete a message (sender only)

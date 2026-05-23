@@ -6,7 +6,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body { background: #131313; color: #e5e2e1; -webkit-font-smoothing: antialiased; font-family: 'Inter', sans-serif; }
-  ::selection { background: rgba(246,183,10,0.3); color: #e5e2e1; }
+  ::selection { background: rgba(250, 250, 250, 0.496); color: #e5e2e1; }
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: #131313; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }

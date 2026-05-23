@@ -2,6 +2,7 @@
 // src/services/interactionService.ts
 import * as InternalMessage from "../models/InternalMessage.js";
 import * as User from "../models/User.js";
+import { db } from "../config/db.js";
 import * as validator from "../validators/interactionValidator.js";
 import logger from "../utils/logger.js";
 /**
@@ -31,6 +32,40 @@ export async function getConversations(userId) {
     }
     catch (err) {
         logger.error('interactionService.getConversations error:', err);
+        throw err;
+    }
+}
+/**
+ * Get all active users (marketing_staff + business_owner combined)
+ * Excludes deactivated users, excludes the current user
+ */
+export async function getActiveUsers(currentUserId) {
+    try {
+        const { data, error } = await db
+            .from('users')
+            .select(`id, email, is_active,
+         roles(id, name),
+         user_profiles(id, full_name, phone)`)
+            .eq('is_active', true)
+            .neq('id', currentUserId)
+            .order('user_profiles.full_name', { ascending: true });
+        if (error) {
+            logger.error('interactionService.getActiveUsers error:', error);
+            throw error;
+        }
+        // Map to ActiveUserDTO
+        const result = (data || []).map((user) => ({
+            id: user.id,
+            email: user.email,
+            fullName: user.user_profiles?.full_name || 'Unknown User',
+            phone: user.user_profiles?.phone || '',
+            role: user.roles?.name || 'unknown',
+            isActive: user.is_active,
+        }));
+        return result;
+    }
+    catch (err) {
+        logger.error('interactionService.getActiveUsers error:', err);
         throw err;
     }
 }
@@ -85,11 +120,16 @@ export async function sendMessage(senderId, request) {
         const { receiverId, messageText } = request;
         // Validate input
         validator.validateDifferentUsers(senderId, receiverId);
-        // Verify receiver exists
+        // Verify receiver exists and is active
         const receiver = await User.findById(receiverId);
         if (!receiver) {
             const err = new Error('Recipient user not found');
             err.statusCode = 404;
+            throw err;
+        }
+        if (!receiver.is_active) {
+            const err = new Error('Recipient user is inactive');
+            err.statusCode = 400;
             throw err;
         }
         // Verify sender exists (should always be true if authenticated)
@@ -115,6 +155,65 @@ export async function sendMessage(senderId, request) {
     }
     catch (err) {
         logger.error('interactionService.sendMessage error:', err);
+        throw err;
+    }
+}
+/**
+ * Update message (is_read, messageText)
+ * Only receiver can mark as read, only sender can edit text
+ */
+export async function updateMessage(userId, messageId, updates) {
+    try {
+        // Get message to verify permissions
+        const message = await InternalMessage.getMessageById(messageId);
+        if (!message) {
+            const err = new Error('Message not found');
+            err.statusCode = 404;
+            throw err;
+        }
+        // Validate permissions
+        if (updates.isRead !== undefined && message.receiver_id !== userId) {
+            const err = new Error('Only receiver can mark message as read');
+            err.statusCode = 403;
+            throw err;
+        }
+        if (updates.messageText !== undefined && message.sender_id !== userId) {
+            const err = new Error('Only sender can edit message');
+            err.statusCode = 403;
+            throw err;
+        }
+        // Build update payload
+        const updatePayload = {};
+        if (updates.isRead !== undefined) {
+            updatePayload.is_read = updates.isRead;
+        }
+        if (updates.messageText !== undefined) {
+            updatePayload.message_text = updates.messageText;
+        }
+        // Update message
+        const { data, error } = await db
+            .from('internal_messages')
+            .update(updatePayload)
+            .eq('id', messageId)
+            .select('id, sender_id, receiver_id, message_text, is_read, created_at, updated_at')
+            .single();
+        if (error) {
+            throw error;
+        }
+        logger.info(`Message ${messageId} updated by user ${userId}`);
+        // Map to DTO
+        return {
+            id: data.id,
+            senderId: data.sender_id,
+            receiverId: data.receiver_id,
+            messageText: data.message_text,
+            isRead: data.is_read,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
+        };
+    }
+    catch (err) {
+        logger.error('interactionService.updateMessage error:', err);
         throw err;
     }
 }

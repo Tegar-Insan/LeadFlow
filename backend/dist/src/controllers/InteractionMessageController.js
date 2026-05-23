@@ -26,6 +26,30 @@ export async function getConversations(req, res, next) {
     }
 }
 /**
+ * GET /api/message/users/active
+ * Get all active users (marketing_staff + business_owner combined)
+ * Used to populate the user list in sidebar
+ */
+export async function getActiveUsers(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            const err = new Error('Unauthorized: User ID not found in token');
+            err.statusCode = 401;
+            throw err;
+        }
+        const users = await interactionService.getActiveUsers(userId);
+        success(res, {
+            message: 'Active users retrieved successfully',
+            data: { users },
+            statusCode: 200,
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+/**
  * GET /api/message/:userId
  * Get message history with a specific user
  */
@@ -67,6 +91,36 @@ export async function sendMessage(req, res, next) {
             message: 'Message sent successfully',
             data: { message },
             statusCode: 201,
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+/**
+ * PUT /api/message/:messageId
+ * Update message (mark as read, edit text)
+ */
+export async function updateMessage(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            const err = new Error('Unauthorized: User ID not found in token');
+            err.statusCode = 401;
+            throw err;
+        }
+        const { messageId } = req.params;
+        if (!messageId) {
+            const err = new Error('messageId is required in path parameter');
+            err.statusCode = 400;
+            throw err;
+        }
+        const { isRead, messageText } = req.body;
+        const updatedMessage = await interactionService.updateMessage(userId, messageId, { isRead, messageText });
+        success(res, {
+            message: 'Message updated successfully',
+            data: { message: updatedMessage },
+            statusCode: 200,
         });
     }
     catch (err) {
