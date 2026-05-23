@@ -6,8 +6,7 @@
  */
 import { body } from 'express-validator';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc.js';
-import tz from 'dayjs/plugin/timezone.js';
+import { utc, timezone as tz } from "../utils/dayjsPlugins.js";
 import { nowJakarta } from "../utils/jakartaTime.js";
 dayjs.extend(utc);
 dayjs.extend(tz);

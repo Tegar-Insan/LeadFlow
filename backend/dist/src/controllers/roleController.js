@@ -106,6 +106,29 @@ export async function toggleUserStatus(req, res, next) {
         next(err);
     }
 }
+export async function deleteUser(req, res, next) {
+    try {
+        const authReq = req;
+        const { id } = req.params;
+        if (authReq.user.userId === id) {
+            error(res, { message: 'Admins cannot delete their own account.', statusCode: 403 });
+            return;
+        }
+        const user = await User.findById(id);
+        if (!user) {
+            error(res, { message: 'User not found.', statusCode: 404 });
+            return;
+        }
+        await User.deleteById(id);
+        success(res, {
+            message: 'User removed successfully.',
+            data: { userId: id },
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+}
 export async function createUserByAdmin(req, res, next) {
     try {
         const { email, password, fullName, phone, roleName = 'marketing_staff' } = req.body;

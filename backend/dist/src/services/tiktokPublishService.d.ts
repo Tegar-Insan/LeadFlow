@@ -1,7 +1,7 @@
 export declare function publishScheduledContent(scheduleId: any): Promise<{
     success: boolean;
     status: string;
-    message: string;
+    message: string | undefined;
     publishId?: never;
     uploadUrl?: never;
     mode?: never;
@@ -23,7 +23,7 @@ export declare function publishScheduledContent(scheduleId: any): Promise<{
 export declare function publishNowBySchedule(scheduleId: any): Promise<{
     success: boolean;
     status: string;
-    message: string;
+    message: string | undefined;
     publishId?: never;
     uploadUrl?: never;
     mode?: never;

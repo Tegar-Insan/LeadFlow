@@ -185,8 +185,8 @@ export default function LoginPage() {
             fontSize: 'clamp(36px, 4.5vw, 58px)',
             fontWeight: 700, lineHeight: 1.1, color: '#111', marginBottom: 12,
           }}>
-            TikTok growth,<br />
-            <span style={{ color: '#e6a800' }}>with Krench Chicken.</span>
+            Boost Sales,<br />
+            <span style={{ color: '#e6a800' }}>with LeadFlow.</span>
           </h1>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 40 }}>

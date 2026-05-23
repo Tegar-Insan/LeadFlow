@@ -95,8 +95,28 @@ export default function AppRoutes() {
       />
       <Route
         path="/calendar"
+        element={<Navigate to="/calendar/month" replace />}
+      />
+      <Route
+        path="/calendar/day"
         element={
-          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar/week"
+        element={
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar/month"
+        element={
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
             <CalendarPage />
           </ProtectedRoute>
         }
@@ -104,7 +124,7 @@ export default function AppRoutes() {
       <Route
         path="/calendar/list"
         element={
-          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner', 'admin']}>
+          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
             <ListPage />
           </ProtectedRoute>
         }

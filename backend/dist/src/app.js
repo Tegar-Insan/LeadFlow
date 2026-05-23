@@ -9,12 +9,16 @@ import { apiLimiter } from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
+import promptRoutes from "./routes/promptRoutes.js";
+import contentIdeaRoutes from "./routes/contentIdeaRoutes.js";
+import commentsRoutes from "./routes/commentsRoutes.js";
 import scheduleRoutes from "./routes/scheduleRoutes.js";
 import mediaRoutes from "./routes/mediaRoutes.js";
 import adminRoutes from "./routes/roleRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import tiktokRoutes from "./routes/tiktokRoutes.js";
 import publicMediaRoutes from "./routes/publicMediaRoutes.js";
+import interactionRoutes from "./routes/interactionRoutes.js";
 const app = express();
 app.use((_req, res, next) => {
     res.setHeader('ngrok-skip-browser-warning', 'true');
@@ -82,12 +86,16 @@ app.get(/^\/.+\/tiktok[A-Za-z0-9]+\.txt$/, (_req, res) => sendTikTokVerification
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/prompt', promptRoutes);
+app.use('/api/content', contentIdeaRoutes);
+app.use('/api/comments', commentsRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
+app.use('/api/message', interactionRoutes);
 app.use((_req, res) => {
     res.status(404).json({
         success: false,

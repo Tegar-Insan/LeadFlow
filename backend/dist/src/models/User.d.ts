@@ -9,6 +9,7 @@ export declare function create({ email, passwordHash, roleId }: {
 export declare function markEmailVerified(email: string): Promise<void>;
 export declare function updatePassword(userId: string, passwordHash: string): Promise<void>;
 export declare function setActive(userId: string, isActive: boolean): Promise<void>;
+export declare function deleteById(userId: string): Promise<void>;
 export declare function findAll({ page, limit, roleId }?: {
     page?: number;
     limit?: number;

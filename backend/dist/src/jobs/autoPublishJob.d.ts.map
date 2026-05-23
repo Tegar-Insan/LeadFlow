@@ -1,1 +1,1 @@
-{"version":3,"file":"autoPublishJob.d.ts","sourceRoot":"","sources":["../../../src/jobs/autoPublishJob.ts"],"names":[],"mappings":"AAwBA,wBAAgB,mBAAmB,QA0BlC;AAED,wBAAgB,kBAAkB,SAIjC"}
+{"version":3,"file":"autoPublishJob.d.ts","sourceRoot":"","sources":["../../../src/jobs/autoPublishJob.ts"],"names":[],"mappings":"AAAA,OAAO,IAAI,MAAM,WAAW,CAAC;AAK7B,wBAAgB,mBAAmB,uBAuBlC;AAED,wBAAgB,kBAAkB,SAIjC"}

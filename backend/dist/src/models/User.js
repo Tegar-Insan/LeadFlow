@@ -78,6 +78,14 @@ export async function setActive(userId, isActive) {
     if (error)
         throw new Error(`User.setActive: ${error.message}`);
 }
+export async function deleteById(userId) {
+    const { error } = await db
+        .from('users')
+        .delete()
+        .eq('id', userId);
+    if (error)
+        throw new Error(`User.deleteById: ${error.message}`);
+}
 export async function findAll({ page = 1, limit = 20, roleId = null } = {}) {
     let q = db
         .from('users')

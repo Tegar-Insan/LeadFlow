@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "../config/supabase.js";
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 const _profileMap = async (userIds) => {
     if (!userIds.length)
         return {};
@@ -13,7 +18,11 @@ export const getSchedulesByMonth = async (year, month) => {
     const endUTC = new Date(Date.UTC(year, month, 1) - 7 * 3_600_000);
     const { data: schedules, error } = await supabaseAdmin
         .from('content_queue_schedules')
-        .select('*, content_assets(id, content_type, file_url, mime_type)')
+        .select(`
+      *,
+      content_assets(id, content_type, file_url, mime_type),
+      content_ideas(idea_title, hook, caption, hashtags)
+    `)
         .gte('scheduled_at', startUTC.toISOString())
         .lt('scheduled_at', endUTC.toISOString())
         .order('scheduled_at', { ascending: true, nullsFirst: false })
@@ -24,10 +33,13 @@ export const getSchedulesByMonth = async (year, month) => {
     const profiles = await _profileMap([...new Set(rows.map((s) => s.created_by).filter(Boolean))]);
     return rows.map((s) => {
         const assets = s.content_assets ?? [];
-        const { content_assets, ...rest } = s;
+        const idea = s.content_ideas ?? {};
+        const { content_assets, content_ideas, ...rest } = s;
         void content_assets;
+        void content_ideas;
         return {
             ...rest,
+            ...idea,
             created_by_name: profiles[s.created_by] ?? null,
             primary_asset_id: assets[0]?.['id'] ?? null,
             primary_asset_type: assets[0]?.['content_type'] ?? null,
@@ -39,14 +51,33 @@ export const getSchedulesByMonth = async (year, month) => {
 export const getDraftSchedules = async () => {
     const { data: schedules, error } = await supabaseAdmin
         .from('content_queue_schedules')
-        .select('*')
+        .select(`
+      *,
+      content_assets(id, content_type, file_url, mime_type),
+      content_ideas(idea_title, hook, caption, hashtags)
+    `)
         .eq('status', 'draft')
         .order('created_at', { ascending: false });
     if (error)
         throw error;
     const rows = (schedules ?? []);
     const profiles = await _profileMap([...new Set(rows.map((s) => s.created_by).filter(Boolean))]);
-    return rows.map((s) => ({ ...s, created_by_name: profiles[s.created_by] ?? null }));
+    return rows.map((s) => {
+        const assets = s.content_assets ?? [];
+        const idea = s.content_ideas ?? {};
+        const { content_assets, content_ideas, ...rest } = s;
+        void content_assets;
+        void content_ideas;
+        return {
+            ...rest,
+            ...idea,
+            created_by_name: profiles[s.created_by] ?? null,
+            primary_asset_id: assets[0]?.['id'] ?? null,
+            primary_asset_type: assets[0]?.['content_type'] ?? null,
+            primary_asset_url: assets[0]?.['file_url'] ?? null,
+            primary_asset_mime: assets[0]?.['mime_type'] ?? null,
+        };
+    });
 };
 export const getScheduleById = async (id) => {
     const { data: schedule, error } = await supabaseAdmin
@@ -77,14 +108,15 @@ export const getScheduleById = async (id) => {
         created_by_name: profile?.full_name ?? null,
     };
 };
-export const createSchedule = async ({ idea_id = null, created_by, title, description = null, caption = null, hashtags = [], scheduled_at = null, priority = 0, }) => {
+export const createSchedule = async ({ idea_id = null, created_by, title, description = null, caption = null, hashtags = [], scheduled_at = null, status = null, priority = 0, }) => {
     void description;
-    const status = scheduled_at ? 'scheduled' : 'draft';
+    const nextStatus = status || (scheduled_at ? 'scheduled' : 'draft');
+    const normalizedScheduledAt = nextStatus === 'draft' ? null : scheduled_at ?? null;
     const payload = {
         created_by,
-        status,
+        status: nextStatus,
         priority_order: priority,
-        scheduled_at: scheduled_at ?? null,
+        scheduled_at: normalizedScheduledAt,
         custom_caption: caption ?? title,
         custom_hashtags: hashtags,
         auto_publish: true,
@@ -189,5 +221,49 @@ export const deleteAsset = async (assetId) => {
     if (error)
         throw error;
     return asset;
+};
+export const getSchedulesForListView = async (userId, filter, dateStr) => {
+    const dateWIB = dayjs(dateStr).tz('Asia/Jakarta');
+    let startUTC;
+    let endUTC;
+    // Calculate date range based on filter type
+    if (filter === 'day') {
+        startUTC = dateWIB.startOf('day').utc().toISOString();
+        endUTC = dateWIB.endOf('day').utc().toISOString();
+    }
+    else if (filter === 'week') {
+        startUTC = dateWIB.startOf('week').utc().toISOString();
+        endUTC = dateWIB.endOf('week').utc().toISOString();
+    }
+    else {
+        // 'month' = rolling 30 days
+        startUTC = dateWIB.subtract(30, 'day').startOf('day').utc().toISOString();
+        endUTC = dateWIB.endOf('day').utc().toISOString();
+    }
+    const { data: schedules, error } = await supabaseAdmin
+        .from('content_queue_schedules')
+        .select('*, content_assets(id, content_type, file_url, mime_type)')
+        .eq('created_by', userId)
+        .gte('scheduled_at', startUTC)
+        .lte('scheduled_at', endUTC)
+        .in('status', ['draft', 'uploaded', 'scheduled', 'published', 'failed'])
+        .order('scheduled_at', { ascending: false });
+    if (error)
+        throw error;
+    const rows = (schedules ?? []);
+    const profiles = await _profileMap([...new Set(rows.map((s) => s.created_by).filter(Boolean))]);
+    return rows.map((s) => {
+        const assets = s.content_assets ?? [];
+        const { content_assets, ...rest } = s;
+        void content_assets;
+        return {
+            ...rest,
+            created_by_name: profiles[s.created_by] ?? null,
+            primary_asset_id: assets[0]?.['id'] ?? null,
+            primary_asset_type: assets[0]?.['content_type'] ?? null,
+            primary_asset_url: assets[0]?.['file_url'] ?? null,
+            primary_asset_mime: assets[0]?.['mime_type'] ?? null,
+        };
+    });
 };
 //# sourceMappingURL=scheduleService.js.map

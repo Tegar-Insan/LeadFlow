@@ -70,7 +70,7 @@ export default function LoginForm({ onSubmit, loading = false, apiError = '' }: 
         Sign In
       </h2>
       <p style={{ fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 36, fontFamily: "'DM Sans', sans-serif" }}>
-        Welcome back to LeadFlow — manage TikTok content effortlessly.
+        Sign in to your LeadFlow account.
       </p>
 
       {apiError && (

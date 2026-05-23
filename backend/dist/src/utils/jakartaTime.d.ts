@@ -1,3 +1,4 @@
+import './dayjsPlugins.ts';
 import type { Dayjs } from 'dayjs';
 export declare const TIMEZONE = "Asia/Jakarta";
 export declare const nowJakarta: () => Dayjs;

@@ -133,7 +133,7 @@ export default function RegisterPage() {
             fontSize: 'clamp(32px, 4vw, 52px)',
             fontWeight: 700, lineHeight: 1.1, color: '#111', marginBottom: 12,
           }}>
-            TikTok growth,<br />
+            Boost Sales,<br />
             <span style={{ color: '#e6a800' }}>with LeadFlow.</span>
           </h1>
 

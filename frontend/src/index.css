@@ -25,7 +25,7 @@
   .input-error:focus { border-bottom-color: #ef4444 !important; }
   .card {
     @apply rounded-2xl backdrop-blur-sm;
-    background: rgba(255,255,255,0.03);
+    background: rgb(251, 249, 249);
     border: 1px solid rgba(255,255,255,0.08);
   }
   .btn-primary {

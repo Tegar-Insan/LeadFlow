@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import logger from "../utils/logger.js";
+import { retryWithBackoff, ANTHROPIC_RETRY } from "../utils/retryHelper.js";
 const _SCHEDULE_RE = /%%SCHEDULE%%([\s\S]*?)%%END%%/;
 const _SYSTEM_PROMPT = `You are an expert AI marketing assistant for Krench Chicken — a crispy fried-chicken brand in Bogor, West Java, Indonesia. You help the marketing team manage their TikTok content strategy through the LeadFlow platform.
 
@@ -64,11 +65,14 @@ export const chatWithAnthropic = async (messages) => {
     const client = new Anthropic({ apiKey });
     const anthropicMsgs = _toAnthropicMessages(messages);
     try {
-        const response = await client.messages.create({
+        const response = await retryWithBackoff(() => client.messages.create({
             model: modelId,
             max_tokens: 1024,
             system: _SYSTEM_PROMPT,
             messages: anthropicMsgs,
+        }), {
+            ...ANTHROPIC_RETRY,
+            onRetry: (attempt, delayMs) => logger.warn(`[anthropicService] rate-limited — retry ${attempt} in ${delayMs}ms`),
         });
         const block = response.content[0];
         const raw = block && 'text' in block ? block.text : '';
@@ -82,8 +86,8 @@ export const chatWithAnthropic = async (messages) => {
         if (msg.includes('authentication_error') || msg.includes('invalid x-api-key')) {
             throw Object.assign(new Error('ANTHROPIC_API_KEY tidak valid.'), { status: 400 });
         }
-        if (msg.includes('rate_limit') || msg.includes('overloaded')) {
-            throw Object.assign(new Error('AI service sedang rate-limited. Coba lagi nanti.'), { status: 429 });
+        if (e.status === 429 || msg.includes('rate_limit') || msg.includes('overloaded')) {
+            throw Object.assign(new Error('AI service sedang rate-limited setelah beberapa percobaan. Coba lagi dalam beberapa menit.'), { status: 429 });
         }
         throw new Error(msg || 'Anthropic API error');
     }

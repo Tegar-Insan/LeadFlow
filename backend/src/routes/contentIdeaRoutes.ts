@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import authMiddleware from '../middleware/authMiddleware.ts';
 import roleMiddleware from '../middleware/roleMiddleware.ts';
-import { generate, listPending } from '../controllers/contentIdeaController.ts';
+import { generate, generateWithSteps, listPending } from '../controllers/contentIdeaController.ts';
 import {
   approveIdea,
   rejectIdea,
@@ -20,6 +20,12 @@ router.post(
   '/generate',
   roleMiddleware(['marketing_staff', 'admin']),
   generate,
+);
+
+router.post(
+  '/generate/process',
+  roleMiddleware(['marketing_staff', 'admin']),
+  generateWithSteps,
 );
 
 router.get(

@@ -15,5 +15,7 @@ router.post('/users', roleController.createUserByAdmin);
 router.put('/users/:id/role', roleController.updateUserRole);
 // PUT  /api/admin/users/:id/status  — toggle active / inactive
 router.put('/users/:id/status', roleController.toggleUserStatus);
+// DELETE /api/admin/users/:id     — remove an account
+router.delete('/users/:id', roleController.deleteUser);
 export default router;
 //# sourceMappingURL=roleRoutes.js.map

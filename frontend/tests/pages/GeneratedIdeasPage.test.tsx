@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { type Mock } from 'vitest';
 import GeneratedIdeasPage from '../../src/pages/content/GeneratedIdeasPage';
 
 vi.mock('../../src/services/contentService', () => ({
@@ -81,7 +82,7 @@ describe('GeneratedIdeasPage', () => {
   });
 
   it('renders one card per returned draft after Generate', async () => {
-    (generateDrafts as unknown as vi.Mock).mockResolvedValue(sampleDrafts);
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
     renderPage();
 
     fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
@@ -96,8 +97,8 @@ describe('GeneratedIdeasPage', () => {
   });
 
   it('Approve click removes the approved card from the page', async () => {
-    (generateDrafts as unknown as vi.Mock).mockResolvedValue(sampleDrafts);
-    (approveIdea as unknown as vi.Mock).mockResolvedValue({
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
+    (approveIdea as Mock).mockResolvedValue({
       idea_id: 'idea-1',
       schedule_id: 'sched-abc',
       schedule_status: 'draft',
@@ -123,8 +124,8 @@ describe('GeneratedIdeasPage', () => {
   });
 
   it('Reject click opens reason prompt and sends payload', async () => {
-    (generateDrafts as unknown as vi.Mock).mockResolvedValue(sampleDrafts);
-    (rejectIdea as unknown as vi.Mock).mockResolvedValue({ idea_id: 'idea-2' });
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
+    (rejectIdea as Mock).mockResolvedValue({ idea_id: 'idea-2' });
     renderPage();
 
     fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
@@ -148,8 +149,8 @@ describe('GeneratedIdeasPage', () => {
   });
 
   it('Reject without reason sends null', async () => {
-    (generateDrafts as unknown as vi.Mock).mockResolvedValue(sampleDrafts);
-    (rejectIdea as unknown as vi.Mock).mockResolvedValue({ idea_id: 'idea-1' });
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
+    (rejectIdea as Mock).mockResolvedValue({ idea_id: 'idea-1' });
     renderPage();
 
     fireEvent.change(screen.getByPlaceholderText(/promotion/i), {

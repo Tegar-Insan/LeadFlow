@@ -19,6 +19,7 @@ import adminRoutes from './routes/roleRoutes.ts';
 import chatbotRoutes from './routes/chatbotRoutes.ts';
 import tiktokRoutes from './routes/tiktokRoutes.ts';
 import publicMediaRoutes from './routes/publicMediaRoutes.ts';
+import interactionRoutes from './routes/interactionRoutes.ts';
 
 const app = express();
 
@@ -115,6 +116,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
+app.use('/api/message', interactionRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({

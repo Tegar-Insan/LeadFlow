@@ -13,7 +13,7 @@ function authHeaders(): Record<string, string> {
 }
 
 // ---------------------------------------------------------------------------
-// Shared type — must match backend contentIdeaService.GeneratedScheduleDraft
+// Shared types — must match backend contentIdeaService
 // ---------------------------------------------------------------------------
 export interface GeneratedScheduleDraft {
   id: string;
@@ -36,6 +36,19 @@ export interface GeneratedScheduleDraft {
   ai_model_used: string;
 }
 
+export interface GenerationStep {
+  stepNumber: number;
+  title: string;
+  status: 'completed';
+  details: string;
+  timestamp: string;
+}
+
+export interface GenerationWithSteps {
+  steps: GenerationStep[];
+  drafts: GeneratedScheduleDraft[];
+}
+
 interface ApiSuccess<T> {
   success: true;
   data: T;
@@ -48,8 +61,8 @@ interface ApiError {
 type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 function unwrap<T>(resp: ApiResponse<T>): T {
-  if (!resp.success) throw new Error(resp.error);
-  return resp.data;
+  if (!resp.success) throw new Error((resp as ApiError).error);
+  return (resp as ApiSuccess<T>).data;
 }
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ export const getSchedulesByMonth = async (year: number, month: number): Promise<
     .select(`
       *,
       content_assets(id, content_type, file_url, mime_type),
-      content_ideas(idea_title, hook, caption, hashtags, suggested_music, estimated_duration, estimated_engagement, best_time_to_post_wib, category, ai_model_used)
+      content_ideas(idea_title, hook, caption, hashtags)
     `)
     .gte('scheduled_at', startUTC.toISOString())
     .lt('scheduled_at', endUTC.toISOString())
@@ -67,7 +67,7 @@ export const getDraftSchedules = async (): Promise<ScheduleRow[]> => {
     .select(`
       *,
       content_assets(id, content_type, file_url, mime_type),
-      content_ideas(idea_title, hook, caption, hashtags, suggested_music, estimated_duration, estimated_engagement, best_time_to_post_wib, category, ai_model_used)
+      content_ideas(idea_title, hook, caption, hashtags)
     `)
     .eq('status', 'draft')
     .order('created_at', { ascending: false });

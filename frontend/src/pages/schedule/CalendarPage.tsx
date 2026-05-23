@@ -326,10 +326,10 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
         <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border">
           <div>
             <h2 className="font-headline font-bold text-lg text-text-primary">
-              {isCreate ? 'Manage Content Queue' : 'Edit Post'}
+              {isCreate ? 'Create Content' : 'Edit Content'} {totalFiles > 0 && `· ${totalFiles} file${totalFiles > 1 ? 's' : ''}`}
             </h2>
             {isCreate && (
-              <p className="text-[11px] text-text-muted font-body mt-0.5">Schedule multiple posts at the same time</p>
+              <p className="text-[11px] text-text-muted font-body mt-0.5">Schedule multiple content at the same time</p>
             )}
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
@@ -345,7 +345,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
           {isCreate && (
             <div className="px-6 pt-4 pb-3 border-b border-surface-border">
               <p className="text-xs font-body font-semibold text-text-secondary mb-2">
-                How many posts to queue?
+                How many content to create?
               </p>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map(n => (
@@ -383,7 +383,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
                         ? 'bg-surface-overlay text-text-primary border-brand'
                         : 'text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-overlay/50'}`}
                   >
-                    <span>Post {i + 1}</span>
+                    <span>content {i + 1}</span>
                     {hasContent && (
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
                     )}
@@ -398,14 +398,14 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
             <div>
               {postCount > 1 && (
                 <p className="text-[11px] font-body font-semibold text-brand uppercase tracking-widest mb-3">
-                  Post {activeTab + 1} of {postCount}
+                  content {activeTab + 1} of {postCount}
                 </p>
               )}
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-body font-semibold text-text-secondary mb-1.5">
-                    Post Title {postCount === 1 ? '*' : `(Post ${activeTab + 1})`}
+                    Content Title {postCount === 1 ? '*' : `(Content ${activeTab + 1})`}
                   </label>
                   <input
                     type="text"
@@ -910,7 +910,10 @@ const CalendarPage = () => {
     addSchedule, editSchedule, removeSchedule, publishNow, dragDrop,
   } = useSchedule();
 
-  const [view,           setView]           = useState('week'); // 'week' | 'month' | 'day'
+  // Read view from URL path segment: /calendar/day → 'day', /calendar/week → 'week', /calendar/month → 'month'
+  const pathSegment = location.pathname.split('/').pop();
+  const validViews = ['day', 'week', 'month'];
+  const view = validViews.includes(pathSegment) ? pathSegment : 'month';
   const [selectedDay,    setSelectedDay]    = useState(() => dayjs().tz(TZ));
   const [modal,          setModal]          = useState(null);
   const [activeDate,     setActiveDate]     = useState(null);
@@ -1478,7 +1481,7 @@ const CalendarPage = () => {
             {/* View toggle */}
             <div className="flex items-center rounded-full p-0.5 border border-slate-300 bg-white">
               {['Day','Week','Month'].map(v => (
-                <button key={v} onClick={() => setView(v.toLowerCase())}
+                <button key={v} onClick={() => navigate(`/calendar/${v.toLowerCase()}`)}
                   className={`px-3 h-8 rounded-full text-xs font-body font-semibold transition-all
                     ${view === v.toLowerCase()
                       ? 'toolbar-pill-active'

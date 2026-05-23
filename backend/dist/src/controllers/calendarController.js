@@ -50,7 +50,7 @@ export const createSchedule = async (req, res) => {
     }
     try {
         const authReq = req;
-        const { content_idea_id, title, description, caption, hashtags, scheduled_at, priority } = req.body;
+        const { content_idea_id, title, description, caption, hashtags, scheduled_at, status, priority } = req.body;
         const schedule = await scheduleService.createSchedule({
             idea_id: content_idea_id ?? null,
             created_by: authReq.user.userId,
@@ -59,6 +59,7 @@ export const createSchedule = async (req, res) => {
             caption: caption,
             hashtags: hashtags ?? [],
             scheduled_at: scheduled_at ?? null,
+            status: status,
             priority: priority ?? 0,
         });
         logger.info(`[Calendar] Schedule created id=${schedule.id} by user=${authReq.user.userId}`);
@@ -137,6 +138,29 @@ export const deleteSchedule = async (req, res) => {
     catch (err) {
         logger.error('[calendarController.deleteSchedule]', err);
         error(res, { message: 'Failed to delete schedule', statusCode: 500 });
+    }
+};
+export const getListView = async (req, res) => {
+    try {
+        const authReq = req;
+        const userId = authReq.user?.userId;
+        if (!userId) {
+            error(res, { message: 'Unauthorized', statusCode: 401 });
+            return;
+        }
+        const filter = req.query['filter'] || 'month';
+        const date = req.query['date'] || new Date().toISOString().split('T')[0];
+        if (!['day', 'week', 'month'].includes(filter)) {
+            error(res, { message: 'Invalid filter. Must be day, week, or month', statusCode: 400 });
+            return;
+        }
+        const schedules = await scheduleService.getSchedulesForListView(userId, filter, date);
+        logger.info(`[Calendar] List view filter=${filter} date=${date} count=${schedules.length}`);
+        success(res, { message: 'Schedules retrieved', data: schedules });
+    }
+    catch (err) {
+        logger.error('[calendarController.getListView]', err);
+        error(res, { message: 'Failed to fetch schedules', statusCode: 500 });
     }
 };
 //# sourceMappingURL=calendarController.js.map

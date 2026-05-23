@@ -15,6 +15,7 @@ const requireRole = roleMiddleware;
 // ─── READ (marketing_staff + business_owner + admin) ───────────────
 router.get('/', requireRole(['marketing_staff', 'business_owner', 'admin']), controller.getCalendarByMonth);
 router.get('/drafts', requireRole(['marketing_staff', 'business_owner', 'admin']), controller.getDrafts);
+router.get('/list', requireRole(['marketing_staff', 'business_owner']), controller.getListView);
 router.get('/:id', requireRole(['marketing_staff', 'business_owner', 'admin']), controller.getScheduleById);
 // ─── WRITE (marketing_staff + admin only) ──────────────────────────
 router.post('/', requireRole(['marketing_staff', 'admin']), scheduleCreateRules, controller.createSchedule);
