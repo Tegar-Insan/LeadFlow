@@ -1,7 +1,8 @@
 import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import { KineticLoader } from '../../components/common/KineticLoader';
+import SmallSidebar from '../../components/common/smallsidebar';
 import { getProfile, updateProfile, changePassword, uploadPhoto, deletePhoto } from '../../services/profileService';
 
 /* ─── Dot background ─────────────────────────────────────────── */
@@ -179,6 +180,7 @@ const ROLE_CONFIG: Record<string, { label: string }> = {
 /* ─── Profile Page ───────────────────────────────────────────── */
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const authCtx   = useContext(AuthContext) as any;
   const { updateUser } = authCtx;
 
@@ -339,9 +341,12 @@ const ProfilePage: React.FC = () => {
         <DotBackground />
       </div>
 
-      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px', zIndex: 10, background: 'transparent' }}>
-        <div style={dottedWrapper}>
-          <main style={{ width: '100%', padding: '20px 8px' }}>
+      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'stretch', zIndex: 10, background: 'transparent' }}>
+        <SmallSidebar currentPath={location.pathname} />
+
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px' }}>
+          <div style={dottedWrapper}>
+            <main style={{ width: '100%', padding: '20px 8px' }}>
 
             {/* Topbar */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -532,7 +537,8 @@ const ProfilePage: React.FC = () => {
               </button>
             </div>
 
-          </main>
+            </main>
+          </div>
         </div>
       </div>
 

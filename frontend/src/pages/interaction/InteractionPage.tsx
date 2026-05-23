@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SmallSidebar from '../../components/common/smallsidebar';
 import InternalMessage from './InternalMessage';
 import ExternalMessage from './ExternalMessage';
 
@@ -8,7 +9,9 @@ const InteractionPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MessageType>('internal');
 
   return (
-    <div className="flex h-screen flex-col bg-white">
+    <div className="flex h-screen bg-white">
+      <SmallSidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 bg-white">
         <div className="flex gap-8 px-6">
@@ -46,6 +49,7 @@ const InteractionPage: React.FC = () => {
         ) : (
           <ExternalMessage />
         )}
+      </div>
       </div>
     </div>
   );

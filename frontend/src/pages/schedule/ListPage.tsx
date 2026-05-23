@@ -28,6 +28,7 @@ import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../servi
 import { fetchSchedulesForList } from '../../services/scheduleService';
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
+import SmallSidebar from '../../components/common/smallsidebar';
 import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
@@ -798,18 +799,20 @@ export default function ListPage() {
         .list-stats-val.accent { color: ${YELLOW_ACTIVE}; }
       `}</style>
 
-      {/* ── Left: Content Library Sidebar ── */}
-      <ContentLibrarySidebar
-        drafts={filteredDrafts}
-        schedules={filteredSchedules}
-        onEdit={s => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
-        onDelete={handleDelete}
-        onPublish={handlePublishNow}
-        publishLoadingId={publishLoadingId}
-      />
+        <SmallSidebar currentPath={location.pathname} />
 
-      {/* ── Right: Main area ── */}
-      <div className="calendar-main flex-1 flex flex-col overflow-hidden">
+        {/* ── Left: Content Library Sidebar ── */}
+        <ContentLibrarySidebar
+          drafts={filteredDrafts}
+          schedules={filteredSchedules}
+          onEdit={s => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
+          onDelete={handleDelete}
+          onPublish={handlePublishNow}
+          publishLoadingId={publishLoadingId}
+        />
+
+        {/* ── Right: Main area ── */}
+        <div className="calendar-main flex-1 flex flex-col overflow-hidden">
 
         {/* Top nav bar — identical to CalendarPage */}
         <header className="calendar-topbar relative z-40 flex items-center gap-3 px-5 py-3 flex-shrink-0">
@@ -1079,7 +1082,7 @@ export default function ListPage() {
             })}
           </div>
         </div>
-      </div>
+        </div>
 
       {/* ── Modals ── */}
       {modal === 'create' && canEdit && (

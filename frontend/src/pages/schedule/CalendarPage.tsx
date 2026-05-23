@@ -27,8 +27,8 @@ import {
 } from '../../utils/formatDate';
 import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../services/mediaService';
 import AIChatbot from '../../components/common/AIChatbot';
-import TikTokLoginButton from '../../components/common/TikTokLoginButton';
-import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
+import CalendarNavbar from '../../components/common/Navbar';
+import SmallSidebar from '../../components/common/smallsidebar';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
@@ -51,13 +51,6 @@ const STATUS_CONFIG = {
   published: { label: 'Published', cls: 'status-live' },
   failed:    { label: 'Failed',    cls: 'status-failed' },
 };
-
-const POST_FILTER_OPTIONS = [
-  { key: 'allpost', label: 'All Post' },
-  { key: 'drafts', label: 'Drafts' },
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'published', label: 'Published' },
-];
 
 // ─── Create/Edit Modal ────────────────────────────────────────
 const EMPTY_POST_SLOT = () => ({
@@ -927,25 +920,12 @@ const CalendarPage = () => {
   const [publishLoadingId, setPublishLoadingId] = useState(null);
   const [mediaDeleting,  setMediaDeleting]  = useState(false);
   const [chatbotDrawerOpen, setChatbotDrawerOpen] = useState(false);
-  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-  const filterDropdownRef = useRef<HTMLDivElement | null>(null);
   const createdIdReloadedRef = useRef<string | null>(null);
 
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);  // null=unknown, object=connected, false=not connected
   const [tiktokLoading, setTiktokLoading] = useState(false);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
-        setIsFilterDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Fetch TikTok connection status on mount
   useEffect(() => {
@@ -1008,14 +988,6 @@ const CalendarPage = () => {
   const draftCount = drafts.length;
   const scheduledCount = schedules.filter((schedule) => schedule.status === 'scheduled' || schedule.status === 'uploaded').length;
   const publishedCount = schedules.filter((schedule) => schedule.status === 'published').length;
-  const currentFilter = POST_FILTER_OPTIONS.find((item) => item.key === postFilter) || POST_FILTER_OPTIONS[0];
-  const currentFilterCount = currentFilter.key === 'allpost'
-    ? allPostCount
-    : currentFilter.key === 'drafts'
-      ? draftCount
-      : currentFilter.key === 'scheduled'
-        ? scheduledCount
-        : publishedCount;
   // ────────────────────────────────────────────────────────────
 
   // Current week start (Monday WIB)
@@ -1388,187 +1360,48 @@ const CalendarPage = () => {
         }
       `}</style>
 
-      {/* ── Left: Content Library Sidebar ── */}
-      <ContentLibrarySidebar
-        drafts={filteredDrafts}
-        schedules={filteredSchedules}
-        onEdit={(s) => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
-        onDelete={handleDelete}
-        onPublish={handlePublishNow}
-        publishLoadingId={publishLoadingId}
-      />
+        <SmallSidebar />
 
-      {/* ── Right: Main area ── */}
-      <div className="calendar-main flex-1 flex flex-col overflow-hidden">
+        {/* ── Left: Content Library Sidebar ── */}
+        <ContentLibrarySidebar
+          drafts={filteredDrafts}
+          schedules={filteredSchedules}
+          onEdit={(s) => { setActiveSchedule(s); setFormError(null); setModal('edit'); }}
+          onDelete={handleDelete}
+          onPublish={handlePublishNow}
+          publishLoadingId={publishLoadingId}
+        />
+
+        {/* ── Right: Main area ── */}
+        <div className="calendar-main flex-1 flex flex-col overflow-hidden">
 
         {/* Top nav bar */}
-        <header className="calendar-topbar relative z-40 flex items-center gap-3 px-5 py-3 flex-shrink-0">
-          {/* Logo */}
-          <div className="flex items-center mr-2">
-            <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain" />
-          </div>
-
-          {/* Page title */}
-          <div className="hidden md:block">
-            <p className="calendar-title text-xs font-body font-semibold uppercase tracking-[0.28em]">Marketing Calendar</p>
-          </div>
-
-          <div className="relative z-50 ml-2" ref={filterDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsFilterDropdownOpen((prev) => !prev)}
-              className="toolbar-pill px-4 h-9 text-xs font-body font-semibold inline-flex items-center gap-2"
-              title="Filter posts"
-            >
-              <span>{currentFilter.label}</span>
-              <span className="inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] bg-slate-100 text-slate-600">
-                {currentFilterCount}
-              </span>
-              <svg
-                className={`w-4 h-4 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </button>
-
-            {isFilterDropdownOpen && (
-              <div className="absolute top-full left-0 mt-2 min-w-[160px] bg-white border border-slate-300 rounded-xl shadow-lg z-[70] overflow-hidden">
-                {POST_FILTER_OPTIONS.map((item) => {
-                  const active = postFilter === item.key;
-                  const count = item.key === 'allpost'
-                    ? allPostCount
-                    : item.key === 'drafts'
-                      ? draftCount
-                      : item.key === 'scheduled'
-                        ? scheduledCount
-                        : publishedCount;
-
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => {
-                        setPostFilter(item.key);
-                        setIsFilterDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-xs font-body font-semibold flex items-center justify-between transition-colors ${
-                        active
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <span className={`inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] ${active ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Today */}
-            <button onClick={goToThisWeek}
-              className="toolbar-pill px-4 h-9 text-xs font-body font-semibold transition-colors hover:bg-slate-50">
-              Today
-            </button>
-
-            {/* View toggle */}
-            <div className="flex items-center rounded-full p-0.5 border border-slate-300 bg-white">
-              {['Day','Week','Month'].map(v => (
-                <button key={v} onClick={() => navigate(`/calendar/${v.toLowerCase()}`)}
-                  className={`px-3 h-8 rounded-full text-xs font-body font-semibold transition-all
-                    ${view === v.toLowerCase()
-                      ? 'toolbar-pill-active'
-                      : 'text-slate-600 hover:text-slate-900'}`}>
-                  {v}
-                </button>
-              ))}
-            </div>
-
-            {/* List/Calendar view toggle */}
-            <ViewModeToggle 
-              currentMode="grid" 
-              onModeChange={(mode) => {
-                if (mode === 'list') {
-                  navigate(`/calendar/list?year=${year}&month=${month}`);
-                }
-              }}
-            />
-
-            {/* Week navigation */}
-            <button onClick={view === 'week' ? prevWeek : view === 'day' ? prevDay : prevMonth}
-              className="toolbar-pill w-9 h-9 flex items-center justify-center transition-colors hover:bg-slate-50">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
-              </svg>
-            </button>
-
-            <span className="text-base font-body font-semibold text-slate-900 min-w-[220px] text-center tracking-wide">
-              {view === 'week'
-                ? weekLabel
-                : view === 'day'
-                ? selectedDay.format('dddd, MMMM D, YYYY')
-                : dayjs(new Date(year, month-1)).format('MMMM YYYY')}
-            </span>
-
-            <button onClick={view === 'week' ? nextWeek : view === 'day' ? nextDay : nextMonth}
-              className="toolbar-pill w-9 h-9 flex items-center justify-center transition-colors hover:bg-slate-50">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
-              </svg>
-            </button>
-
-            {/* TikTok connect button */}
-            {canEdit && (
-              <TikTokLoginButton
-                connected={!!tiktokStatus}
-                needsReconnect={tiktokStatus?.needs_reconnect === true}
-                accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
-                onConnect={handleConnectTikTok}
-                onDisconnect={handleDisconnectTikTok}
-                loading={tiktokLoading}
-              />
-            )}
-
-            {canEdit && (
-              <button
-                onClick={handleGenerateIdea}
-                className="h-9 px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-headline font-bold transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)]"
-                title="Generate ideas"
-              >
-                Generate ideas
-              </button>
-            )}
-
-            {/* New Post button */}
-            {canEdit && (
-              <button onClick={() => { setActiveDate(null); setActiveHour(null); setFormError(null); setModal('create'); }}
-                className="h-9 px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)]">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/>
-                </svg>
-                New Post
-              </button>
-            )}
-
-            {/* Profile button */}
-            <button
-              onClick={() => navigate('/profile')}
-              className="toolbar-pill w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-colors flex-shrink-0"
-              title="Profile"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-              </svg>
-            </button>
-          </div>
-        </header>
+        <CalendarNavbar
+          view={view}
+          year={year}
+          month={month}
+          weekLabel={weekLabel}
+          selectedDay={selectedDay}
+          onPrev={view === 'week' ? prevWeek : view === 'day' ? prevDay : prevMonth}
+          onNext={view === 'week' ? nextWeek : view === 'day' ? nextDay : nextMonth}
+          onToday={goToThisWeek}
+          onViewChange={(v) => navigate(`/calendar/${v}`)}
+          onModeChange={(mode) => { if (mode === 'list') navigate(`/calendar/list?year=${year}&month=${month}`); }}
+          postFilter={postFilter}
+          onFilterChange={setPostFilter}
+          allPostCount={allPostCount}
+          draftCount={draftCount}
+          scheduledCount={scheduledCount}
+          publishedCount={publishedCount}
+          canEdit={canEdit}
+          onNewPost={() => { setActiveDate(null); setActiveHour(null); setFormError(null); setModal('create'); }}
+          onGenerateIdea={handleGenerateIdea}
+          tiktokStatus={tiktokStatus}
+          tiktokLoading={tiktokLoading}
+          onConnectTikTok={handleConnectTikTok}
+          onDisconnectTikTok={handleDisconnectTikTok}
+          onProfile={() => navigate('/profile')}
+        />
 
         {/* Error banner */}
         {error && (
@@ -1607,7 +1440,7 @@ const CalendarPage = () => {
             </div>
           )}
         </div>
-      </div>
+        </div>
 
       {/* ── Modals ── */}
       {modal === 'create' && canEdit && (
