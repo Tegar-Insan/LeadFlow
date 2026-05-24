@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Sidebar from '../common/Sidebar';
-import Navbar  from '../common/Navbar';
+import DashboardNavbar from '../common/DashboardNavbar';
 
 const ADMIN_PAGES = [
   { to: '/admin',                  label: 'All Accounts'   },
@@ -45,7 +45,7 @@ export default function AdminLayout({ title, subtitle, children }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+        <DashboardNavbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
 
         <main className="flex-1 p-6">
           {/* Page header */}

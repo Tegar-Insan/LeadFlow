@@ -47,20 +47,11 @@ export const getActiveUsers = async (): Promise<ActiveUser[]> => {
       headers: authHeader(),
     });
 
-    const users = res.data.data.users || [];
+    const users: ActiveUser[] = res.data.data.users || [];
 
-    // Process and filter data before returning to component
     return users
-      .filter((user: any) => user.is_active === true)
-      .map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        fullName: user.user_profiles?.full_name || 'Unknown User',
-        phone: user.user_profiles?.phone || '',
-        role: user.roles?.name || 'unknown',
-        isActive: user.is_active,
-      }))
-      .sort((a: ActiveUser, b: ActiveUser) => a.fullName.localeCompare(b.fullName));
+      .filter((user) => user.isActive === true)
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
   } catch (err) {
     console.error('InteractionService.getActiveUsers error:', err);
     throw err;

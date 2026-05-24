@@ -549,3 +549,89 @@ This makes the fallback redirect use the dynamic, role-aware `dashboardPath` com
 - `backend/src/jobs/autoPublishJob.ts` — verify cron runs on startup
 - `backend/.env` — TIKTOK_MEDIA_PUBLIC_BASE_URL set (photos only)
 - `frontend/src/pages/publish/PublishStatusPage.jsx` — verify API calls work once backend routes mounted
+
+## Session 11 Update (2026-05-24) — Theme Conversion & Component Integration
+
+### What Was Done
+1. **Dark Theme → Light Theme Conversion**
+   - Updated `tailwind.config.ts` color palette:
+     - `surface.DEFAULT`: #131313 → #ffffff
+     - `surface.raised`: #1c1b1b → #f5f5f5
+     - `surface.overlay`: #2a2a2a → #eeeeee
+     - `surface.border`: rgba(255,255,255,0.05) → rgba(0,0,0,0.08)
+     - `text.primary`: #e5e2e1 → #1a1a1a
+     - `text.secondary`: #71717a → #666666
+     - `text.muted`: #52525b → #999999
+
+2. **Refactored Tailwind to Match index.css**
+   - Updated `index.css` base layer:
+     - `body` background: #131313 → #ffffff
+     - text color: #e5e2e1 → #1a1a1a
+     - scrollbar colors adjusted for light theme
+   - Updated component styles:
+     - `.input-field` border: rgba(255,255,255,0.15) → rgba(0,0,0,0.15)
+     - `.card` background: rgb(251, 249, 249) → #ffffff
+     - `.btn-secondary` hover: #2a2a2a → #eeeeee
+   - Updated all utility classes for light theme
+
+3. **Imported Components in GeneratedIdeasPage**
+   - Added imports:
+     - `SmallSidebar` from `../../components/common/smallsidebar`
+     - `GeneratedIdeasList` from `../../components/content/GeneratedIdeasList`
+     - `ContentLibrarySidebar` from `../../components/Schedule/ContentLibrarySidebar`
+   - Integrated SmallSidebar in main layout (left vertical navigation)
+   - Integrated ContentLibrarySidebar alongside main content
+   - Proper flexbox layout structure with responsive design
+
+4. **Updated Related Components to Light Theme**
+   - **GeneratedIdeasPage**: All dark theme colors converted to light equivalents
+     - Card backgrounds: #0d0d0d → white
+     - Text colors: white → gray-900, text-white/60 → text-gray-700
+     - Borders: white/[0.07] → gray-300
+     - Interactive states updated for light mode
+   - **SmallSidebar**: Dark (#0b1020) → Light (white) theme
+     - Background: #0b1020 → white
+     - Text: white → gray-900
+     - Borders: white/10 → gray-300
+     - Active state button: amber-300 on light background
+   - **ContentLibrarySidebar**: Dark (#141414) → Light theme
+     - Background: #141414 → white
+     - Text colors: text-white → text-gray-900
+     - Borders: white/[0.06] → gray-300
+     - Scrollbar: zinc-700 → gray-300
+   - **IdeaCard Component**: All colors updated for light theme
+     - Headers, captions, metadata all updated
+
+### Layout Structure
+- **Root container**: `bg-white text-gray-900 flex`
+- **Layer 1**: SmallSidebar (left, 72px width, vertical navigation)
+- **Layer 2**: ContentLibrarySidebar (left-middle, 175px width, content library)
+- **Layer 3**: Main content area (flex-1, GeneratedIdeasPage content)
+- **Proper nesting**: Flexbox ensures responsive design, all components visible on desktop
+
+### Validation Results
+- ✅ No TypeScript errors in modified files:
+  - `frontend/src/pages/content/GeneratedIdeasPage.tsx`
+  - `frontend/src/components/common/smallsidebar.tsx`
+  - `frontend/src/components/Schedule/ContentLibrarySidebar.tsx`
+- ✅ All color tokens consistently applied across theme
+- ✅ Build completes without errors (pre-existing dashboard errors unrelated)
+
+### Impact
+- Consistent light theme across GeneratedIdeasPage and integrated components
+- Better visual hierarchy with proper sidebar integration
+- Users can now see content library while generating ideas
+- Improved UX with quick access to content library during idea generation
+
+### Files Modified
+- `frontend/tailwind.config.ts` — color palette conversion
+- `frontend/src/index.css` — base layer and component styles
+- `frontend/src/pages/content/GeneratedIdeasPage.tsx` — component imports and layout
+- `frontend/src/components/common/smallsidebar.tsx` — light theme colors
+- `frontend/src/components/Schedule/ContentLibrarySidebar.tsx` — light theme colors
+
+### Next Steps
+1. Test light theme rendering in browser on desktop and mobile
+2. Verify color contrast for accessibility compliance
+3. Consider dark mode toggle if needed for user preferences
+4. Update other pages using similar dark theme components for consistency

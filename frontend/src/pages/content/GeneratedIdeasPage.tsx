@@ -9,6 +9,9 @@ import {
 import { useNotification } from '../../context/NotificationContext';
 import { fLongDateTime } from '../../utils/formatDate';
 import { InlineLoader } from '../../components/common/KineticLoader';
+import SmallSidebar from '../../components/common/smallsidebar';
+import GeneratedIdeasList from '../../components/content/GeneratedIdeasList';
+import ContentLibrarySidebar from '../../components/Schedule/ContentLibrarySidebar';
 
 type CardState = 'idle' | 'approving' | 'rejecting' | 'fading';
 
@@ -42,22 +45,22 @@ const IdeaCard = ({
 
   return (
     <div
-      className={`relative rounded-3xl border bg-[#0d0d0d] overflow-hidden transition-all duration-400 ${
+      className={`relative rounded-3xl border bg-white overflow-hidden transition-all duration-400 ${
         draft.ui_state === 'fading'
           ? 'opacity-0 scale-95 pointer-events-none'
-          : 'opacity-100 border-white/[0.07]'
+          : 'opacity-100 border-gray-300'
       }`}
     >
       {/* Gold top stripe */}
       <div className="h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent" />
 
       {/* Card header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
-          <span className="w-6 h-6 rounded-lg bg-brand/[0.12] border border-brand/20 flex items-center justify-center text-[10px] font-headline font-bold text-brand">
+          <span className="w-6 h-6 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-[10px] font-headline font-bold text-brand">
             {index + 1}
           </span>
-          <span className="text-xs font-headline font-bold text-white/50 uppercase tracking-widest">
+          <span className="text-xs font-headline font-bold text-gray-600 uppercase tracking-widest">
             {draft.category || 'Content Idea'}
           </span>
         </div>
@@ -68,15 +71,15 @@ const IdeaCard = ({
 
       <div className="px-5 py-5 space-y-4">
         {/* Title */}
-        <h3 className="text-lg font-headline font-bold text-white leading-snug">
+        <h3 className="text-lg font-headline font-bold text-gray-900 leading-snug">
           {draft.idea_title}
         </h3>
 
         {/* Hook */}
         {draft.hook && (
           <div className="space-y-1">
-            <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-white/30">Hook</p>
-            <p className="text-sm text-white/65 italic font-body leading-relaxed">
+            <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-600">Hook</p>
+            <p className="text-sm text-gray-700 italic font-body leading-relaxed">
               "{draft.hook}"
             </p>
           </div>
@@ -84,9 +87,9 @@ const IdeaCard = ({
 
         {/* Caption */}
         <div className="space-y-1.5">
-          <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-white/30">Caption</p>
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-3">
-            <p className="text-sm text-white/60 font-body leading-relaxed">{draft.caption}</p>
+          <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-600">Caption</p>
+          <div className="rounded-xl bg-gray-50 border border-gray-300 px-4 py-3">
+            <p className="text-sm text-gray-700 font-body leading-relaxed">{draft.caption}</p>
           </div>
         </div>
 
@@ -112,11 +115,11 @@ const IdeaCard = ({
             { label: 'Best Time', value: draft.best_time_to_post_wib ? fLongDateTime(draft.best_time_to_post_wib) : '—', icon: '📅' },
             { label: 'Engagement', value: draft.estimated_engagement || '—', icon: '📈' },
           ].map(({ label, value, icon }) => (
-            <div key={label} className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-2.5">
-              <p className="text-[9px] font-headline font-semibold uppercase tracking-widest text-white/25 mb-1">
+            <div key={label} className="rounded-xl bg-gray-50 border border-gray-300 px-3 py-2.5">
+              <p className="text-[9px] font-headline font-semibold uppercase tracking-widest text-gray-600 mb-1">
                 {icon} {label}
               </p>
-              <p className="text-xs text-white/55 font-body truncate">{value}</p>
+              <p className="text-xs text-gray-700 font-body truncate">{value}</p>
             </div>
           ))}
         </div>
@@ -148,7 +151,7 @@ const IdeaCard = ({
               type="button"
               onClick={() => onRejectOpen(draft.id)}
               disabled={draft.ui_state !== 'idle'}
-              className="flex-1 h-11 rounded-2xl border border-white/[0.1] text-white/45 text-sm font-headline font-semibold hover:border-red-500/30 hover:text-red-400 hover:bg-red-500/[0.06] disabled:opacity-50 transition-colors"
+              className="flex-1 h-11 rounded-2xl border border-gray-300 text-gray-600 text-sm font-headline font-semibold hover:border-red-500/50 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
               Reject
             </button>
@@ -157,20 +160,20 @@ const IdeaCard = ({
 
         {/* Reject reason panel */}
         {isRejecting && (
-          <div className="mt-1 rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-4 space-y-3">
-            <p className="text-xs font-headline font-semibold text-red-400">Alasan penolakan (opsional)</p>
+          <div className="mt-1 rounded-2xl border border-red-300 bg-red-50 p-4 space-y-3">
+            <p className="text-xs font-headline font-semibold text-red-600">Alasan penolakan (opsional)</p>
             <textarea
               value={rejectReason}
               onChange={(e) => onRejectReasonChange(e.target.value)}
               rows={2}
               placeholder="Contoh: Video belum siap diproduksi"
-              className="w-full rounded-xl bg-white/[0.04] border border-red-500/20 px-3 py-2 text-xs text-white/70 placeholder:text-white/20 outline-none resize-none focus:border-red-500/40 transition-colors font-body"
+              className="w-full rounded-xl bg-white border border-red-300 px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 outline-none resize-none focus:border-red-500 transition-colors font-body"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => onRejectConfirm(false)}
-                className="flex-1 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] text-xs text-white/50 hover:text-white/70 font-body transition-colors"
+                className="flex-1 h-8 rounded-xl bg-gray-100 border border-gray-300 text-xs text-gray-600 hover:text-gray-900 font-body transition-colors"
               >
                 Skip & Reject
               </button>
@@ -184,7 +187,7 @@ const IdeaCard = ({
               <button
                 type="button"
                 onClick={onRejectCancel}
-                className="h-8 px-3 rounded-xl border border-white/[0.08] text-xs text-white/40 hover:text-white/60 font-body transition-colors"
+                className="h-8 px-3 rounded-xl border border-gray-300 text-xs text-gray-600 hover:text-gray-900 font-body transition-colors"
               >
                 Batal
               </button>
@@ -277,21 +280,23 @@ export default function GeneratedIdeasPage(): JSX.Element {
   ];
 
   return (
-    <div className="min-h-screen bg-[#080808] text-white">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-64 right-1/4 w-[700px] h-[500px] rounded-full bg-brand/[0.03] blur-[140px]" />
-        <div className="absolute top-1/2 -left-48 w-[500px] h-[400px] rounded-full bg-brand/[0.02] blur-[120px]" />
-      </div>
-
-      <div className="relative max-w-6xl mx-auto px-5 py-8 lg:py-10">
-
-        {/* Top nav */}
+    <div className="min-h-screen bg-white text-gray-900 flex">
+      {/* Top Sidebar */}
+      <SmallSidebar />
+      
+      {/* Main Layout */}
+      <div className="flex-1 flex">
+        {/* Content Library Sidebar */}
+        <ContentLibrarySidebar />
+        
+        {/* Main Content */}
+        <div className="flex-1">
+          <div className="relative max-w-6xl mx-auto px-5 py-8 lg:py-10">
         <div className="flex items-center gap-4 mb-8">
           <button
             type="button"
             onClick={() => navigate('/calendar')}
-            className="w-9 h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] flex items-center justify-center text-white/40 hover:text-white/70 hover:border-white/[0.15] transition-colors"
+            className="w-9 h-9 rounded-xl border border-gray-300 bg-gray-100 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -301,7 +306,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
             <p className="text-[10px] font-headline font-bold uppercase tracking-[0.28em] text-brand">
               AI Content Assistant
             </p>
-            <h1 className="text-xl font-headline font-bold text-white mt-0.5">
+            <h1 className="text-xl font-headline font-bold text-gray-900 mt-0.5">
               Generate Ideas
             </h1>
           </div>
@@ -311,11 +316,11 @@ export default function GeneratedIdeasPage(): JSX.Element {
 
           {/* LEFT — Input panel (sticky) */}
           <div className="lg:sticky lg:top-6">
-            <div className="rounded-3xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
+            <div className="rounded-3xl border border-gray-300 bg-white overflow-hidden">
               <div className="h-px bg-gradient-to-r from-transparent via-brand/30 to-transparent" />
               <div className="px-6 py-6 space-y-5">
                 <div>
-                  <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-white/30 mb-3">
+                  <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-600 mb-3">
                     Brief Konten
                   </p>
                   <textarea
@@ -324,13 +329,13 @@ export default function GeneratedIdeasPage(): JSX.Element {
                     rows={5}
                     placeholder="Deskripsikan konten TikTok yang kamu inginkan minggu ini. Semakin detail, semakin relevan hasilnya."
                     disabled={loading}
-                    className="w-full rounded-2xl bg-white/[0.04] border border-white/[0.08] px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none resize-none focus:border-brand/40 focus:bg-white/[0.06] transition-all font-body leading-relaxed min-h-[120px]"
+                    className="w-full rounded-2xl bg-gray-50 border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none resize-none focus:border-brand/40 focus:bg-white transition-all font-body leading-relaxed min-h-[120px]"
                   />
                 </div>
 
                 {/* Quick prompts */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-headline font-semibold uppercase tracking-widest text-white/25">
+                  <p className="text-[10px] font-headline font-semibold uppercase tracking-widest text-gray-500">
                     Quick Start
                   </p>
                   <div className="flex flex-col gap-1.5">
@@ -340,7 +345,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
                         type="button"
                         onClick={() => setBrief(p)}
                         disabled={loading}
-                        className="text-left px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-white/40 hover:border-brand/25 hover:text-brand/70 hover:bg-brand/[0.04] transition-all font-body disabled:opacity-30"
+                        className="text-left px-3 py-2 rounded-xl bg-gray-100 border border-gray-300 text-xs text-gray-600 hover:border-brand/40 hover:text-brand hover:bg-brand/5 transition-all font-body disabled:opacity-30"
                       >
                         {p}
                       </button>
@@ -374,7 +379,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
                 </button>
 
                 {/* Tip */}
-                <p className="text-[10px] text-white/20 font-body text-center leading-relaxed">
+                <p className="text-[10px] text-gray-400 font-body text-center leading-relaxed">
                   AI akan membuat 3 ide konten TikTok.<br/>Approve untuk mengirim ke kalender.
                 </p>
               </div>
@@ -384,7 +389,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
           {/* RIGHT — Results */}
           <div className="space-y-4">
             {loading && drafts.length === 0 && (
-              <div className="rounded-3xl border border-white/[0.06] bg-[#0d0d0d] px-6 py-14 flex flex-col items-center gap-4">
+              <div className="rounded-3xl border border-gray-300 bg-gray-50 px-6 py-14 flex flex-col items-center gap-4">
                 <div className="flex items-end gap-2">
                   {[0,1,2,3,4].map((i) => (
                     <div
@@ -394,20 +399,20 @@ export default function GeneratedIdeasPage(): JSX.Element {
                     />
                   ))}
                 </div>
-                <p className="text-sm text-white/35 font-body">AI sedang menganalisis brief kamu…</p>
+                <p className="text-sm text-gray-500 font-body">AI sedang menganalisis brief kamu…</p>
               </div>
             )}
 
             {!loading && drafts.length === 0 && (
-              <div className="rounded-3xl border border-dashed border-white/[0.06] px-6 py-16 flex flex-col items-center gap-3 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-3xl border border-dashed border-gray-300 px-6 py-16 flex flex-col items-center gap-3 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 border border-gray-300 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-headline font-semibold text-white/30">Belum ada ide</p>
-                  <p className="text-xs text-white/20 font-body mt-1">Isi brief di sebelah kiri, lalu klik Generate Ideas</p>
+                  <p className="text-sm font-headline font-semibold text-gray-600">Belum ada ide</p>
+                  <p className="text-xs text-gray-500 font-body mt-1">Isi brief di sebelah kiri, lalu klik Generate Ideas</p>
                 </div>
               </div>
             )}
@@ -431,13 +436,15 @@ export default function GeneratedIdeasPage(): JSX.Element {
               <button
                 type="button"
                 onClick={() => void populateDrafts(brief || lastBrief)}
-                className="w-full h-11 rounded-2xl border border-white/[0.08] bg-white/[0.02] text-sm font-headline font-semibold text-white/40 hover:border-brand/30 hover:text-brand/70 hover:bg-brand/[0.04] transition-all"
+                className="w-full h-11 rounded-2xl border border-gray-300 bg-gray-100 text-sm font-headline font-semibold text-gray-600 hover:border-brand/40 hover:text-brand hover:bg-brand/5 transition-all"
               >
                 Generate More Ideas
               </button>
             )}
           </div>
 
+        </div>
+        </div>
         </div>
       </div>
     </div>

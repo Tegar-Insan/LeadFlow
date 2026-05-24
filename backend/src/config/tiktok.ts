@@ -1,8 +1,6 @@
 // src/config/tiktok.ts
 // TikTok Login Kit v2 — OAuth configuration
-
-import dotenv from 'dotenv';
-dotenv.config();
+// Note: .env is loaded by server.ts, not here
 
 export const TIKTOK_CONFIG = {
   clientKey: process.env.TIKTOK_CLIENT_KEY || '',

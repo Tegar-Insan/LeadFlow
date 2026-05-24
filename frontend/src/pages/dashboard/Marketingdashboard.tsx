@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/common/Sidebar';
-import Navbar from '../../components/common/Navbar';
+import DashboardNavbar from '../../components/common/DashboardNavbar';
 import AuthContext from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { useSchedule } from '../../hooks/useSchedule';
@@ -79,7 +79,7 @@ export default function Marketingdashboard() {
     <div className="min-h-screen bg-surface flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+        <DashboardNavbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
 
         <main className="flex-1 p-6 animate-fade-in">
           <div className="mb-6">

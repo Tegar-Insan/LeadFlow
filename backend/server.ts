@@ -2,27 +2,27 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import type { Server } from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ override: true });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '..');
+
+dotenv.config({
+  path: path.join(projectRoot, '.env'),
+  override: true
+});
 
 const PORT: number = parseInt(process.env.PORT || '5000', 10);
 
 async function startServer(): Promise<Server> {
-  const [
-    { default: app },
-    { db },
-    { validateEnv },
-    { validateTikTokConfig },
-    { default: logger },
-    { startAutoPublishJob },
-  ] = await Promise.all([
-    import('./src/app.ts'),
-    import('./src/config/db.ts'),
-    import('./src/config/env.ts'),
-    import('./src/config/tiktok.ts'),
-    import('./src/utils/logger.ts'),
-    import('./src/jobs/autoPublishJob.ts'),
-  ]);
+  // Import modules after dotenv is loaded to prevent race condition
+  const { default: app } = await import('./src/app.ts');
+  const { db } = await import('./src/config/db.ts');
+  const { validateEnv } = await import('./src/config/env.ts');
+  const { validateTikTokConfig } = await import('./src/config/tiktok.ts');
+  const { default: logger } = await import('./src/utils/logger.ts');
+  const { startAutoPublishJob } = await import('./src/jobs/autoPublishJob.ts');
 
   validateEnv();
   validateTikTokConfig();

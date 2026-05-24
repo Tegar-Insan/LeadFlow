@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar  from '../../components/common/Sidebar';
-import Navbar   from '../../components/common/Navbar';
+import DashboardNavbar   from '../../components/common/DashboardNavbar';
 import { getAllUsers, updateUserRole, toggleUserStatus, deleteUser } from '../../services/adminService';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
@@ -581,7 +581,7 @@ export default function AdminDashboard() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+        <DashboardNavbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
 
         <main className="flex-1 p-6">
           {/* Page header */}

@@ -45,10 +45,10 @@ export default function SmallSidebar({ currentPath, className = '' }: SmallSideb
 
   return (
     <aside
-      className={`hidden md:flex h-screen shrink-0 flex-col items-center border-r border-white/10 bg-[#0b1020] py-4 text-white ${className}`}
+      className={`hidden md:flex h-screen shrink-0 flex-col items-center border-r border-gray-300 bg-white py-4 text-gray-900 ${className}`}
       style={{ width: 72 }}
     >
-      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5">
+      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
         <img src="/logo.png" alt="Krench Chicken" className="h-7 w-auto object-contain" />
       </div>
 
@@ -58,7 +58,7 @@ export default function SmallSidebar({ currentPath, className = '' }: SmallSideb
         aria-label="Profile"
         title="Profile"
         onClick={() => navigate('/profile')}
-        className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
+        className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-300 bg-gray-100 text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
       >
         <span className="w-7 h-7 rounded-full bg-brand flex items-center justify-center text-black font-bold font-headline text-sm">
           {(user?.fullName || user?.email || 'U')[0].toUpperCase()}
@@ -77,8 +77,8 @@ export default function SmallSidebar({ currentPath, className = '' }: SmallSideb
               onClick={() => navigate(item.path)}
               className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-all duration-200 ${
                 isActive
-                  ? 'border-amber-300 bg-amber-300 text-slate-950 shadow-[0_0_24px_rgba(251,191,36,0.35)]'
-                  : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/10'
+                  ? 'border-amber-400 bg-amber-300 text-gray-900 shadow-[0_0_24px_rgba(251,191,36,0.35)]'
+                  : 'border-gray-300 bg-gray-100 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
               }`}
             >
               {item.icon}

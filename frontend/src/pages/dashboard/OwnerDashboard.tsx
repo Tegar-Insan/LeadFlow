@@ -1,7 +1,7 @@
 // src/pages/dashboard/OwnerDashboard.jsx
 import { useState, useEffect } from 'react';
 import Sidebar from '../../components/common/Sidebar';
-import Navbar  from '../../components/common/Navbar';
+import DashboardNavbar  from '../../components/common/DashboardNavbar';
 import useAuth from '../../hooks/useAuth';
 import api    from '../../services/authService';
 import { nowWIB, getGreeting } from '../../utils/formatDate';
@@ -67,7 +67,7 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-surface flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
+        <DashboardNavbar onMenuToggle={() => setSidebarOpen((o) => !o)} />
         <main className="flex-1 p-8 animate-fade-in">
 
           {/* Header */}

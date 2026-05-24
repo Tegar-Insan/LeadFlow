@@ -9,7 +9,7 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import Sidebar from '../../components/common/Sidebar';
-import Navbar  from '../../components/common/Navbar';
+import DashboardNavbar  from '../../components/common/DashboardNavbar';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { getProfile, updateProfile, changePassword, uploadPhoto, deletePhoto } from '../../services/profileService';
 
@@ -138,7 +138,7 @@ const AdminProfilePage = () => {
     <div className="min-h-screen bg-surface flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuToggle={() => setSidebarOpen(o => !o)} />
+        <DashboardNavbar onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main className="flex-1 p-8 animate-fade-in">
           <div className="max-w-2xl mx-auto space-y-6">
 

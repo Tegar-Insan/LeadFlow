@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   getActiveUsers,
-  getConversations,
   getMessages,
   sendMessage as sendMessageAPI,
   updateMessage,
@@ -10,6 +9,7 @@ import {
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
+import InteractionInbox from '../../components/interaction/InteractionInbox';
 
 export interface User {
   id: string;
@@ -30,15 +30,6 @@ export interface Message {
   updatedAt: string;
 }
 
-interface Conversation {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  latestMessage: string;
-  latestMessageTime: string;
-  unreadCount: number;
-}
-
 export default function InternalMessage() {
   const { user } = useAuth();
   const { toast } = useNotification();
@@ -56,24 +47,13 @@ export default function InternalMessage() {
 
   // State management
   const [activeUsers, setActiveUsers] = useState<User[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   // Load active users on mount
   useEffect(() => {
@@ -91,20 +71,6 @@ export default function InternalMessage() {
     };
 
     loadUsers();
-  }, []);
-
-  // Load conversations on mount
-  useEffect(() => {
-    const loadConversations = async () => {
-      try {
-        const convs = await getConversations();
-        setConversations(convs);
-      } catch (err) {
-        console.error('Failed to load conversations:', err);
-      }
-    };
-
-    loadConversations();
   }, []);
 
   // Load messages when selected user changes
@@ -149,18 +115,6 @@ export default function InternalMessage() {
         setMessages((prev) => [...prev, message]);
       }
 
-      // Update conversations list
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.userId === message.senderId
-            ? {
-                ...conv,
-                latestMessage: message.messageText,
-                latestMessageTime: message.createdAt,
-              }
-            : conv
-        )
-      );
     });
   }, [isConnected, selectedUserId, onReceiveMessage]);
 
@@ -258,30 +212,30 @@ export default function InternalMessage() {
     }, 1000);
   };
 
-  const selectedConversation = conversations.find((c) => c.userId === selectedUserId);
+  const selectedUser = activeUsers.find((u) => u.id === selectedUserId) ?? null;
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Sidebar - User List */}
-      <div className="w-64 border-r border-gray-200 flex flex-col">
+    <div className="flex h-full bg-white">
+      {/* Sidebar */}
+      <div className="w-64 border-r border-gray-200 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
-          <p className="text-sm text-gray-500">
-            {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+          <h2 className="text-base font-semibold text-gray-900">Messages</h2>
+          <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+            {isConnected ? 'Connected' : 'Disconnected'}
           </p>
         </div>
 
-        {/* Active Users Section */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4">
-            <p className="text-xs font-semibold text-gray-600 uppercase mb-3">
-              Active Users ({activeUsers.length})
+          {/* Active Users */}
+          <div className="p-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+              All Users ({activeUsers.length})
             </p>
-
             {activeUsers.length === 0 ? (
-              <p className="text-sm text-gray-500">No active users</p>
+              <p className="text-xs text-gray-400 px-1">No active users</p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {activeUsers.map((usr) => (
                   <button
                     key={usr.id}
@@ -295,145 +249,46 @@ export default function InternalMessage() {
                         : 'hover:bg-gray-100 text-gray-900'
                     }`}
                   >
-                    <div className="font-medium text-sm">{usr.fullName}</div>
-                    <div className="text-xs opacity-70">{usr.role}</div>
+                    <div className="font-medium text-sm leading-tight">{usr.fullName}</div>
+                    <div className={`text-xs mt-0.5 ${selectedUserId === usr.id ? 'text-white/70' : 'text-gray-400'}`}>
+                      {usr.role}
+                    </div>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Conversations Section */}
-          {conversations.length > 0 && (
-            <div className="border-t border-gray-200 p-4">
-              <p className="text-xs font-semibold text-gray-600 uppercase mb-3">
-                Recent Conversations
-              </p>
-              <div className="space-y-2">
-                {conversations.map((conv) => (
-                  <button
-                    key={conv.userId}
-                    onClick={() => {
-                      setSelectedUserId(conv.userId);
-                      setTypingUsers(new Set());
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                      selectedUserId === conv.userId
-                        ? 'bg-brand text-white'
-                        : 'hover:bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium text-sm">{conv.userName}</div>
-                        <div className="text-xs opacity-70 truncate">
-                          {conv.latestMessage}
-                        </div>
-                      </div>
-                      {conv.unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                          {conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {selectedUserId && selectedConversation ? (
-          <>
-            {/* Header */}
-            <div className="border-b border-gray-200 p-4 flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedConversation.userName}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {selectedConversation.userEmail}
-                </p>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
-              {loading && messages.length === 0 ? (
-                <div className="text-center text-gray-500">Loading messages...</div>
-              ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500">
-                  No messages yet. Start the conversation!
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${
-                      msg.senderId === user?.userId ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    <div
-                      className={`max-w-xs px-4 py-2 rounded-lg ${
-                        msg.senderId === user?.userId
-                          ? 'bg-brand text-white'
-                          : 'bg-white text-gray-900 border border-gray-200'
-                      }`}
-                    >
-                      <p className="text-sm">{msg.messageText}</p>
-                      <p className="text-xs opacity-70 mt-1">
-                        {new Date(msg.createdAt).toLocaleTimeString()}
-                        {msg.senderId === user?.userId && msg.isRead && ' ✓✓'}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-
-              {/* Typing Indicator */}
-              {typingUsers.size > 0 && selectedUserId && typingUsers.has(selectedUserId) && (
-                <div className="flex justify-start">
-                  <div className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-4 bg-white">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
-                />
-                <button
-                  type="submit"
-                  disabled={!messageInput.trim() || !isConnected}
-                  className="px-6 py-2 bg-brand text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                >
-                  Send
-                </button>
-              </div>
-            </form>
-          </>
+      {/* Chat panel */}
+      <div className="flex-1 overflow-hidden">
+        {selectedUserId && selectedUser ? (
+          <InteractionInbox
+            messages={messages}
+            loading={loading}
+            recipientName={'fullName' in selectedUser ? selectedUser.fullName : ''}
+            recipientEmail={'email' in selectedUser ? selectedUser.email : undefined}
+            currentUserId={user?.userId ?? ''}
+            messageInput={messageInput}
+            onInputChange={handleInputChange}
+            onSend={handleSendMessage}
+            isConnected={isConnected}
+            typingUsers={typingUsers}
+            selectedUserId={selectedUserId}
+          />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <p className="text-lg font-semibold mb-2">No Conversation Selected</p>
-              <p className="text-sm">Select a user from the left to start messaging</p>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="font-semibold text-gray-700">Select a conversation</p>
+              <p className="text-sm text-gray-400 mt-1">Choose a user from the left to start messaging</p>
             </div>
           </div>
         )}

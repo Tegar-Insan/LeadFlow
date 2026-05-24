@@ -1,0 +1,96 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+.env.*.example
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Documentation
+README.md
+docs/
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Development tools
+.claude/
+.cursor/
+.eslintrc*
+.prettierrc*
+
+# Package manager lock files (optional - remove for reproducibility)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# OS files
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Misc
+*.bak
+*.tmp
+.cache/
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.tsbuildinfo
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Testing
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+
+# Lock files (optional - remove if you want to include for reproducibility)
+# package-lock.json
+# yarn.lock
+
+# Other
+.claude/
+.cursor/

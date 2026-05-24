@@ -83,13 +83,19 @@ export async function getMessages(
       throw err;
     }
 
-    const { recipientId, limit, offset } = validator.validateGetMessagesQuery(
-      req.query
-    );
+    const recipientId = req.params.userId;
+    if (!recipientId || recipientId.trim() === '') {
+      const err = new Error('recipientId path parameter is required');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
     const messages = await interactionService.getMessages(
       userId,
-      recipientId,
+      recipientId.trim(),
       limit,
       offset
     );

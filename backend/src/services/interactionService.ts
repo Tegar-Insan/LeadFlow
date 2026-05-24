@@ -60,8 +60,7 @@ export async function getActiveUsers(currentUserId: string): Promise<ActiveUserD
          user_profiles(id, full_name, phone)`
       )
       .eq('is_active', true)
-      .neq('id', currentUserId)
-      .order('user_profiles.full_name', { ascending: true });
+      .neq('id', currentUserId);
 
     if (error) {
       logger.error('interactionService.getActiveUsers error:', error);
@@ -69,14 +68,16 @@ export async function getActiveUsers(currentUserId: string): Promise<ActiveUserD
     }
 
     // Map to ActiveUserDTO
-    const result: ActiveUserDTO[] = (data || []).map((user) => ({
-      id: user.id,
-      email: user.email,
-      fullName: user.user_profiles?.full_name || 'Unknown User',
-      phone: user.user_profiles?.phone || '',
-      role: user.roles?.name || 'unknown',
-      isActive: user.is_active,
-    }));
+    const result: ActiveUserDTO[] = (data || [])
+      .map((user) => ({
+        id: user.id,
+        email: user.email,
+        fullName: user.user_profiles?.full_name || 'Unknown User',
+        phone: user.user_profiles?.phone || '',
+        role: user.roles?.name || 'unknown',
+        isActive: user.is_active,
+      }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
     return result;
   } catch (err) {
