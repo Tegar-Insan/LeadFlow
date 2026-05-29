@@ -6,6 +6,7 @@ import RegisterPage            from '../pages/auth/RegisterPage';
 import OTPPage                 from '../pages/auth/OTPPage';
 import TikTokStatusPage        from '../pages/auth/TikTokStatusPage';
 import CalendarPage            from '../pages/schedule/CalendarPage';
+import CalendarReadOnly        from '../pages/dashboard/CalendarReadOnly';
 import OwnerDashboard          from '../pages/dashboard/OwnerDashboard';
 import AnalyticsDashboard      from '../pages/analytics/AnalyticsDashboard';
 import PromptPage              from '../pages/content/PromptPage';
@@ -92,6 +93,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['business_owner']}>
             <OwnerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/calendar/read-only"
+        element={
+          <ProtectedRoute allowedRoles={['business_owner']}>
+            <CalendarReadOnly />
           </ProtectedRoute>
         }
       />
