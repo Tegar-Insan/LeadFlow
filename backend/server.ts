@@ -135,7 +135,7 @@ async function startServer(): Promise<Server> {
     });
   });
 
-  const server: Server = httpServer.listen(PORT, '127.0.0.1', () => {
+  const server: Server = httpServer.listen(PORT, '0.0.0.0', () => {
     logger.info('╔═══════════════════════════════════════════╗');
     logger.info('║        LeadFlow API  ·  v1.0.0            ║');
     logger.info('╚═══════════════════════════════════════════╝');

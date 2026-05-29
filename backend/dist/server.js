@@ -1,17 +1,23 @@
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
-dotenv.config({ override: true });
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '..');
+dotenv.config({
+    path: path.join(projectRoot, '.env'),
+    override: true
+});
 const PORT = parseInt(process.env.PORT || '5000', 10);
 async function startServer() {
-    const [{ default: app }, { db }, { validateEnv }, { validateTikTokConfig }, { default: logger }, { startAutoPublishJob },] = await Promise.all([
-        import("./src/app.js"),
-        import("./src/config/db.js"),
-        import("./src/config/env.js"),
-        import("./src/config/tiktok.js"),
-        import("./src/utils/logger.js"),
-        import("./src/jobs/autoPublishJob.js"),
-    ]);
+    // Import modules after dotenv is loaded to prevent race condition
+    const { default: app } = await import("./src/app.js");
+    const { db } = await import("./src/config/db.js");
+    const { validateEnv } = await import("./src/config/env.js");
+    const { validateTikTokConfig } = await import("./src/config/tiktok.js");
+    const { default: logger } = await import("./src/utils/logger.js");
+    const { startAutoPublishJob } = await import("./src/jobs/autoPublishJob.js");
     validateEnv();
     validateTikTokConfig();
     const { error } = await db.from('roles').select('count').limit(1);
@@ -105,7 +111,7 @@ async function startServer() {
             logger.error(`[WebSocket] Error from socket ${socket.id}:`, err);
         });
     });
-    const server = httpServer.listen(PORT, '127.0.0.1', () => {
+    const server = httpServer.listen(PORT, '0.0.0.0', () => {
         logger.info('╔═══════════════════════════════════════════╗');
         logger.info('║        LeadFlow API  ·  v1.0.0            ║');
         logger.info('╚═══════════════════════════════════════════╝');

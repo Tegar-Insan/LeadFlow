@@ -37,6 +37,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
     </svg>
   ),
+  analytics: (
+    <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
   plus: (
     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -57,15 +62,17 @@ const NAV_BY_ROLE = {
     { to: '/admin/profile',          label: 'Profile',         icon: icons.publish       },
   ],
   business_owner: [
-    { to: '/dashboard/owner', label: 'Dashboard',        icon: icons.dashboard },
-    { to: '/calendar',        label: 'Content Calendar', icon: icons.calendar },
+    { to: '/profile',        label: 'Profile',          icon: icons.publish      },
+    { to: '/analytics',      label: 'Analytics',        icon: icons.analytics    },
+    { to: '/calendar',       label: 'Calendar',         icon: icons.calendar     },
+    { to: '/interaction',    label: 'Interactions',     icon: icons.interactions },
   ],
   marketing_staff: [
     { to: '/dashboard/staff', label: 'Overview',         icon: icons.overview },
     { to: '/content/prompt',  label: 'AI Assistant',     icon: icons.ai },
     { to: '/calendar',        label: 'Content Calendar', icon: icons.calendar },
     { to: '/calendar/ideas',  label: 'AI Ideas',         icon: icons.ai },
-    { to: '/interactions',    label: 'Interactions',     icon: icons.interactions },
+    { to: '/interaction',     label: 'Interactions',     icon: icons.interactions },
     { to: '/publish-status',  label: 'Publish Status',   icon: icons.publish },
   ],
 };
@@ -123,8 +130,8 @@ export default function Sidebar({ isOpen, onClose }) {
             <img src="/logo.png" alt="Krench Chicken" className="h-10 w-auto object-contain" />
           </div>
 
-          {/* Create Post button — hidden for admin */}
-          {roleName !== 'admin' && <Link
+          {/* Create Post button — only for marketing staff */}
+          {roleName === 'marketing_staff' && <Link
             to="/calendar"
             state={{ openCreate: true }}
             className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-black font-headline font-bold text-sm rounded-lg py-2.5 px-4 transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_20px_rgba(246,183,10,0.35)]"

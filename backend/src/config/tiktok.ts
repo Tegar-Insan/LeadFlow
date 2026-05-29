@@ -7,7 +7,8 @@ export const TIKTOK_CONFIG = {
   clientSecret: process.env.TIKTOK_CLIENT_SECRET || '',
   redirectUri: (process.env.TIKTOK_REDIRECT_URI || '').trim(),
   frontendUrl: (process.env.FRONTEND_BASE_URL || 'http://localhost:5173').trim(),
-  mediaPublicBaseUrl: (process.env.TIKTOK_MEDIA_UPLOAD_URL || '').trim(),
+  mediaPublicBaseUrl:
+    (process.env.TIKTOK_MEDIA_PUBLIC_BASE_URL || process.env.TIKTOK_MEDIA_UPLOAD_URL || '').trim(),
 
   authorizeUrl: 'https://www.tiktok.com/v2/auth/authorize/',
   tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',

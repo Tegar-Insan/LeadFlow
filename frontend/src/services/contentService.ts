@@ -18,10 +18,9 @@ function authHeaders(): Record<string, string> {
 export interface GeneratedScheduleDraft {
   id: string;
   prompt_id: string;
-  idea_title: string;
-  hook: string;
-  caption: string;
-  hashtags: string[];
+  content_title: string;
+  tiktok_caption: string;
+  hashtag: string[];
   suggested_music: string;
   estimated_duration: number;
   estimated_engagement: 'low' | 'medium' | 'high';
@@ -80,14 +79,22 @@ export async function generateDrafts(brief: string): Promise<GeneratedScheduleDr
 // ---------------------------------------------------------------------------
 // POST /content/:id/approve
 // ---------------------------------------------------------------------------
-export async function approveIdea(ideaId: string): Promise<{
+export interface ApproveIdeaResult {
   idea_id: string;
   schedule_id: string | null;
   schedule_status: string | null;
-}> {
-  const { data } = await axios.post<
-    ApiResponse<{ idea_id: string; schedule_id: string | null; schedule_status: string | null }>
-  >(
+  content_title: string | null;
+  tiktok_caption: string | null;
+  hashtag: string[];
+  category: string | null;
+  estimated_engagement: 'low' | 'medium' | 'high' | null;
+  suggested_music: string | null;
+  estimated_duration: number | null;
+  best_time_to_post_wib: string | null;
+}
+
+export async function approveIdea(ideaId: string): Promise<ApproveIdeaResult> {
+  const { data } = await axios.post<ApiResponse<ApproveIdeaResult>>(
     `${BASE}/content/${ideaId}/approve`,
     {},
     { headers: authHeaders() },

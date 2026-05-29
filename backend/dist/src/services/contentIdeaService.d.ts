@@ -1,10 +1,9 @@
 export interface GeneratedScheduleDraft {
     id: string;
     prompt_id: string;
-    idea_title: string;
-    hook: string;
-    caption: string;
-    hashtags: string[];
+    content_title: string;
+    tiktok_caption: string;
+    hashtag: string[];
     suggested_music: string;
     estimated_duration: number;
     estimated_engagement: 'low' | 'medium' | 'high';

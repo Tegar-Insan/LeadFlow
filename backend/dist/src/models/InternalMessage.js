@@ -10,8 +10,7 @@ export async function getConversation(userId1, userId2, limit = 50, offset = 0) 
         .from('internal_messages')
         .select(`id, sender_id, receiver_id, message_text, is_read, 
        created_at, updated_at`)
-        .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),
-       and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`)
+        .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`)
         .order('created_at', { ascending: true })
         .range(offset, offset + limit - 1);
     if (error) {

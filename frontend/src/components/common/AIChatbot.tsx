@@ -488,7 +488,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
           {/* Footer */}
           <div className="px-4 pb-2.5 flex-shrink-0">
             <p className="text-[10px] font-body text-text-muted/50 text-center">
-              Powered by Gemini · Bright Data TikTok · LeadFlow AI
+              Powered by Anthropic
             </p>
           </div>
         </div>

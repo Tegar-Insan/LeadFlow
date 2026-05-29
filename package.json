@@ -5,6 +5,7 @@
     "supabase": "^2.100.0"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3"
   }

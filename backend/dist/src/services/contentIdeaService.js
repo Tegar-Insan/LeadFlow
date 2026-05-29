@@ -26,10 +26,9 @@ Return ONLY a valid JSON array. No prose, no markdown fences, no commentary befo
 
 Each element must match this TypeScript shape exactly:
 {
-  "idea_title": string,                // <= 80 chars, punchy
-  "hook": string,                      // opening line for first 3 seconds of video
-  "caption": string,                   // full TikTok caption, 2–4 sentences
-  "hashtags": string[],                // 4–7 items, each starts with '#'
+  "content_title": string,             // <= 80 chars, punchy
+  "tiktok_caption": string,            // full TikTok caption, 2–4 sentences
+  "hashtag": string[],                 // 4–7 items, each starts with '#'
   "suggested_music": string,           // e.g. "Trending Indonesian pop 2026"
   "estimated_duration": number,        // seconds, 15–60
   "estimated_engagement": "low" | "medium" | "high",
@@ -68,9 +67,9 @@ function parseModelOutput(raw) {
     for (const item of parsed) {
         if (typeof item === 'object' &&
             item !== null &&
-            typeof item.idea_title === 'string' &&
-            typeof item.caption === 'string' &&
-            Array.isArray(item.hashtags) &&
+            typeof item.content_title === 'string' &&
+            typeof item.tiktok_caption === 'string' &&
+            Array.isArray(item.hashtag) &&
             typeof item.best_time_to_post_wib === 'string') {
             valid.push(item);
         }
@@ -140,14 +139,13 @@ export async function generateScheduleDraftsFromBrief(brief, userId) {
             .insert({
             prompt_id: promptId,
             created_by: userId,
-            idea_title: d.idea_title,
-            hook: d.hook,
-            caption: d.caption,
-            hashtags: d.hashtags,
+            content_title: d.content_title,
+            tiktok_caption: d.tiktok_caption,
+            hashtag: d.hashtag,
             suggested_music: d.suggested_music,
             estimated_duration: d.estimated_duration,
             status: 'pending_validation',
-            ai_model_used: MODEL_ID, // explicit override of migration 005's 'gpt-4o' default
+            ai_model_used: MODEL_ID,
         })
             .select('id')
             .single();
@@ -158,10 +156,9 @@ export async function generateScheduleDraftsFromBrief(brief, userId) {
         inserted.push({
             id: ideaRow.id,
             prompt_id: promptId,
-            idea_title: d.idea_title,
-            hook: d.hook,
-            caption: d.caption,
-            hashtags: d.hashtags,
+            content_title: d.content_title,
+            tiktok_caption: d.tiktok_caption,
+            hashtag: d.hashtag,
             suggested_music: d.suggested_music,
             estimated_duration: d.estimated_duration,
             estimated_engagement: d.estimated_engagement,
@@ -281,10 +278,9 @@ FINAL IDEAS:
             .insert({
             prompt_id: promptId,
             created_by: userId,
-            idea_title: d.idea_title,
-            hook: d.hook,
-            caption: d.caption,
-            hashtags: d.hashtags,
+            content_title: d.content_title,
+            tiktok_caption: d.tiktok_caption,
+            hashtag: d.hashtag,
             suggested_music: d.suggested_music,
             estimated_duration: d.estimated_duration,
             status: 'pending_validation',
@@ -299,10 +295,9 @@ FINAL IDEAS:
         inserted.push({
             id: ideaRow.id,
             prompt_id: promptId,
-            idea_title: d.idea_title,
-            hook: d.hook,
-            caption: d.caption,
-            hashtags: d.hashtags,
+            content_title: d.content_title,
+            tiktok_caption: d.tiktok_caption,
+            hashtag: d.hashtag,
             suggested_music: d.suggested_music,
             estimated_duration: d.estimated_duration,
             estimated_engagement: d.estimated_engagement,
@@ -329,7 +324,7 @@ FINAL IDEAS:
 export async function listPendingIdeasForUser(userId) {
     const { data, error } = await supabase
         .from('content_ideas')
-        .select('id, prompt_id, idea_title, hook, caption, hashtags, suggested_music, ' +
+        .select('id, prompt_id, content_title, tiktok_caption, hashtag, suggested_music, ' +
         'estimated_duration, status, ai_model_used, created_at')
         .eq('created_by', userId)
         .eq('status', 'pending_validation') // critical filter — soft-deleted rows would otherwise appear
@@ -343,10 +338,9 @@ export async function listPendingIdeasForUser(userId) {
     return rows.map((row) => ({
         id: row.id,
         prompt_id: row.prompt_id,
-        idea_title: row.idea_title,
-        hook: row.hook ?? '',
-        caption: row.caption,
-        hashtags: row.hashtags ?? [],
+        content_title: row.content_title,
+        tiktok_caption: row.tiktok_caption,
+        hashtag: row.hashtag ?? [],
         suggested_music: row.suggested_music ?? '',
         estimated_duration: row.estimated_duration ?? 30,
         estimated_engagement: 'medium',

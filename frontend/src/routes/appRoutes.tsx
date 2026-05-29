@@ -7,6 +7,7 @@ import OTPPage                 from '../pages/auth/OTPPage';
 import TikTokStatusPage        from '../pages/auth/TikTokStatusPage';
 import CalendarPage            from '../pages/schedule/CalendarPage';
 import OwnerDashboard          from '../pages/dashboard/OwnerDashboard';
+import AnalyticsDashboard      from '../pages/analytics/AnalyticsDashboard';
 import PromptPage              from '../pages/content/PromptPage';
 import GeneratedIdeasPage      from '../pages/content/GeneratedIdeasPage';
 import IdeaValidationPage      from '../pages/content/IdeaValidationPage';
@@ -43,11 +44,11 @@ export default function AppRoutes() {
       <Route path="/otp"              element={<OTPPage />} />
       <Route path="/tiktok/callback"  element={<TikTokStatusPage />} />
       <Route path="/unauthorized"     element={<UnauthorizedPage />} />
-      <Route path="/content/prompt"   element={<ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}><PromptPage /></ProtectedRoute>} />
-      <Route path="/calendar/ideas"    element={<ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}><GeneratedIdeasPage /></ProtectedRoute>} />
+      <Route path="/content/prompt"   element={<ProtectedRoute allowedRoles={['marketing_staff']}><PromptPage /></ProtectedRoute>} />
+      <Route path="/calendar/ideas"    element={<ProtectedRoute allowedRoles={['marketing_staff']}><GeneratedIdeasPage /></ProtectedRoute>} />
       <Route path="/ideas"            element={<Navigate to="/calendar/ideas" replace />} />
       <Route path="/content/ideas"    element={<Navigate to="/calendar/ideas" replace />} />
-      <Route path="/content/validate" element={<ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}><IdeaValidationPage /></ProtectedRoute>} />
+      <Route path="/content/validate" element={<ProtectedRoute allowedRoles={['marketing_staff']}><IdeaValidationPage /></ProtectedRoute>} />
 
       {/* ── Admin — 3 separate pages, all admin-only ─────────── */}
       <Route
@@ -91,6 +92,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['business_owner']}>
             <OwnerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute allowedRoles={['business_owner']}>
+            <AnalyticsDashboard />
           </ProtectedRoute>
         }
       />

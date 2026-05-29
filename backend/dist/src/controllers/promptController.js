@@ -43,7 +43,7 @@ export async function getPromptDetail(req, res) {
     // For a pending-only count use this query instead:
     const { data: ideas, error: ideasErr } = await supabase
         .from('content_ideas')
-        .select('id, idea_title, status, created_at')
+        .select('id, content_title, status, created_at')
         .eq('prompt_id', promptId)
         .order('created_at', { ascending: true });
     if (ideasErr) {

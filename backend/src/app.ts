@@ -20,6 +20,7 @@ import chatbotRoutes from './routes/chatbotRoutes.ts';
 import tiktokRoutes from './routes/tiktokRoutes.ts';
 import publicMediaRoutes from './routes/publicMediaRoutes.ts';
 import interactionRoutes from './routes/interactionRoutes.ts';
+import analyticsRoutes from './routes/analyticsRoutes.ts';
 
 const app = express();
 
@@ -48,9 +49,7 @@ const sendTikTokVerification = (res: express.Response): express.Response => {
   return res.status(200).type('text/plain').send(tiktokVerificationPayload);
 };
 
-app.use(helmet({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: false }));
-
-const allowed = [
+const allowedFrontend = [
   process.env['FRONTEND_URL'] ?? 'http://localhost:5173',
   'http://localhost:5173',
   'http://localhost:5174',
@@ -59,17 +58,52 @@ const allowed = [
   'http://127.0.0.1:5174',
 ];
 
-app.use(
-  cors({
-    origin: (origin, cb) =>
-      !origin || allowed.includes(origin)
-        ? cb(null, true)
-        : cb(new Error(`CORS blocked: ${origin}`)),
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  }),
-);
+const allowedBackend = [
+  process.env['BACKEND_URL'] ?? 'http://localhost:5000',
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+];
+
+const allowed = [...allowedFrontend, ...allowedBackend];
+
+const isDev = process.env['NODE_ENV'] !== 'production';
+
+const corsOptions: Parameters<typeof cors>[0] = {
+  origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+    // In dev: allow all origins from allowedFrontend + allowedBackend
+    // In prod: only allow origins in the allowed list
+    const allowedOrigins = isDev ? [...allowedFrontend, ...allowedBackend] : allowed;
+    
+    // If no origin (same-origin requests), always allow
+    if (!origin) {
+      return cb(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+    
+    return cb(new Error(`CORS blocked: origin '${origin}' not in allowed list`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response-Size'],
+  maxAge: 86400, // 24 hours preflight cache
+  optionsSuccessStatus: 200, // Some browsers (IE11) choke on 204
+};
+
+// CORS must be registered BEFORE helmet — helmet can override headers otherwise
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight OPTIONS for all routes
+app.options('*', cors(corsOptions));
+
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: false, // Prevent CORP header from blocking cross-origin requests
+}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -117,6 +151,7 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
 app.use('/api/message', interactionRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({

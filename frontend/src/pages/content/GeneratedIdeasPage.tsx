@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   approveIdea,
   generateDrafts,
   rejectIdea,
   type GeneratedScheduleDraft,
+  type ApproveIdeaResult,
 } from '../../services/contentService';
+import { fetchDrafts } from '../../services/scheduleService';
 import { useNotification } from '../../context/NotificationContext';
 import { fLongDateTime } from '../../utils/formatDate';
 import { InlineLoader } from '../../components/common/KineticLoader';
@@ -72,31 +74,21 @@ const IdeaCard = ({
       <div className="px-5 py-5 space-y-4">
         {/* Title */}
         <h3 className="text-lg font-headline font-bold text-gray-900 leading-snug">
-          {draft.idea_title}
+          {draft.content_title}
         </h3>
 
-        {/* Hook */}
-        {draft.hook && (
-          <div className="space-y-1">
-            <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-600">Hook</p>
-            <p className="text-sm text-gray-700 italic font-body leading-relaxed">
-              "{draft.hook}"
-            </p>
-          </div>
-        )}
-
-        {/* Caption */}
+        {/* TikTok Caption */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-600">Caption</p>
           <div className="rounded-xl bg-gray-50 border border-gray-300 px-4 py-3">
-            <p className="text-sm text-gray-700 font-body leading-relaxed">{draft.caption}</p>
+            <p className="text-sm text-gray-700 font-body leading-relaxed">{draft.tiktok_caption}</p>
           </div>
         </div>
 
-        {/* Hashtags */}
-        {draft.hashtags?.length > 0 && (
+        {/* Hashtag */}
+        {draft.hashtag?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {draft.hashtags.map((tag) => (
+            {draft.hashtag.map((tag) => (
               <span
                 key={tag}
                 className="text-[10px] px-2.5 py-1 rounded-full bg-brand/[0.07] border border-brand/[0.12] text-brand/70 font-body"
@@ -131,7 +123,7 @@ const IdeaCard = ({
               type="button"
               onClick={() => onApprove(draft)}
               disabled={draft.ui_state !== 'idle'}
-              className="flex-1 h-11 rounded-2xl bg-brand text-black text-sm font-headline font-bold hover:bg-[#d4960a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_4px_20px_rgba(246,183,10,0.2)] hover:shadow-[0_4px_24px_rgba(246,183,10,0.35)] flex items-center justify-center gap-2"
+              className="flex-1 h-11 rounded-2xl bg-brand text-black text-sm font-headline font-bold hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_4px_20px_rgba(246,183,10,0.2)] hover:shadow-[0_4px_24px_rgba(246,183,10,0.35)] flex items-center justify-center gap-2"
             >
               {draft.ui_state === 'approving' ? (
                 <>
@@ -207,6 +199,25 @@ export default function GeneratedIdeasPage(): JSX.Element {
   const [lastBrief, setLastBrief] = useState('');
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<DraftCardViewModel[]>([]);
+  // Content Library: existing drafts from DB + newly approved from this session
+  const [existingDrafts, setExistingDrafts] = useState<any[]>([]);
+  const [approvedDrafts, setApprovedDrafts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchDrafts()
+      .then((res: any) => {
+        const nestedDrafts = Array.isArray(res?.data?.data?.drafts)
+          ? res.data.data.drafts
+          : Array.isArray(res?.data?.data)
+            ? res.data.data
+            : [];
+        setExistingDrafts(nestedDrafts);
+      })
+      .catch(() => {
+        console.error('Failed to fetch drafts. Initializing as empty array.');
+        setExistingDrafts([]);
+      });
+  }, []);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -234,12 +245,41 @@ export default function GeneratedIdeasPage(): JSX.Element {
   async function handleApprove(idea: DraftCardViewModel): Promise<void> {
     setDrafts((prev) => prev.map((d) => d.id === idea.id ? { ...d, ui_state: 'approving' } : d));
     try {
-      const result = await approveIdea(idea.id);
-      toast.success('Ditambahkan ke kalender sebagai draft');
-      navigate('/calendar', {
-        replace: true,
-        state: result.schedule_id ? { createdScheduleId: result.schedule_id } : undefined,
-      });
+      const result: ApproveIdeaResult = await approveIdea(idea.id);
+
+      // Fade out the approved card from the ideas list
+      setDrafts((prev) => prev.map((d) => d.id === idea.id ? { ...d, ui_state: 'fading' } : d));
+      window.setTimeout(() => {
+        setDrafts((prev) => prev.filter((d) => d.id !== idea.id));
+      }, 400);
+
+      // Push full metadata into the Content Library sidebar immediately.
+      // Use the schedule id when available; otherwise fall back to the idea id
+      // so the approved item still appears in the library on the same page.
+      if (result.idea_id || result.schedule_id || result.content_title || result.tiktok_caption) {
+        const libraryId = result.schedule_id ?? result.idea_id;
+        setApprovedDrafts((prev) => [
+          {
+            id: libraryId,
+            status: result.schedule_status ?? 'draft',
+            custom_caption: result.tiktok_caption ?? result.content_title,
+            custom_hashtags: result.hashtag ?? [],
+            content_title: result.content_title,
+            tiktok_caption: result.tiktok_caption,
+            hashtag: result.hashtag ?? [],
+            category: result.category,
+            estimated_engagement: result.estimated_engagement,
+            suggested_music: result.suggested_music,
+            estimated_duration: result.estimated_duration,
+            best_time_to_post_wib: result.best_time_to_post_wib,
+            scheduled_at: null,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
+
+      toast.success('Ide disetujui — draft ditambahkan ke Content Library');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal approve');
       setDrafts((prev) => prev.map((d) => d.id === idea.id ? { ...d, ui_state: 'idle' } : d));
@@ -286,8 +326,11 @@ export default function GeneratedIdeasPage(): JSX.Element {
       
       {/* Main Layout */}
       <div className="flex-1 flex">
-        {/* Content Library Sidebar */}
-        <ContentLibrarySidebar />
+        {/* Content Library Sidebar — pre-loaded with existing drafts + newly approved */}
+        <ContentLibrarySidebar
+          drafts={[...approvedDrafts, ...existingDrafts]}
+          schedules={[]}
+        />
         
         {/* Main Content */}
         <div className="flex-1">
@@ -358,7 +401,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
                   type="button"
                   onClick={() => void populateDrafts(brief)}
                   disabled={loading || brief.trim().length < 5}
-                  className="w-full h-12 rounded-2xl bg-brand text-black text-sm font-headline font-bold hover:bg-[#d4960a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_4px_20px_rgba(246,183,10,0.18)] hover:shadow-[0_4px_28px_rgba(246,183,10,0.32)] flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-2xl bg-brand text-black text-sm font-headline font-bold hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_4px_20px_rgba(246,183,10,0.18)] hover:shadow-[0_4px_28px_rgba(246,183,10,0.32)] flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>

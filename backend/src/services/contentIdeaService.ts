@@ -19,10 +19,9 @@ import { retryWithBackoff, ANTHROPIC_RETRY } from '../utils/retryHelper.ts';
 export interface GeneratedScheduleDraft {
   id: string;                            // content_ideas.id after insert
   prompt_id: string;
-  idea_title: string;
-  hook: string;
-  caption: string;
-  hashtags: string[];
+  content_title: string;
+  tiktok_caption: string;
+  hashtag: string[];
   suggested_music: string;
   estimated_duration: number;            // seconds
   estimated_engagement: 'low' | 'medium' | 'high';
@@ -53,10 +52,9 @@ export interface GenerationWithSteps {
 
 // Intermediate shape — only fields the model fills. DB-assigned fields are added after insert.
 interface ModelDraft {
-  idea_title: string;
-  hook: string;
-  caption: string;
-  hashtags: string[];
+  content_title: string;
+  tiktok_caption: string;
+  hashtag: string[];
   suggested_music: string;
   estimated_duration: number;
   estimated_engagement: 'low' | 'medium' | 'high';
@@ -80,10 +78,9 @@ Return ONLY a valid JSON array. No prose, no markdown fences, no commentary befo
 
 Each element must match this TypeScript shape exactly:
 {
-  "idea_title": string,                // <= 80 chars, punchy
-  "hook": string,                      // opening line for first 3 seconds of video
-  "caption": string,                   // full TikTok caption, 2–4 sentences
-  "hashtags": string[],                // 4–7 items, each starts with '#'
+  "content_title": string,             // <= 80 chars, punchy
+  "tiktok_caption": string,            // full TikTok caption, 2–4 sentences
+  "hashtag": string[],                 // 4–7 items, each starts with '#'
   "suggested_music": string,           // e.g. "Trending Indonesian pop 2026"
   "estimated_duration": number,        // seconds, 15–60
   "estimated_engagement": "low" | "medium" | "high",
@@ -126,9 +123,9 @@ function parseModelOutput(raw: string): ModelDraft[] {
     if (
       typeof item === 'object' &&
       item !== null &&
-      typeof (item as ModelDraft).idea_title === 'string' &&
-      typeof (item as ModelDraft).caption === 'string' &&
-      Array.isArray((item as ModelDraft).hashtags) &&
+      typeof (item as ModelDraft).content_title === 'string' &&
+      typeof (item as ModelDraft).tiktok_caption === 'string' &&
+      Array.isArray((item as ModelDraft).hashtag) &&
       typeof (item as ModelDraft).best_time_to_post_wib === 'string'
     ) {
       valid.push(item as ModelDraft);
@@ -217,14 +214,13 @@ export async function generateScheduleDraftsFromBrief(
       .insert({
         prompt_id: promptId,
         created_by: userId,
-        idea_title: d.idea_title,
-        hook: d.hook,
-        caption: d.caption,
-        hashtags: d.hashtags,
+        content_title: d.content_title,
+        tiktok_caption: d.tiktok_caption,
+        hashtag: d.hashtag,
         suggested_music: d.suggested_music,
         estimated_duration: d.estimated_duration,
         status: 'pending_validation',
-        ai_model_used: MODEL_ID, // explicit override of migration 005's 'gpt-4o' default
+        ai_model_used: MODEL_ID,
       })
       .select('id')
       .single();
@@ -237,10 +233,9 @@ export async function generateScheduleDraftsFromBrief(
     inserted.push({
       id: ideaRow.id,
       prompt_id: promptId,
-      idea_title: d.idea_title,
-      hook: d.hook,
-      caption: d.caption,
-      hashtags: d.hashtags,
+      content_title: d.content_title,
+      tiktok_caption: d.tiktok_caption,
+      hashtag: d.hashtag,
       suggested_music: d.suggested_music,
       estimated_duration: d.estimated_duration,
       estimated_engagement: d.estimated_engagement,
@@ -386,10 +381,9 @@ FINAL IDEAS:
       .insert({
         prompt_id: promptId,
         created_by: userId,
-        idea_title: d.idea_title,
-        hook: d.hook,
-        caption: d.caption,
-        hashtags: d.hashtags,
+        content_title: d.content_title,
+        tiktok_caption: d.tiktok_caption,
+        hashtag: d.hashtag,
         suggested_music: d.suggested_music,
         estimated_duration: d.estimated_duration,
         status: 'pending_validation',
@@ -406,10 +400,9 @@ FINAL IDEAS:
     inserted.push({
       id: ideaRow.id,
       prompt_id: promptId,
-      idea_title: d.idea_title,
-      hook: d.hook,
-      caption: d.caption,
-      hashtags: d.hashtags,
+      content_title: d.content_title,
+      tiktok_caption: d.tiktok_caption,
+      hashtag: d.hashtag,
       suggested_music: d.suggested_music,
       estimated_duration: d.estimated_duration,
       estimated_engagement: d.estimated_engagement,
@@ -440,7 +433,7 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
   const { data, error } = await supabase
     .from('content_ideas')
     .select(
-      'id, prompt_id, idea_title, hook, caption, hashtags, suggested_music, ' +
+      'id, prompt_id, content_title, tiktok_caption, hashtag, suggested_music, ' +
         'estimated_duration, status, ai_model_used, created_at',
     )
     .eq('created_by', userId)
@@ -456,10 +449,9 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
   const rows = (data ?? []) as unknown as Array<{
     id: string;
     prompt_id: string;
-    idea_title: string;
-    hook: string;
-    caption: string;
-    hashtags: string[] | null;
+    content_title: string;
+    tiktok_caption: string;
+    hashtag: string[] | null;
     suggested_music: string | null;
     estimated_duration: number | null;
     ai_model_used: string | null;
@@ -468,10 +460,9 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
   return rows.map((row) => ({
     id: row.id,
     prompt_id: row.prompt_id,
-    idea_title: row.idea_title,
-    hook: row.hook ?? '',
-    caption: row.caption,
-    hashtags: row.hashtags ?? [],
+    content_title: row.content_title,
+    tiktok_caption: row.tiktok_caption,
+    hashtag: row.hashtag ?? [],
     suggested_music: row.suggested_music ?? '',
     estimated_duration: row.estimated_duration ?? 30,
     estimated_engagement: 'medium' as const,

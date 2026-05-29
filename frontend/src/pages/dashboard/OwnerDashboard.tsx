@@ -1,6 +1,6 @@
 // src/pages/dashboard/OwnerDashboard.jsx
 import { useState, useEffect } from 'react';
-import Sidebar from '../../components/common/Sidebar';
+import SmallSidebar from '../../components/common/smallsidebar';
 import DashboardNavbar  from '../../components/common/DashboardNavbar';
 import useAuth from '../../hooks/useAuth';
 import api    from '../../services/authService';
@@ -48,7 +48,6 @@ const INTENTS = [
 ];
 
 export default function OwnerDashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const [weekly,  setWeekly]  = useState(null);
   const [loading, setLoading] = useState(true);

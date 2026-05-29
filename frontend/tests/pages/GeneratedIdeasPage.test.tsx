@@ -1,5 +1,5 @@
 // frontend/tests/pages/GeneratedIdeasPage.test.tsx
-// Session 9 — card rendering, approve wiring, reject prompt.
+// Session 10 — updated for: no-navigate on approve, Content Library sidebar wired.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -7,10 +7,34 @@ import { MemoryRouter } from 'react-router-dom';
 import { type Mock } from 'vitest';
 import GeneratedIdeasPage from '../../src/pages/content/GeneratedIdeasPage';
 
+// ── Service mocks ────────────────────────────────────────────────
 vi.mock('../../src/services/contentService', () => ({
   generateDrafts: vi.fn(),
   approveIdea: vi.fn(),
   rejectIdea: vi.fn(),
+}));
+
+vi.mock('../../src/services/scheduleService', () => ({
+  fetchDrafts: vi.fn().mockResolvedValue({
+    data: { data: { drafts: [] } },
+  }),
+}));
+
+// Stub layout components that require AuthProvider / other contexts
+vi.mock('../../src/components/common/smallsidebar', () => ({
+  default: () => null,
+}));
+vi.mock('../../src/components/content/GeneratedIdeasList', () => ({
+  default: () => null,
+}));
+vi.mock('../../src/components/Schedule/ContentLibrarySidebar', () => ({
+  default: ({ drafts }: { drafts?: any[] }) => (
+    <div data-testid="content-library">
+      {(drafts ?? []).map((d: any) => (
+        <div key={d.id} data-testid={`library-card-${d.id}`}>{d.content_title}</div>
+      ))}
+    </div>
+  ),
 }));
 
 vi.mock('../../src/context/NotificationContext', () => ({
@@ -28,21 +52,24 @@ vi.mock('../../src/utils/formatDate', () => ({
   fLongDateTime: (iso: string) => (iso ? iso.slice(0, 16) : '—'),
 }));
 
+// ── Imports after mocks ──────────────────────────────────────────
 import {
   generateDrafts,
   approveIdea,
   rejectIdea,
   type GeneratedScheduleDraft,
+  type ApproveIdeaResult,
 } from '../../src/services/contentService';
+import { fetchDrafts } from '../../src/services/scheduleService';
 
+// ── Fixtures ─────────────────────────────────────────────────────
 const sampleDrafts: GeneratedScheduleDraft[] = [
   {
     id: 'idea-1',
     prompt_id: 'p-1',
-    idea_title: 'Spicy Wings Monday',
-    hook: 'POV: you heard the crunch',
-    caption: 'Come try our hottest drop 🔥',
-    hashtags: ['#KrenchChicken', '#BogorFood'],
+    content_title: 'Spicy Wings Monday',
+    tiktok_caption: 'Come try our hottest drop 🔥',
+    hashtag: ['#KrenchChicken', '#BogorFood'],
     suggested_music: 'Trending pop',
     estimated_duration: 30,
     estimated_engagement: 'high',
@@ -54,10 +81,9 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
   {
     id: 'idea-2',
     prompt_id: 'p-1',
-    idea_title: 'Behind the Fryer',
-    hook: 'How we prep fresh daily',
-    caption: 'From 6AM to lunch ⏰',
-    hashtags: ['#KrenchChicken', '#BehindTheScenes'],
+    content_title: 'Behind the Fryer',
+    tiktok_caption: 'From 6AM to lunch ⏰',
+    hashtag: ['#KrenchChicken', '#BehindTheScenes'],
     suggested_music: 'Lofi',
     estimated_duration: 45,
     estimated_engagement: 'medium',
@@ -68,14 +94,37 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
   },
 ];
 
+const approveResult: ApproveIdeaResult = {
+  idea_id: 'idea-1',
+  schedule_id: 'sched-abc',
+  schedule_status: 'draft',
+  content_title: 'Spicy Wings Monday',
+  tiktok_caption: 'Come try our hottest drop 🔥',
+  hashtag: ['#KrenchChicken', '#BogorFood'],
+  category: 'PROMOTION',
+  estimated_engagement: 'high',
+  suggested_music: 'Trending pop',
+  estimated_duration: 30,
+  best_time_to_post_wib: '2026-05-02T19:00:00+07:00',
+};
+
 function renderPage() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/calendar/ideas']}>
       <GeneratedIdeasPage />
     </MemoryRouter>,
   );
 }
 
+async function generateAndWait() {
+  fireEvent.change(screen.getByPlaceholderText(/Deskripsikan/i), {
+    target: { value: '3 konten TikTok minggu ini untuk Krench' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /Generate Ideas/i }));
+  await screen.findByText('Spicy Wings Monday');
+}
+
+// ── Tests ─────────────────────────────────────────────────────────
 describe('GeneratedIdeasPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,42 +133,79 @@ describe('GeneratedIdeasPage', () => {
   it('renders one card per returned draft after Generate', async () => {
     (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
     renderPage();
+    await generateAndWait();
+    expect(screen.getByText('Spicy Wings Monday')).toBeInTheDocument();
+    expect(screen.getByText('Behind the Fryer')).toBeInTheDocument();
+  });
 
-    fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
-      target: { value: 'Generate promo content for this week' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Generate Ideas/i }));
+  it('Approve calls approveIdea with the correct idea id', async () => {
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
+    (approveIdea as Mock).mockResolvedValue(approveResult);
+    renderPage();
+    await generateAndWait();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Approve/i })[0]!);
 
     await waitFor(() => {
-      expect(screen.getByText('Spicy Wings Monday')).toBeInTheDocument();
-      expect(screen.getByText('Behind the Fryer')).toBeInTheDocument();
+      expect(approveIdea).toHaveBeenCalledTimes(1);
+      expect(approveIdea).toHaveBeenCalledWith('idea-1');
     });
   });
 
-  it('Approve click removes the approved card from the page', async () => {
+  it('Approve does NOT navigate away — page stays on /calendar/ideas', async () => {
+    // MemoryRouter's location does not change — verify by confirming the page
+    // heading is still present after approval.
     (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
-    (approveIdea as Mock).mockResolvedValue({
-      idea_id: 'idea-1',
-      schedule_id: 'sched-abc',
-      schedule_status: 'draft',
+    (approveIdea as Mock).mockResolvedValue(approveResult);
+    renderPage();
+    await generateAndWait();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Approve/i })[0]!);
+    await waitFor(() => expect(approveIdea).toHaveBeenCalled());
+
+    // Page heading must still be present — proves we did not navigate away
+    expect(screen.getByRole('heading', { name: /Generate Ideas/i })).toBeInTheDocument();
+  });
+
+  it('Approve adds the draft card to the Content Library sidebar', async () => {
+    (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
+    (approveIdea as Mock).mockResolvedValue(approveResult);
+    renderPage();
+    await generateAndWait();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Approve/i })[0]!);
+    await waitFor(() => expect(approveIdea).toHaveBeenCalled());
+
+    // The sidebar mock renders a card with data-testid="library-card-{schedule_id}"
+    await waitFor(() => {
+      expect(screen.getByTestId('library-card-sched-abc')).toBeInTheDocument();
+      expect(screen.getByTestId('library-card-sched-abc')).toHaveTextContent('Spicy Wings Monday');
     });
+  });
+
+  it('loads existing drafts from the nested API envelope', async () => {
+    (fetchDrafts as Mock).mockResolvedValue({
+      data: {
+        data: {
+          drafts: [
+            {
+              id: 'draft-existing-1',
+              content_title: 'Existing Draft',
+              tiktok_caption: 'From existing source',
+              status: 'draft',
+              created_at: '2026-05-20T09:00:00.000Z',
+              custom_caption: 'Existing Draft',
+            },
+          ],
+        },
+      },
+    });
+
     renderPage();
 
-    fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
-      target: { value: 'Generate promo content for this week' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Generate Ideas/i }));
-    await screen.findByText('Spicy Wings Monday');
-
-    const approveButtons = screen.getAllByRole('button', { name: /Approve/i });
-    fireEvent.click(approveButtons[0]!);
-
     await waitFor(() => {
-      expect(approveIdea).toHaveBeenCalledWith('idea-1');
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText('Spicy Wings Monday')).not.toBeInTheDocument();
+      expect(screen.getByTestId('library-card-draft-existing-1')).toBeInTheDocument();
+      expect(screen.getByTestId('library-card-draft-existing-1')).toHaveTextContent('Existing Draft');
     });
   });
 
@@ -127,21 +213,17 @@ describe('GeneratedIdeasPage', () => {
     (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
     (rejectIdea as Mock).mockResolvedValue({ idea_id: 'idea-2' });
     renderPage();
+    await generateAndWait();
 
-    fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
-      target: { value: 'Generate promo content for this week' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Generate Ideas/i }));
-    await screen.findByText('Behind the Fryer');
-
-    const rejectButtons = screen.getAllByRole('button', { name: /Reject/i });
-    // click the second card's reject
+    // Open reject for second card — all Reject buttons (including Approve row): pick last non-Approve
+    const rejectButtons = screen.getAllByRole('button', { name: /^Reject$/i });
     fireEvent.click(rejectButtons[1]!);
 
-    // reason prompt appears
-    const reasonBox = await screen.findByPlaceholderText(/ready yet/i);
+    const reasonBox = await screen.findByPlaceholderText(/Contoh:/i);
     fireEvent.change(reasonBox, { target: { value: 'Music licence issue' } });
-    fireEvent.click(screen.getByRole('button', { name: /Reject with reason/i }));
+    // "Reject" button inside the reason panel confirms with reason
+    const confirmButtons = screen.getAllByRole('button', { name: /^Reject$/i });
+    fireEvent.click(confirmButtons[confirmButtons.length - 1]!);
 
     await waitFor(() => {
       expect(rejectIdea).toHaveBeenCalledWith('idea-2', 'Music licence issue');
@@ -152,17 +234,10 @@ describe('GeneratedIdeasPage', () => {
     (generateDrafts as Mock).mockResolvedValue(sampleDrafts);
     (rejectIdea as Mock).mockResolvedValue({ idea_id: 'idea-1' });
     renderPage();
+    await generateAndWait();
 
-    fireEvent.change(screen.getByPlaceholderText(/promotion/i), {
-      target: { value: 'Generate promo content for this week' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Generate Ideas/i }));
-    await screen.findByText('Spicy Wings Monday');
-
-    const rejectButtons = screen.getAllByRole('button', { name: /Reject/i });
-    fireEvent.click(rejectButtons[0]!);
-
-    fireEvent.click(await screen.findByRole('button', { name: /Skip & reject/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /^Reject$/i })[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: /Skip & Reject/i }));
 
     await waitFor(() => {
       expect(rejectIdea).toHaveBeenCalledWith('idea-1', null);

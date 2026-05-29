@@ -36,7 +36,7 @@ const InteractionPage: React.FC = () => {
             }`}
           >
             <span className="flex items-center gap-2">
-              🎵 TikTok Interactions
+              🤝 Customer Messages
             </span>
           </button>
         </div>
