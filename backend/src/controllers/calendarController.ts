@@ -5,6 +5,7 @@ import * as scheduleService from '../services/scheduleService.ts';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
+import { broadcastCalendarUpdateFromDate } from '../utils/calendarSocket.ts';
 
 export const getCalendarByMonth = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -64,6 +65,8 @@ export const createSchedule = async (req: Request, res: Response): Promise<void>
     });
 
     logger.info(`[Calendar] Schedule created id=${schedule.id} by user=${authReq.user.userId}`);
+    const _io1 = (req.app as any).io;
+    if (_io1) broadcastCalendarUpdateFromDate(_io1, schedule.scheduled_at);
     success(res, { message: 'Schedule created', data: { schedule }, statusCode: 201 });
   } catch (err) {
     logger.error('[calendarController.createSchedule]', err);
@@ -84,6 +87,8 @@ export const updateSchedule = async (req: Request, res: Response): Promise<void>
 
     const schedule = await scheduleService.updateSchedule(req.params['id'] as string, req.body as Record<string, unknown>);
     logger.info(`[Calendar] Schedule updated id=${(schedule as { id: string }).id}`);
+    const _io2 = (req.app as any).io;
+    if (_io2) broadcastCalendarUpdateFromDate(_io2, (schedule as any).scheduled_at);
     success(res, { message: 'Schedule updated', data: { schedule } });
   } catch (err) {
     logger.error('[calendarController.updateSchedule]', err);
@@ -104,6 +109,8 @@ export const moveSchedule = async (req: Request, res: Response): Promise<void> =
 
     const schedule = await scheduleService.moveSchedule(req.params['id'] as string, scheduled_at);
     logger.info(`[Calendar] Schedule moved id=${(schedule as { id: string }).id} to ${scheduled_at}`);
+    const _io3 = (req.app as any).io;
+    if (_io3) broadcastCalendarUpdateFromDate(_io3, scheduled_at);
     success(res, { message: 'Schedule moved', data: { schedule } });
   } catch (err) {
     logger.error('[calendarController.moveSchedule]', err);
@@ -121,6 +128,8 @@ export const deleteSchedule = async (req: Request, res: Response): Promise<void>
 
     await scheduleService.deleteSchedule(req.params['id'] as string);
     logger.info(`[Calendar] Schedule deleted id=${req.params['id']}`);
+    const _io4 = (req.app as any).io;
+    if (_io4) broadcastCalendarUpdateFromDate(_io4, (existing as any).scheduled_at);
     success(res, { message: 'Schedule deleted' });
   } catch (err) {
     logger.error('[calendarController.deleteSchedule]', err);

@@ -21,6 +21,7 @@ import tiktokRoutes from './routes/tiktokRoutes.ts';
 import publicMediaRoutes from './routes/publicMediaRoutes.ts';
 import interactionRoutes from './routes/interactionRoutes.ts';
 import analyticsRoutes from './routes/analyticsRoutes.ts';
+import dashboardRoutes from './routes/dashboardRoutes.ts';
 
 const app = express();
 
@@ -152,6 +153,7 @@ app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
 app.use('/api/message', interactionRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({

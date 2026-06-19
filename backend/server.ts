@@ -129,6 +129,12 @@ async function startServer(): Promise<Server> {
       });
     });
 
+    // Event: Business Owner joins the calendar updates broadcast room
+    socket.on('calendar:join-updates', () => {
+      socket.join('calendar:updates');
+      logger.info(`[WebSocket] Socket ${socket.id} joined calendar:updates`);
+    });
+
     // Error handler
     socket.on('error', (err: any) => {
       logger.error(`[WebSocket] Error from socket ${socket.id}:`, err);
@@ -159,7 +165,7 @@ async function startServer(): Promise<Server> {
     logger.error('[Server] Unhandled rejection:', reason);
   });
 
-  startAutoPublishJob();
+  startAutoPublishJob(io);
 
   return server;
 }
