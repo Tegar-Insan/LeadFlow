@@ -52,3 +52,26 @@ class TikTokAnalysisResponse(BaseModel):
     analysis: str
     post_count: int
     model: str
+
+
+# ── /image/generate ───────────────────────────────────────────────
+# Triggered automatically right after Claude (Anthropic) produces a
+# content idea — image generation is chained onto idea generation,
+# not a separate manual step. GPT Image 2.0 is used for images only;
+# all text/idea generation stays on Anthropic.
+class IdeaImageContext(BaseModel):
+    content_title: str = Field(..., min_length=1)
+    tiktok_caption: str = Field(..., min_length=1)
+    category: Optional[str] = None
+    style_hint: Optional[str] = None
+
+
+class ImageGenerationRequest(BaseModel):
+    idea: IdeaImageContext
+
+
+class ImageGenerationResponse(BaseModel):
+    image_base64: str
+    mime_type: str = "image/png"
+    model: str
+    prompt_used: str

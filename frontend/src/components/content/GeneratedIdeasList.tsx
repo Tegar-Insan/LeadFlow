@@ -1,20 +1,24 @@
 import ContentIdeaCard from './ContentIdeaCard';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  type?: string;
-  schedule?: Record<string, unknown>;
+export interface ScheduleIdea {
+  schedule: Record<string, unknown>;
   approved?: boolean;
   rejected?: boolean;
   approving?: boolean;
 }
 
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  type?: string;
+  schedules?: ScheduleIdea[];
+}
+
 interface GeneratedIdeasListProps {
   messages?: Message[];
-  onApprove?: (schedule: Record<string, unknown>, msgId: string) => void;
-  onReject?: (msgId: string) => void;
+  onApprove?: (schedule: Record<string, unknown>, msgId: string, index: number) => void;
+  onReject?: (msgId: string, index: number) => void;
 }
 
 const GeneratedIdeasList = ({ messages = [], onApprove, onReject }: GeneratedIdeasListProps) => {
@@ -50,16 +54,21 @@ const GeneratedIdeasList = ({ messages = [], onApprove, onReject }: GeneratedIde
                 {message.content}
               </div>
 
-              {/* Schedule recommendation card */}
-              {!isUser && message.type === 'schedule_recommendation' && message.schedule && (
-                <ContentIdeaCard
-                  schedule={message.schedule}
-                  onApprove={() => onApprove?.(message.schedule as Record<string, unknown>, message.id)}
-                  onReject={() => onReject?.(message.id)}
-                  approved={message.approved}
-                  rejected={message.rejected}
-                  approving={message.approving}
-                />
+              {/* Schedule recommendation cards — up to 3 ideas per turn, each with its own image and approve/reject state */}
+              {!isUser && message.type === 'schedule_recommendation' && message.schedules && message.schedules.length > 0 && (
+                <div className="space-y-2">
+                  {message.schedules.map((idea, index) => (
+                    <ContentIdeaCard
+                      key={index}
+                      schedule={idea.schedule}
+                      onApprove={() => onApprove?.(idea.schedule, message.id, index)}
+                      onReject={() => onReject?.(message.id, index)}
+                      approved={idea.approved}
+                      rejected={idea.rejected}
+                      approving={idea.approving}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           </div>

@@ -22,12 +22,25 @@ services:
         TIKTOK_TOKEN_ENCRYPTION_KEY: ${TIKTOK_TOKEN_ENCRYPTION_KEY}
         FRONTEND_BASE_URL: http://localhost:5173
         ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+        AI_SERVICE_URL: http://ai-analyzer:8000
       ports:
         - "5000:5000"
       networks:
         - leadflow-network
       volumes:
-        - ./backend/src:/app/src
+        - ./backend:/app
+        - /app/node_modules
+        - /app/dist
+      develop:
+        watch:
+          - action: sync
+            path: ./backend
+            target: /app
+            ignore:
+              - node_modules/
+              - dist/
+          - action: rebuild
+            path: ./backend/package.json
 
     frontend:
       build:
@@ -42,7 +55,17 @@ services:
       networks:
         - leadflow-network
       volumes:
-        - ./frontend/src:/app/src
+        - ./frontend:/app
+        - /app/node_modules
+      develop:
+        watch:
+          - action: sync
+            path: ./frontend
+            target: /app
+            ignore:
+              - node_modules/
+          - action: rebuild
+            path: ./frontend/package.json
 
     ai-analyzer:
       build:
@@ -51,10 +74,21 @@ services:
       container_name: leadflow-ai
       environment:
         ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+        IMAGE_GPT_API_KEY: ${IMAGE_GPT_API_KEY}
+        OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL}
       ports:
         - "8000:8000"
       networks:
         - leadflow-network
+      volumes:
+        - ./ai-analyzer:/app
+      develop:
+        watch:
+          - action: sync
+            path: ./ai-analyzer
+            target: /app
+          - action: rebuild
+            path: ./ai-analyzer/requirements.txt
 
 networks:
   leadflow-network:

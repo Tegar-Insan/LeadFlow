@@ -814,22 +814,16 @@ export default function ListPage() {
         {/* ── Right: Main area ── */}
         <div className="calendar-main flex-1 flex flex-col overflow-hidden">
 
-        {/* Top nav bar — identical to CalendarPage */}
-        <header className="calendar-topbar relative z-40 flex items-center gap-3 px-5 py-3 flex-shrink-0">
-          <div className="flex items-center mr-2">
-            <img src="/logo.png" alt="Krench Chicken" className="h-8 w-auto object-contain" />
-          </div>
-          <div className="hidden md:block">
-            <p className="calendar-title text-xs font-body font-semibold uppercase tracking-[0.28em]">Marketing Calendar</p>
-          </div>
+        {/* Top nav bar */}
+        <header className="calendar-topbar relative z-40 flex items-center min-w-0 gap-1.5 sm:gap-2 lg:gap-3 px-2.5 sm:px-3.5 lg:px-5 py-2 lg:py-3 flex-shrink-0">
 
           {/* Post filter dropdown */}
-          <div className="relative z-50 ml-2" ref={filterDropdownRef}>
+          <div className="relative z-50 flex-shrink-0" ref={filterDropdownRef}>
             <button type="button" onClick={() => setIsFilterDropdownOpen(prev => !prev)}
-              className="toolbar-pill px-4 h-9 text-xs font-body font-semibold inline-flex items-center gap-2" title="Filter posts">
+              className="toolbar-pill px-2.5 sm:px-3 lg:px-4 h-7 sm:h-8 lg:h-9 text-[10px] sm:text-[11px] lg:text-xs font-body font-semibold inline-flex items-center gap-1 sm:gap-1.5 lg:gap-2 whitespace-nowrap" title="Filter posts">
               <span>{currentFilter.label}</span>
               <span className="inline-flex min-w-4 h-4 px-1 rounded-full items-center justify-center text-[10px] bg-slate-100 text-slate-600">{currentFilterCount}</span>
-              <svg className={`w-4 h-4 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
               </svg>
             </button>
@@ -850,26 +844,30 @@ export default function ListPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center min-w-0 gap-1 sm:gap-1.5 lg:gap-2 ml-auto">
             {/* List/Calendar view toggle */}
-            <ViewModeToggle currentMode="list" onModeChange={mode => { if (mode === 'grid') navigate('/calendar'); }} />
+            <div className="flex-shrink-0">
+              <ViewModeToggle currentMode="list" onModeChange={mode => { if (mode === 'grid') navigate('/calendar'); }} />
+            </div>
 
             {/* TikTok connect */}
             {canEdit && (
-              <TikTokLoginButton
-                connected={!!tiktokStatus}
-                needsReconnect={tiktokStatus?.needs_reconnect === true}
-                accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
-                onConnect={handleConnectTikTok}
-                onDisconnect={handleDisconnectTikTok}
-                loading={tiktokLoading}
-              />
+              <div className="flex-shrink-0">
+                <TikTokLoginButton
+                  connected={!!tiktokStatus}
+                  needsReconnect={tiktokStatus?.needs_reconnect === true}
+                  accountName={tiktokStatus?.tiktok_display_name || tiktokStatus?.tiktok_account_name}
+                  onConnect={handleConnectTikTok}
+                  onDisconnect={handleDisconnectTikTok}
+                  loading={tiktokLoading}
+                />
+              </div>
             )}
 
             {/* Generate ideas */}
             {canEdit && (
               <button onClick={handleGenerateIdea}
-                className="h-9 px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-headline font-bold transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)]"
+                className="h-7 sm:h-8 lg:h-9 px-2.5 sm:px-3 lg:px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-[10px] sm:text-[11px] lg:text-xs font-headline font-bold transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)] flex-shrink-0 whitespace-nowrap"
                 title="Generate ideas">
                 Generate ideas
               </button>
@@ -878,19 +876,11 @@ export default function ListPage() {
             {/* New Post */}
             {canEdit && (
               <button onClick={() => { setFormError(null); setModal('create'); }}
-                className="h-9 px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)]">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
+                className="h-7 sm:h-8 lg:h-9 px-2.5 sm:px-3 lg:px-4 rounded-full bg-[#f6b70a] border border-[#f6b70a] text-white text-[10px] sm:text-[11px] lg:text-xs font-semibold flex items-center gap-1 sm:gap-1.5 transition-colors hover:bg-[#e2a700] shadow-[0_8px_16px_rgba(246,183,10,0.25)] flex-shrink-0 whitespace-nowrap">
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
                 New Post
               </button>
             )}
-
-            {/* Profile */}
-            <button onClick={() => navigate('/profile')}
-              className="toolbar-pill w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-colors flex-shrink-0" title="Profile">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-              </svg>
-            </button>
           </div>
         </header>
 

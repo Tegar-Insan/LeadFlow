@@ -6,6 +6,7 @@
 **/.env.production
 node_modules/
 
+
 .agents
 .claude
 

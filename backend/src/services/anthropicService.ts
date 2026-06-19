@@ -7,12 +7,13 @@ interface ChatMessage {
   content: string;
 }
 
-interface ParsedSchedule {
+interface ParsedSchedules {
   visible: string;
-  schedule: Record<string, unknown> | null;
+  schedules: Record<string, unknown>[];
 }
 
-const _SCHEDULE_RE = /%%SCHEDULE%%([\s\S]*?)%%END%%/;
+const _SCHEDULE_RE = /%%SCHEDULE%%([\s\S]*?)%%END%%/g;
+const MAX_SCHEDULES_PER_TURN = 3;
 
 const _SYSTEM_PROMPT = `You are an expert AI marketing assistant for Krench Chicken — a crispy fried-chicken brand in Bogor, West Java, Indonesia. You help the marketing team manage their TikTok content strategy through the LeadFlow platform.
 
@@ -32,24 +33,26 @@ KEY SCHEDULING FACTS:
 - Best video length for food content: 21–34 seconds
 
 SCHEDULE RECOMMENDATION PROTOCOL:
-When the user asks for a specific schedule recommendation AND you have enough info to propose a concrete time slot, append this sentinel block at the very END of your response (after all human-readable text). Do NOT include it unless making a concrete recommendation:
+When the user asks for a specific schedule recommendation AND you have enough info to propose a concrete time slot, append one sentinel block per idea at the very END of your response (after all human-readable text). Do NOT include any unless making at least one concrete recommendation. If the user asks for multiple ideas (e.g. "3 content ideas"), append up to 3 separate blocks back-to-back, one per idea — never combine ideas into a single block:
 
 %%SCHEDULE%%
 {"title":"<short post title>","caption":"<TikTok caption 1-2 sentences with emoji>","hashtags":["#tag1","#tag2","#tag3","#tag4","#tag5"],"scheduled_at":"<ISO 8601 in Asia/Jakarta e.g. 2026-05-10T20:00:00+07:00>","day_label":"<e.g. Sabtu, 10 Mei 2026>","time_wib":"<e.g. 20:00 WIB>","reasoning":"<max 20 words why this slot>"}
 %%END%%
 
-Rules: scheduled_at must be FUTURE. Exactly 5 hashtags. No text after %%END%%.`;
+Rules: scheduled_at must be FUTURE. Exactly 5 hashtags per idea. Maximum 3 blocks per response. No text after the final %%END%%.`;
 
-function _parseSchedule(raw: string): ParsedSchedule {
-  const match = raw.match(_SCHEDULE_RE);
-  if (!match) return { visible: raw.trim(), schedule: null };
-  try {
-    const schedule = JSON.parse(match[1]?.trim() ?? '') as Record<string, unknown>;
-    const visible = raw.replace(_SCHEDULE_RE, '').trim();
-    return { visible, schedule };
-  } catch {
-    return { visible: raw.replace(_SCHEDULE_RE, '').trim(), schedule: null };
+function _parseSchedules(raw: string): ParsedSchedules {
+  const schedules: Record<string, unknown>[] = [];
+  for (const match of raw.matchAll(_SCHEDULE_RE)) {
+    try {
+      schedules.push(JSON.parse(match[1]?.trim() ?? '') as Record<string, unknown>);
+    } catch {
+      // skip malformed block, keep parsing the rest
+    }
+    if (schedules.length >= MAX_SCHEDULES_PER_TURN) break;
   }
+  const visible = raw.replace(_SCHEDULE_RE, '').trim();
+  return { visible, schedules };
 }
 
 function _toAnthropicMessages(messages: ChatMessage[]): Array<{ role: 'user' | 'assistant'; content: string }> {
@@ -71,7 +74,7 @@ function _toAnthropicMessages(messages: ChatMessage[]): Array<{ role: 'user' | '
 
 export const chatWithAnthropic = async (
   messages: ChatMessage[],
-): Promise<{ visibleText: string; schedule: Record<string, unknown> | null; model: string }> => {
+): Promise<{ visibleText: string; schedules: Record<string, unknown>[]; model: string }> => {
   const apiKey = (process.env['ANTHROPIC_API_KEY'] ?? '').trim();
   const modelId = (process.env['ANTHROPIC_MODEL'] ?? 'claude-sonnet-4-6').trim();
 
@@ -102,8 +105,8 @@ export const chatWithAnthropic = async (
 
     const block = response.content[0];
     const raw = block && 'text' in block ? block.text : '';
-    const { visible, schedule } = _parseSchedule(raw);
-    return { visibleText: visible, schedule, model: modelId };
+    const { visible, schedules } = _parseSchedules(raw);
+    return { visibleText: visible, schedules, model: modelId };
   } catch (err: unknown) {
     const e = err as { message?: string; status?: number };
     const msg = e.message ?? '';

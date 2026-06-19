@@ -39,24 +39,49 @@ export async function approveIdea(req, res) {
         error(res, { message: 'Idea not in pending_validation state', statusCode: 409 });
         return;
     }
-    // Fetch the draft schedule that the DB trigger just created
+    // Fetch the draft schedule + idea metadata that the DB trigger just created
     const { data: draft, error: draftErr } = await supabase
         .from('content_queue_schedules')
-        .select('id, status, created_at')
+        .select(`
+      id,
+      status,
+      created_at,
+      custom_caption,
+      custom_hashtags,
+      content_ideas (
+        content_title,
+        tiktok_caption,
+        hashtag,
+        category,
+        estimated_engagement,
+        suggested_music,
+        estimated_duration,
+        best_time_to_post_wib
+      )
+    `)
         .eq('idea_id', ideaId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
     if (draftErr) {
-        // Trigger failure is rare but logged; approval itself succeeded
         logger.warn('[approveIdea] could not fetch trigger-created draft', { draftErr, ideaId });
     }
+    const idea = draft?.content_ideas ?? {};
     success(res, {
         message: 'Idea approved — draft added to calendar',
         data: {
             idea_id: ideaId,
             schedule_id: draft?.id ?? null,
             schedule_status: draft?.status ?? null,
+            // Full metadata so frontend can populate Content Library without a second fetch
+            content_title: idea.content_title ?? null,
+            tiktok_caption: idea.tiktok_caption ?? draft?.custom_caption ?? null,
+            hashtag: idea.hashtag ?? draft?.custom_hashtags ?? [],
+            category: idea.category ?? null,
+            estimated_engagement: idea.estimated_engagement ?? null,
+            suggested_music: idea.suggested_music ?? null,
+            estimated_duration: idea.estimated_duration ?? null,
+            best_time_to_post_wib: idea.best_time_to_post_wib ?? null,
         },
         statusCode: 200,
     });

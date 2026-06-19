@@ -33,6 +33,7 @@ export interface GeneratedScheduleDraft {
     | 'TRENDING';
   status: 'pending_validation';
   ai_model_used: string;
+  generated_image_url: string | null;
 }
 
 export interface GenerationStep {

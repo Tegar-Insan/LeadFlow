@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import * as scheduleService from "../services/scheduleService.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
+import { broadcastCalendarUpdateFromDate } from "../utils/calendarSocket.js";
 export const getCalendarByMonth = async (req, res) => {
     try {
         const year = parseInt(req.query['year'], 10) || new Date().getFullYear();
@@ -63,6 +64,9 @@ export const createSchedule = async (req, res) => {
             priority: priority ?? 0,
         });
         logger.info(`[Calendar] Schedule created id=${schedule.id} by user=${authReq.user.userId}`);
+        const _io1 = req.app.io;
+        if (_io1)
+            broadcastCalendarUpdateFromDate(_io1, schedule.scheduled_at);
         success(res, { message: 'Schedule created', data: { schedule }, statusCode: 201 });
     }
     catch (err) {
@@ -88,6 +92,9 @@ export const updateSchedule = async (req, res) => {
         }
         const schedule = await scheduleService.updateSchedule(req.params['id'], req.body);
         logger.info(`[Calendar] Schedule updated id=${schedule.id}`);
+        const _io2 = req.app.io;
+        if (_io2)
+            broadcastCalendarUpdateFromDate(_io2, schedule.scheduled_at);
         success(res, { message: 'Schedule updated', data: { schedule } });
     }
     catch (err) {
@@ -113,6 +120,9 @@ export const moveSchedule = async (req, res) => {
         }
         const schedule = await scheduleService.moveSchedule(req.params['id'], scheduled_at);
         logger.info(`[Calendar] Schedule moved id=${schedule.id} to ${scheduled_at}`);
+        const _io3 = req.app.io;
+        if (_io3)
+            broadcastCalendarUpdateFromDate(_io3, scheduled_at);
         success(res, { message: 'Schedule moved', data: { schedule } });
     }
     catch (err) {
@@ -133,6 +143,9 @@ export const deleteSchedule = async (req, res) => {
         }
         await scheduleService.deleteSchedule(req.params['id']);
         logger.info(`[Calendar] Schedule deleted id=${req.params['id']}`);
+        const _io4 = req.app.io;
+        if (_io4)
+            broadcastCalendarUpdateFromDate(_io4, existing.scheduled_at);
         success(res, { message: 'Schedule deleted' });
     }
     catch (err) {

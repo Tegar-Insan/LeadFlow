@@ -12,6 +12,7 @@ import { getAnthropicClient, ANTHROPIC_MODEL } from '../config/anthropic.ts';
 import { supabaseAdmin as supabase } from '../config/supabase.ts';
 import logger from '../utils/logger.ts';
 import { retryWithBackoff, ANTHROPIC_RETRY } from '../utils/retryHelper.ts';
+import { requestIdeaImage } from './imageGenerationClient.ts';
 
 // ---------------------------------------------------------------------------
 // Public contract — what the frontend consumes
@@ -34,6 +35,7 @@ export interface GeneratedScheduleDraft {
     | 'TRENDING';
   status: 'pending_validation';
   ai_model_used: string;
+  generated_image_url: string | null; // GPT Image 2.0 — chained onto idea generation, see attachGeneratedImage()
 }
 
 // Step-by-step reasoning types
@@ -65,6 +67,57 @@ interface ModelDraft {
 const MODEL_ID = process.env.ANTHROPIC_CONTENT_MODEL ?? ANTHROPIC_MODEL;
 const MAX_DRAFTS = 3;
 const MIN_DRAFTS = 2;
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? 'leadflow-media';
+
+// ---------------------------------------------------------------------------
+// Image generation — chained onto idea generation (GPT Image 2.0 via
+// ai-analyzer). Never throws: a failed image must not break idea generation
+// (NFR-002). Mutates `draft.generated_image_url` in place on success.
+// ---------------------------------------------------------------------------
+async function attachGeneratedImage(draft: GeneratedScheduleDraft): Promise<void> {
+  try {
+    const image = await requestIdeaImage({
+      content_title: draft.content_title,
+      tiktok_caption: draft.tiktok_caption,
+      category: draft.category,
+    });
+    if (!image) return;
+
+    const storagePath = `content-ideas/${draft.id}.png`;
+    const { error: storageErr } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, Buffer.from(image.imageBase64, 'base64'), {
+        contentType: image.mimeType,
+        upsert: true,
+      });
+
+    if (storageErr) {
+      logger.warn('[contentIdeaService] image storage upload failed', { storageErr, ideaId: draft.id });
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+    const publicUrl = urlData?.publicUrl;
+    if (!publicUrl) return;
+
+    const { error: updateErr } = await supabase
+      .from('content_ideas')
+      .update({ generated_image_url: publicUrl })
+      .eq('id', draft.id);
+
+    if (updateErr) {
+      logger.warn('[contentIdeaService] failed to persist generated_image_url', { updateErr, ideaId: draft.id });
+      return;
+    }
+
+    draft.generated_image_url = publicUrl;
+  } catch (err) {
+    logger.warn('[contentIdeaService] image generation pipeline failed — continuing without image', {
+      err,
+      ideaId: draft.id,
+    });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // System prompt — forces the model to emit a JSON array matching ModelDraft[].
@@ -243,6 +296,7 @@ export async function generateScheduleDraftsFromBrief(
       category: d.category,
       status: 'pending_validation',
       ai_model_used: MODEL_ID,
+      generated_image_url: null,
     });
   }
 
@@ -251,6 +305,15 @@ export async function generateScheduleDraftsFromBrief(
     count: inserted.length,
     model: MODEL_ID,
   });
+
+  // Chain GPT Image 2.0 generation onto idea generation — sequential, not
+  // Promise.all: ai-analyzer serializes generation behind a semaphore(1)
+  // (tight gpt-image-1 rate limit), so firing all drafts concurrently just
+  // burns each request's 60s client timeout while it sits queued server-side.
+  // Never throws (NFR-002).
+  for (const d of inserted) {
+    await attachGeneratedImage(d);
+  }
 
   return inserted;
 }
@@ -410,6 +473,7 @@ FINAL IDEAS:
       category: d.category,
       status: 'pending_validation',
       ai_model_used: MODEL_ID,
+      generated_image_url: null,
     });
   }
 
@@ -419,6 +483,15 @@ FINAL IDEAS:
     draftCount: inserted.length,
     model: MODEL_ID,
   });
+
+  // Chain GPT Image 2.0 generation onto idea generation — sequential, not
+  // Promise.all: ai-analyzer serializes generation behind a semaphore(1)
+  // (tight gpt-image-1 rate limit), so firing all drafts concurrently just
+  // burns each request's 60s client timeout while it sits queued server-side.
+  // Never throws (NFR-002).
+  for (const d of inserted) {
+    await attachGeneratedImage(d);
+  }
 
   return {
     steps,
@@ -434,7 +507,7 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
     .from('content_ideas')
     .select(
       'id, prompt_id, content_title, tiktok_caption, hashtag, suggested_music, ' +
-        'estimated_duration, status, ai_model_used, created_at',
+        'estimated_duration, status, ai_model_used, generated_image_url, created_at',
     )
     .eq('created_by', userId)
     .eq('status', 'pending_validation') // critical filter — soft-deleted rows would otherwise appear
@@ -455,6 +528,7 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
     suggested_music: string | null;
     estimated_duration: number | null;
     ai_model_used: string | null;
+    generated_image_url: string | null;
   }>;
 
   return rows.map((row) => ({
@@ -470,5 +544,6 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
     category: 'TRENDING' as const,
     status: 'pending_validation' as const,
     ai_model_used: row.ai_model_used ?? MODEL_ID,
+    generated_image_url: row.generated_image_url ?? null,
   }));
 }

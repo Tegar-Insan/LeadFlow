@@ -42,9 +42,9 @@ async function getSchedule(scheduleId) {
       allow_duet,
       allow_stitch,
       content_ideas (
-        idea_title,
-        caption,
-        hashtags
+        content_title,
+        tiktok_caption,
+        hashtag
       )
     `)
         .eq('id', scheduleId)
@@ -342,18 +342,20 @@ function buildCaption(caption = '', hashtags = []) {
 // fall back to AI-generated idea caption/hashtags.
 function resolveCaption(schedule) {
     const caption = schedule.custom_caption
-        || schedule.content_ideas?.caption
-        || schedule.content_ideas?.idea_title
+        || schedule.content_ideas?.tiktok_caption
+        || schedule.content_ideas?.content_title
         || '';
-    const hashtags = schedule.custom_hashtags
-        || schedule.content_ideas?.hashtags
-        || [];
+    const hashtags = Array.isArray(schedule.custom_hashtags) && schedule.custom_hashtags.length > 0
+        ? schedule.custom_hashtags
+        : Array.isArray(schedule.content_ideas?.hashtag)
+            ? schedule.content_ideas.hashtag
+            : [];
     return buildCaption(caption, hashtags);
 }
 function resolveShortTitle(schedule) {
     return String(schedule.custom_caption
-        || schedule.content_ideas?.idea_title
-        || schedule.content_ideas?.caption
+        || schedule.content_ideas?.content_title
+        || schedule.content_ideas?.tiktok_caption
         || 'LeadFlow Post').slice(0, 90);
 }
 function getPrimaryVideoAsset(assets) {

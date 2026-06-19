@@ -25,7 +25,7 @@ const TikTokGlyph = ({ className = 'w-3.5 h-3.5' }) => (
 export default function TikTokLoginButton({ connected, needsReconnect = false, accountName, onConnect, onDisconnect, loading }) {
   if (connected && needsReconnect) {
     return (
-      <div className="flex items-center gap-2 px-3 h-8 rounded-lg bg-amber-600/20 border border-amber-500/50 text-amber-400 text-xs font-semibold">
+      <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 lg:px-3 h-7 sm:h-8 rounded-lg bg-amber-600/20 border border-amber-500/50 text-amber-400 text-[10px] sm:text-[11px] lg:text-xs font-semibold whitespace-nowrap">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" aria-hidden />
         <TikTokGlyph className="w-3.5 h-3.5 opacity-70" />
         <span className="truncate max-w-[100px]">Token expired</span>
@@ -43,7 +43,7 @@ export default function TikTokLoginButton({ connected, needsReconnect = false, a
 
   if (connected) {
     return (
-      <div className="flex items-center gap-2 px-3 h-8 rounded-lg bg-[#f6b70a] border border-[#f6b70a] text-white text-xs font-semibold shadow-[0_6px_14px_rgba(246,183,10,0.28)]">
+      <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 lg:px-3 h-7 sm:h-8 rounded-lg bg-[#f6b70a] border border-[#f6b70a] text-white text-[10px] sm:text-[11px] lg:text-xs font-semibold shadow-[0_6px_14px_rgba(246,183,10,0.28)] whitespace-nowrap">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" aria-hidden />
         <TikTokGlyph />
         <span className="truncate max-w-[120px]" title={accountName}>
@@ -66,7 +66,7 @@ export default function TikTokLoginButton({ connected, needsReconnect = false, a
       type="button"
       onClick={onConnect}
       disabled={loading}
-      className="flex items-center gap-2 px-3 h-8 rounded-lg bg-[#f6b70a] hover:bg-[#e2a700] border border-[#f6b70a] text-white text-xs font-semibold transition-colors disabled:opacity-60 shadow-[0_6px_14px_rgba(246,183,10,0.28)]"
+      className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 lg:px-3 h-7 sm:h-8 rounded-lg bg-[#f6b70a] hover:bg-[#e2a700] border border-[#f6b70a] text-white text-[10px] sm:text-[11px] lg:text-xs font-semibold transition-colors disabled:opacity-60 shadow-[0_6px_14px_rgba(246,183,10,0.28)] whitespace-nowrap"
     >
       <TikTokGlyph />
       {loading ? 'Connecting…' : 'Connect TikTok'}

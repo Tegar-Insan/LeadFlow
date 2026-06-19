@@ -32,13 +32,13 @@ export default function ViewModeToggle({ currentMode, onModeChange }: ViewModeTo
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-9 px-4 rounded-full border border-slate-300 bg-white text-slate-700 text-xs font-headline font-bold transition-colors hover:bg-slate-50 flex items-center gap-2"
+        className="h-7 sm:h-8 lg:h-9 px-2 sm:px-3 lg:px-4 rounded-full border border-slate-300 bg-white text-slate-700 text-[10px] sm:text-[11px] lg:text-xs font-headline font-bold transition-colors hover:bg-slate-50 flex items-center gap-1 sm:gap-1.5 lg:gap-2 whitespace-nowrap"
         aria-label="View mode"
         title="Toggle view mode"
       >
         {displayLabel}
         <svg
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

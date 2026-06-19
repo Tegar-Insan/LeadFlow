@@ -77,6 +77,7 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
     category: 'PROMOTION',
     status: 'pending_validation',
     ai_model_used: 'claude-sonnet-4-6',
+    generated_image_url: null,
   },
   {
     id: 'idea-2',
@@ -91,6 +92,7 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
     category: 'BEHIND-THE-SCENES',
     status: 'pending_validation',
     ai_model_used: 'claude-sonnet-4-6',
+    generated_image_url: null,
   },
 ];
 

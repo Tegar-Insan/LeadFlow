@@ -106,6 +106,11 @@ async function startServer() {
                 status: 'offline',
             });
         });
+        // Event: Business Owner joins the calendar updates broadcast room
+        socket.on('calendar:join-updates', () => {
+            socket.join('calendar:updates');
+            logger.info(`[WebSocket] Socket ${socket.id} joined calendar:updates`);
+        });
         // Error handler
         socket.on('error', (err) => {
             logger.error(`[WebSocket] Error from socket ${socket.id}:`, err);
@@ -132,7 +137,7 @@ async function startServer() {
     process.on('unhandledRejection', (reason) => {
         logger.error('[Server] Unhandled rejection:', reason);
     });
-    startAutoPublishJob();
+    startAutoPublishJob(io);
     return server;
 }
 startServer();

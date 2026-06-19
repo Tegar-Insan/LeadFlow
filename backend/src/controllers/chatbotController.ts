@@ -3,7 +3,29 @@ import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 import { chatWithAnthropic } from '../services/anthropicService.ts';
 import { createSchedule } from '../services/scheduleService.ts';
+import { requestIdeaImages } from '../services/imageGenerationClient.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
+
+// Chat-proposed schedules are ephemeral (not yet a content_ideas row) until
+// approved, so images are returned as inline data URLs rather than uploaded
+// to Supabase Storage — there's no stable id to key a storage path on, and
+// most rejected ideas would otherwise leave orphaned files behind.
+async function attachGeneratedImages(
+  schedules: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (schedules.length === 0) return schedules;
+  const images = await requestIdeaImages(
+    schedules.map((s) => ({
+      content_title: String(s['title'] ?? ''),
+      tiktok_caption: String(s['caption'] ?? ''),
+    })),
+  );
+  return schedules.map((s, i) => {
+    const image = images[i];
+    if (!image) return s;
+    return { ...s, generated_image_url: `data:${image.mimeType};base64,${image.imageBase64}` };
+  });
+}
 
 export const sendMessage = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -18,11 +40,17 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
     }
 
     const trimmed = messages.slice(-10);
-    const { visibleText, schedule, model } = await chatWithAnthropic(trimmed);
+    const { visibleText, schedules, model } = await chatWithAnthropic(trimmed);
+    const schedulesWithImages = await attachGeneratedImages(schedules);
 
     success(res, {
       message: 'Chat response generated',
-      data: { reply: visibleText, type: schedule ? 'schedule_recommendation' : 'text', schedule: schedule ?? null, model },
+      data: {
+        reply: visibleText,
+        type: schedulesWithImages.length > 0 ? 'schedule_recommendation' : 'text',
+        schedules: schedulesWithImages,
+        model,
+      },
     });
   } catch (err: unknown) {
     const e = err as { message?: string; status?: number; response?: { status?: number } };
@@ -90,7 +118,8 @@ export const generateScheduleAgent = async (req: Request, res: Response): Promis
       `Brief: ${brief}`,
     ].join('\n');
 
-    const { visibleText, schedule, model } = await chatWithAnthropic([{ role: 'user', content: prompt }]);
+    const { visibleText, schedules, model } = await chatWithAnthropic([{ role: 'user', content: prompt }]);
+    const schedule = schedules[0];
 
     if (!schedule) {
       error(res, { message: visibleText || 'AI could not generate a concrete schedule.', statusCode: 422 }); return;

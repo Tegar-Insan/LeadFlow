@@ -1,2 +1,3 @@
-export {};
+import type { Request, Response } from 'express';
+export declare const getOwnerCalendar: (req: Request, res: Response) => Promise<void>;
 //# sourceMappingURL=dashboardController.d.ts.map

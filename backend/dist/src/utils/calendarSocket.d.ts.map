@@ -1,0 +1,1 @@
+{"version":3,"file":"calendarSocket.d.ts","sourceRoot":"","sources":["../../../src/utils/calendarSocket.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,MAAM,IAAI,YAAY,EAAE,MAAM,WAAW,CAAC;AAUxD,wBAAgB,uBAAuB,CAAC,EAAE,EAAE,YAAY,EAAE,IAAI,EAAE,MAAM,EAAE,KAAK,EAAE,MAAM,GAAG,IAAI,CAE3F;AAID,wBAAgB,+BAA+B,CAC7C,EAAE,EAAE,YAAY,EAChB,WAAW,EAAE,MAAM,GAAG,IAAI,GAAG,SAAS,GACrC,IAAI,CAKN"}

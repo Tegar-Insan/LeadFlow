@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../context/NotificationContext';
 import { approveScheduleFromChat, rejectScheduleFromChat, sendChatMessage } from '../../services/chatbotService';
-import GeneratedIdeasList from './GeneratedIdeasList';
+import GeneratedIdeasList, { type ScheduleIdea } from './GeneratedIdeasList';
 import PromptInputForm from './PromptInputForm';
 
 interface ChatMessage {
@@ -10,10 +9,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   type?: string;
-  schedule?: Record<string, unknown> | null;
-  approved?: boolean;
-  rejected?: boolean;
-  approving?: boolean;
+  schedules?: ScheduleIdea[];
 }
 
 const defaultWelcome: ChatMessage = {
@@ -30,7 +26,6 @@ interface IdeaValidationPanelProps {
 }
 
 const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProps) => {
-  const navigate = useNavigate();
   const { toast } = useNotification();
   const [messages, setMessages] = useState<ChatMessage[]>([{
     ...defaultWelcome,
@@ -62,15 +57,20 @@ const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProp
       const response = await sendChatMessage(
         nextMessages.map(({ role, content: c }) => ({ role, content: c }))
       );
+      const schedules: ScheduleIdea[] = Array.isArray(response.schedules)
+        ? response.schedules.map((schedule: Record<string, unknown>) => ({
+            schedule,
+            approved: false,
+            rejected: false,
+            approving: false,
+          }))
+        : [];
       setMessages((prev) => [...prev, {
         id: `ai_${Date.now()}`,
         role: 'assistant' as const,
         content: response.reply,
         type: response.type || 'text',
-        schedule: response.schedule || null,
-        approved: false,
-        rejected: false,
-        approving: false,
+        schedules,
       }]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -80,37 +80,36 @@ const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProp
     }
   }, [loading, messages]);
 
-  const handleApprove = useCallback(async (schedule: Record<string, unknown>, msgId: string) => {
+  const updateScheduleAt = useCallback((msgId: string, index: number, patch: Partial<ScheduleIdea>) => {
+    setMessages((prev) => prev.map((m) => {
+      if (m.id !== msgId || !m.schedules) return m;
+      return { ...m, schedules: m.schedules.map((s, i) => i === index ? { ...s, ...patch } : s) };
+    }));
+  }, []);
+
+  const handleApprove = useCallback(async (schedule: Record<string, unknown>, msgId: string, index: number) => {
     if (!schedule) return;
-    setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, approving: true } : m));
+    updateScheduleAt(msgId, index, { approving: true });
 
     try {
-      const result = await approveScheduleFromChat(schedule);
-      const createdId = result?.schedule?.id;
-      toast.success('Schedule berhasil dibuat. Membuka kalender…');
-      setMessages((prev) => [
-        ...prev.map((m) => m.id === msgId ? { ...m, approving: false, approved: true } : m),
-        { id: `confirm_${Date.now()}`, role: 'assistant' as const, content: 'Jadwal sudah dikirim ke kalender.', type: 'text' },
-      ]);
-      navigate('/calendar', { replace: true, state: { createdScheduleId: createdId } });
+      await approveScheduleFromChat(schedule);
+      toast.success('Ide disetujui — jadwal ditambahkan ke kalender.');
+      updateScheduleAt(msgId, index, { approving: false, approved: true });
     } catch (err: unknown) {
-      setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, approving: false } : m));
+      updateScheduleAt(msgId, index, { approving: false });
       const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setError(msg || 'Gagal membuat schedule dari rekomendasi AI.');
     }
-  }, [navigate, toast]);
+  }, [toast, updateScheduleAt]);
 
-  const handleReject = useCallback(async (msgId: string) => {
-    setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, rejected: true } : m));
+  const handleReject = useCallback(async (msgId: string, index: number) => {
+    updateScheduleAt(msgId, index, { rejected: true });
     try {
-      const result = await rejectScheduleFromChat();
-      if (result?.reply) {
-        setMessages((prev) => [...prev, { id: `reject_${Date.now()}`, role: 'assistant' as const, content: result.reply, type: 'text' }]);
-      }
+      await rejectScheduleFromChat();
     } catch {
-      setMessages((prev) => [...prev, { id: `reject_fb_${Date.now()}`, role: 'assistant' as const, content: 'Baik, saya tidak akan membuat jadwal itu.', type: 'text' }]);
+      // rejection is local-only state; the acknowledgement call is best-effort
     }
-  }, []);
+  }, [updateScheduleAt]);
 
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); send(input); };
 
