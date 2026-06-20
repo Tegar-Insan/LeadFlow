@@ -18,7 +18,6 @@ import AdminAllUsersPage       from '../pages/dashboard/AdminAllUsersPage';
 import AdminMarketingStaffPage from '../pages/dashboard/AdminMarketingStaffPage';
 import AdminBusinessOwnersPage from '../pages/dashboard/AdminBusinessOwnersPage';
 import AdminProfilePage        from '../pages/dashboard/AdminProfilePage';
-import InteractionPage         from '../pages/interaction/InteractionPage';
 import ProtectedRoute, { GuestRoute } from '../components/common/ProtectedRoute';
 
 function UnauthorizedPage() {
@@ -156,15 +155,6 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/interaction"
-        element={
-          <ProtectedRoute allowedRoles={['marketing_staff', 'business_owner']}>
-            <InteractionPage />
-          </ProtectedRoute>
-        }
-      />
-
       {/* ── Fallback — MUST be last ──────────────────────────── */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

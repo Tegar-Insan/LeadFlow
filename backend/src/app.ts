@@ -19,7 +19,6 @@ import adminRoutes from './routes/roleRoutes.ts';
 import chatbotRoutes from './routes/chatbotRoutes.ts';
 import tiktokRoutes from './routes/tiktokRoutes.ts';
 import publicMediaRoutes from './routes/publicMediaRoutes.ts';
-import interactionRoutes from './routes/interactionRoutes.ts';
 import analyticsRoutes from './routes/analyticsRoutes.ts';
 import dashboardRoutes from './routes/dashboardRoutes.ts';
 
@@ -151,7 +150,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
-app.use('/api/message', interactionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

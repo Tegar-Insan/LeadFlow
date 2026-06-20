@@ -4,7 +4,7 @@ interface ChatMessage {
 }
 export declare const chatWithAnthropic: (messages: ChatMessage[]) => Promise<{
     visibleText: string;
-    schedule: Record<string, unknown> | null;
+    schedules: Record<string, unknown>[];
     model: string;
 }>;
 export declare const analyzeTikTokData: () => Promise<Record<string, unknown>>;

@@ -65,14 +65,12 @@ const NAV_BY_ROLE = {
     { to: '/profile',        label: 'Profile',          icon: icons.publish      },
     { to: '/analytics',      label: 'Analytics',        icon: icons.analytics    },
     { to: '/calendar',       label: 'Calendar',         icon: icons.calendar     },
-    { to: '/interaction',    label: 'Interactions',     icon: icons.interactions },
   ],
   marketing_staff: [
     { to: '/dashboard/staff', label: 'Overview',         icon: icons.overview },
     { to: '/content/prompt',  label: 'AI Assistant',     icon: icons.ai },
     { to: '/calendar',        label: 'Content Calendar', icon: icons.calendar },
     { to: '/calendar/ideas',  label: 'AI Ideas',         icon: icons.ai },
-    { to: '/interaction',     label: 'Interactions',     icon: icons.interactions },
     { to: '/publish-status',  label: 'Publish Status',   icon: icons.publish },
   ],
 };

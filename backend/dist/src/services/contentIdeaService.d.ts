@@ -11,6 +11,7 @@ export interface GeneratedScheduleDraft {
     category: 'BEHIND-THE-SCENES' | 'MENU-SHOWCASE' | 'PROMOTION' | 'TESTIMONIAL' | 'TRENDING';
     status: 'pending_validation';
     ai_model_used: string;
+    generated_image_url: string | null;
 }
 export interface GenerationStep {
     stepNumber: number;

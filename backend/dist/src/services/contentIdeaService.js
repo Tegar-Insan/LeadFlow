@@ -11,9 +11,57 @@ import { getAnthropicClient, ANTHROPIC_MODEL } from "../config/anthropic.js";
 import { supabaseAdmin as supabase } from "../config/supabase.js";
 import logger from "../utils/logger.js";
 import { retryWithBackoff, ANTHROPIC_RETRY } from "../utils/retryHelper.js";
+import { requestIdeaImage } from "./imageGenerationClient.js";
 const MODEL_ID = process.env.ANTHROPIC_CONTENT_MODEL ?? ANTHROPIC_MODEL;
 const MAX_DRAFTS = 3;
 const MIN_DRAFTS = 2;
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? 'leadflow-media';
+// ---------------------------------------------------------------------------
+// Image generation — chained onto idea generation (GPT Image 2.0 via
+// ai-analyzer). Never throws: a failed image must not break idea generation
+// (NFR-002). Mutates `draft.generated_image_url` in place on success.
+// ---------------------------------------------------------------------------
+async function attachGeneratedImage(draft) {
+    try {
+        const image = await requestIdeaImage({
+            content_title: draft.content_title,
+            tiktok_caption: draft.tiktok_caption,
+            category: draft.category,
+        });
+        if (!image)
+            return;
+        const storagePath = `content-ideas/${draft.id}.png`;
+        const { error: storageErr } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .upload(storagePath, Buffer.from(image.imageBase64, 'base64'), {
+            contentType: image.mimeType,
+            upsert: true,
+        });
+        if (storageErr) {
+            logger.warn('[contentIdeaService] image storage upload failed', { storageErr, ideaId: draft.id });
+            return;
+        }
+        const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+        const publicUrl = urlData?.publicUrl;
+        if (!publicUrl)
+            return;
+        const { error: updateErr } = await supabase
+            .from('content_ideas')
+            .update({ generated_image_url: publicUrl })
+            .eq('id', draft.id);
+        if (updateErr) {
+            logger.warn('[contentIdeaService] failed to persist generated_image_url', { updateErr, ideaId: draft.id });
+            return;
+        }
+        draft.generated_image_url = publicUrl;
+    }
+    catch (err) {
+        logger.warn('[contentIdeaService] image generation pipeline failed — continuing without image', {
+            err,
+            ideaId: draft.id,
+        });
+    }
+}
 // ---------------------------------------------------------------------------
 // System prompt — forces the model to emit a JSON array matching ModelDraft[].
 // WIB peak windows chosen per Indonesian TikTok audience research (11–13, 19–21).
@@ -166,6 +214,7 @@ export async function generateScheduleDraftsFromBrief(brief, userId) {
             category: d.category,
             status: 'pending_validation',
             ai_model_used: MODEL_ID,
+            generated_image_url: null,
         });
     }
     logger.info('[contentIdeaService] drafts generated', {
@@ -173,6 +222,14 @@ export async function generateScheduleDraftsFromBrief(brief, userId) {
         count: inserted.length,
         model: MODEL_ID,
     });
+    // Chain GPT Image 2.0 generation onto idea generation — sequential, not
+    // Promise.all: ai-analyzer serializes generation behind a semaphore(1)
+    // (tight gpt-image-1 rate limit), so firing all drafts concurrently just
+    // burns each request's 60s client timeout while it sits queued server-side.
+    // Never throws (NFR-002).
+    for (const d of inserted) {
+        await attachGeneratedImage(d);
+    }
     return inserted;
 }
 // ---------------------------------------------------------------------------
@@ -305,6 +362,7 @@ FINAL IDEAS:
             category: d.category,
             status: 'pending_validation',
             ai_model_used: MODEL_ID,
+            generated_image_url: null,
         });
     }
     logger.info('[contentIdeaService] drafts with steps generated', {
@@ -313,6 +371,14 @@ FINAL IDEAS:
         draftCount: inserted.length,
         model: MODEL_ID,
     });
+    // Chain GPT Image 2.0 generation onto idea generation — sequential, not
+    // Promise.all: ai-analyzer serializes generation behind a semaphore(1)
+    // (tight gpt-image-1 rate limit), so firing all drafts concurrently just
+    // burns each request's 60s client timeout while it sits queued server-side.
+    // Never throws (NFR-002).
+    for (const d of inserted) {
+        await attachGeneratedImage(d);
+    }
     return {
         steps,
         drafts: inserted,
@@ -325,7 +391,7 @@ export async function listPendingIdeasForUser(userId) {
     const { data, error } = await supabase
         .from('content_ideas')
         .select('id, prompt_id, content_title, tiktok_caption, hashtag, suggested_music, ' +
-        'estimated_duration, status, ai_model_used, created_at')
+        'estimated_duration, status, ai_model_used, generated_image_url, created_at')
         .eq('created_by', userId)
         .eq('status', 'pending_validation') // critical filter — soft-deleted rows would otherwise appear
         .order('created_at', { ascending: false });
@@ -348,6 +414,7 @@ export async function listPendingIdeasForUser(userId) {
         category: 'TRENDING',
         status: 'pending_validation',
         ai_model_used: row.ai_model_used ?? MODEL_ID,
+        generated_image_url: row.generated_image_url ?? null,
     }));
 }
 //# sourceMappingURL=contentIdeaService.js.map
