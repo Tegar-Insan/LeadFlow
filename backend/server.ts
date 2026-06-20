@@ -23,6 +23,7 @@ async function startServer(): Promise<Server> {
   const { validateTikTokConfig } = await import('./src/config/tiktok.ts');
   const { default: logger } = await import('./src/utils/logger.ts');
   const { startAutoPublishJob } = await import('./src/jobs/autoPublishJob.ts');
+  const { default: commentWSService } = await import('./src/services/commentWebSocketService.ts');
 
   validateEnv();
   validateTikTokConfig();
@@ -51,6 +52,9 @@ async function startServer(): Promise<Server> {
 
   // Store io instance on app for use in controllers
   (app as any).io = io;
+
+  // Initialize comment WebSocket service
+  commentWSService.init(io);
 
   // Socket.io connection handler
   io.on('connection', (socket) => {
@@ -166,6 +170,9 @@ async function startServer(): Promise<Server> {
   });
 
   startAutoPublishJob(io);
+
+  // Store comment service on app for use in controllers
+  (app as any).commentWSService = commentWSService;
 
   return server;
 }

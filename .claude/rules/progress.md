@@ -723,4 +723,38 @@ This makes the fallback redirect use the dynamic, role-aware `dashboardPath` com
 2. Mount remaining backend routes if not yet done (`/api/prompt`, `/api/content`, `/api/interaction`, `/api/dashboard`, `/api/publish`)
 3. Verify backend handlers for admin endpoints are fully implemented
 4. Add Jest/Supertest tests for admin CRUD operations
+
+---
+
+## Session 14 Update (2026-06-20) — Phase 6: Finish Service→Model MVC Migration (Strict Typing)
+
+### Context
+A prior, uncommitted refactor had already moved business logic out of `backend/src/services/` and into `backend/src/models/*.ts` for five flows — auth, dashboard, prompt, content ideas, calendar/schedule — so the Model layer owns both data access and business logic, with no separate service layer for CRUD-shaped flows. Deleted/emptied: `authService.ts`, `contentIdeaService.ts`, `dashboardCalendarService.ts`, `scheduleService.ts`, `dashboardService.ts`. External-API wrapper services (Anthropic, OTP/email, TikTok OAuth/publish, image generation, WebSocket comment broadcast) correctly remained untouched as services.
+
+An Explore-agent audit confirmed the move itself was already functionally complete (no dangling imports, all routes still mounted, UC006 approve/reject still relies on the migration-006 DB trigger, WebSocket comment broadcast still fires correctly). **Note:** `/api/dashboard` and `/api/prompt` ARE mounted in `app.ts` — an earlier "not yet mounted" claim in this tracker was stale.
+
+The one real gap: 10 files touched by this refactor carried `// @ts-nocheck`, silently disabling type checking and contradicting the project's `strict: true` TypeScript standard. This session removed `@ts-nocheck` from all 10 and fixed every resulting type error.
+
+### Files Fixed (in dependency order)
+1. `backend/src/models/Prompt.ts` — already cleanly typed, zero errors on removal
+2. `backend/src/models/ContentAsset.ts` — already cleanly typed, zero errors
+3. `backend/src/models/User.ts` — fixed one `exactOptionalPropertyTypes` error (`storePendingRegistration` call needed `phone ?? null` instead of passing a possibly-`undefined` value into an `?: string | null` field)
+4. `backend/src/models/WeeklyDashboardReport.ts` — already cleanly typed, zero errors
+5. `backend/src/models/ContentQueueSchedule.ts` — already cleanly typed, zero errors
+6. `backend/src/models/ContentIdea.ts` (600 lines) — already cleanly typed, zero errors
+7. `backend/src/controllers/authController.ts` — fixed `authReq.user` possibly-undefined in `getMe`; added explicit 401 guard (matches the `req.user?.userId` + guard pattern already used in `commentsController.ts`)
+8. `backend/src/controllers/dashboardController.ts` — already cleanly typed, zero errors
+9. `backend/src/controllers/calendarController.ts` — fixed `authReq.user` possibly-undefined in `createSchedule` (added guard), cast `schedule['scheduled_at']` for `broadcastCalendarUpdateFromDate`, fixed a `noUncheckedIndexedAccess` issue on `date.split('T')[0]` in `getListView`
+10. `backend/src/controllers/mediaController.ts` — this one had no types at all (implicit `any` everywhere, raw untyped `req`/`res`/`asset`/`file` params) and instantiated its own duplicate, unvalidated Supabase client via `createClient(process.env.SUPABASE_URL, ...)`. Rewrote with proper `Request`/`Response`/`AuthenticatedRequest`/`Express.Multer.File` types throughout, and replaced the duplicate client with the shared `supabaseAdmin` from `config/supabase.ts` (removes redundant client instantiation, consistent with how `ContentIdea.ts` already does storage uploads).
+
+### Verification
+- `cd backend && npx tsc --noEmit -p tsconfig.json` — exits 0 project-wide.
+- `grep -rn "@ts-nocheck" backend/src` now lists only the 12 files explicitly out of scope (pre-existing debt unrelated to this refactor): `analyticsController.ts`, `profileController.ts`, `roleController.ts`, `tiktokController.ts`, `InternalMessage.ts`, `Role.ts`, `UserPhoto.ts`, `UserProfile.ts`, `emailService.ts`, `tiktokPublishService.ts`, `authValidator.ts`, `scheduleValidator.ts`.
+- `cd backend && npx tsc -p tsconfig.json` (full build) succeeds; `node dist/server.js` boots cleanly, connects to Supabase, no runtime errors from the 10 touched modules.
+- `npm run dev` (ts-node + nodemon) currently fails locally with `ERR_UNKNOWN_FILE_EXTENSION` for `.ts` under `"type": "module"` — this is a **pre-existing dev-script/ts-node ESM loader configuration issue**, unrelated to this session's changes (verified via the `tsc` build + `node dist/server.js` path working correctly). Worth fixing in a future session (likely needs `--loader ts-node/esm` or equivalent in the `dev:ts` script).
+- Smoke-tested `GET /api/prompt/mine`, `GET /api/dashboard/calendar`, `GET /api/calendar` against the built server — all return `401` (not `404`), confirming routes mount correctly and `authMiddleware` runs cleanly through every refactored controller.
+- No backend Jest/Supertest suite exists yet, so static typecheck + boot/route smoke test is the available safety net (per `testing.md`, writing that suite remains a future-session task).
+
+### Impact
+The service→model MVC migration for auth, dashboard, prompt, content ideas, and calendar/schedule is now complete *and* strictly typed — no silent `@ts-nocheck` debt remains in any file this refactor touched. The remaining 12 `@ts-nocheck` files are pre-existing and out of this session's scope.
 5. Implement remaining UC features (UC009–UC013) or ship MVP if scope complete

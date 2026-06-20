@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase.ts';
-import * as scheduleService from '../services/scheduleService.ts';
+import * as ContentAsset from '../models/ContentAsset.ts';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 
@@ -8,7 +8,7 @@ const STORAGE_BUCKET = process.env['SUPABASE_STORAGE_BUCKET'] ?? 'leadflow-media
 
 export const serveMedia = async (req: Request, res: Response): Promise<void> => {
   try {
-    const asset = await scheduleService.getAssetById(req.params['assetId'] as string);
+    const asset = await ContentAsset.getAssetById(req.params['assetId'] as string);
     if (!asset || !(asset as { storage_path?: string }).storage_path) {
       error(res, { message: 'Asset not found', statusCode: 404 }); return;
     }

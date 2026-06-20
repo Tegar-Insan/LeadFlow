@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 import { chatWithAnthropic } from '../services/anthropicService.ts';
-import { createSchedule } from '../services/scheduleService.ts';
+import { createSchedule } from '../models/ContentQueueSchedule.ts';
 import { requestIdeaImages } from '../services/imageGenerationClient.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
 

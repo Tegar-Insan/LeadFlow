@@ -12,7 +12,7 @@ import timezone from 'dayjs/plugin/timezone';
 import SmallSidebar from '../../components/common/smallsidebar';
 import DashboardNavbar from '../../components/common/DashboardNavbar';
 import { SlotCard } from '../../components/Schedule/ContentCard';
-import CommentCard from '../../components/interaction/CommentCard';
+import CommentCard from '../../components/common/CommentCard';
 import { nowWIB } from '../../utils/formatDate';
 import {
   fetchMonthSchedules,
@@ -448,7 +448,22 @@ export default function CalendarReadOnly() {
                   No notes yet. Add one below to inform the marketing team.
                 </div>
               ) : (
-                comments.map(c => <CommentCard key={c.comment_id} comment={c} />)
+                comments.map(c => (
+                  <CommentCard
+                    key={c.comment_id}
+                    comment={{
+                      comment_id: c.comment_id,
+                      schedule_id: c.schedule_id,
+                      comment_text: c.comment_text,
+                      author_user_id: c.author_user_id,
+                      author_email: c.author_email,
+                      author_name: c.author_name,
+                      author_photo_url: c.author_photo_url,
+                      created_at_wib: c.created_at_wib,
+                      updated_at_wib: c.updated_at_wib,
+                    }}
+                  />
+                ))
               )}
             </div>
 

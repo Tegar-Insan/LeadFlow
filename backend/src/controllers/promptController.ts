@@ -1,8 +1,10 @@
 // backend/src/controllers/promptController.ts
+// Thin controller delegating to models/Prompt.ts + models/ContentIdea.ts (MVC)
 // SRS UC004 — read-side: list prompts + their generated ideas.
 
-import type { Request, Response } from 'express';
-import { supabaseAdmin as supabase } from '../config/supabase.ts';
+import type { Response } from 'express';
+import * as Prompt from '../models/Prompt.ts';
+import * as ContentIdea from '../models/ContentIdea.ts';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
@@ -14,20 +16,13 @@ export async function listMyPrompts(req: AuthenticatedRequest, res: Response): P
     return;
   }
 
-  const { data, error: promptErr } = await supabase
-    .from('prompts')
-    .select('id, prompt_text, target_audience, content_theme, ideas_count, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  if (promptErr) {
-    logger.error('[listMyPrompts]', { error: promptErr });
+  try {
+    const prompts = await Prompt.listByUser(userId);
+    success(res, { message: 'Prompts listed', data: { prompts }, statusCode: 200 });
+  } catch (err) {
+    logger.error('[promptController.listMyPrompts]', { err });
     error(res, { message: 'Failed to fetch prompts', statusCode: 500 });
-    return;
   }
-
-  success(res, { message: 'Prompts listed', data: { prompts: data ?? [] }, statusCode: 200 });
 }
 
 export async function getPromptDetail(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -38,32 +33,23 @@ export async function getPromptDetail(req: AuthenticatedRequest, res: Response):
     error(res, { message: 'Unauthorized', statusCode: 401 });
     return;
   }
+  if (!promptId) {
+    error(res, { message: 'promptId required', statusCode: 400 });
+    return;
+  }
 
-  const { data: prompt, error: promptLookupErr } = await supabase
-    .from('prompts')
-    .select('*')
-    .eq('id', promptId)
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (promptLookupErr || !prompt) {
+  const prompt = await Prompt.findById(promptId as string, userId);
+  if (!prompt) {
     error(res, { message: 'Prompt not found', statusCode: 404 });
     return;
   }
 
-  // NOTE: ideas_count on prompts is total-ever (soft-delete consequence).
-  // For a pending-only count use this query instead:
-  const { data: ideas, error: ideasErr } = await supabase
-    .from('content_ideas')
-    .select('id, content_title, status, created_at')
-    .eq('prompt_id', promptId)
-    .order('created_at', { ascending: true });
-
-  if (ideasErr) {
-    logger.error('[getPromptDetail] ideas fetch', { ideasErr });
+  try {
+    // NOTE: ideas_count on prompts is total-ever (soft-delete consequence).
+    const ideas = await ContentIdea.listByPromptId(promptId as string);
+    success(res, { message: 'Prompt detail', data: { prompt, ideas }, statusCode: 200 });
+  } catch (err) {
+    logger.error('[promptController.getPromptDetail] ideas fetch', { err });
     error(res, { message: 'Failed to fetch ideas for prompt', statusCode: 500 });
-    return;
   }
-
-  success(res, { message: 'Prompt detail', data: { prompt, ideas: ideas ?? [] }, statusCode: 200 });
 }

@@ -1,6 +1,4 @@
-// @ts-nocheck
 import type { Request, Response, NextFunction } from 'express';
-import * as authService from '../services/authService.ts';
 import * as User from '../models/User.ts';
 import * as Role from '../models/Role.ts';
 import { verifyRefreshToken, signAccessToken } from '../utils/jwtHelper.ts';
@@ -13,7 +11,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
     const { email, password, fullName, phone, role } = req.body as {
       email: string; password: string; fullName: string; phone: string; role: string;
     };
-    const result = await authService.initiateRegistration({ email, password, fullName, phone, roleName: role });
+    const result = await User.initiateRegistration({ email, password, fullName, phone, roleName: role });
     success(res, {
       message: `Verification code sent to ${email}. Please check your inbox.`,
       data: { email, otpSent: true, ...(result.devOtp ? { devOtp: result.devOtp } : {}) },
@@ -24,7 +22,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
 export async function verifyOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, otp } = req.body as { email: string; otp: string };
-    const result = await authService.completeRegistration(email, otp);
+    const result = await User.completeRegistration(email, otp);
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       secure: process.env['NODE_ENV'] === 'production',
@@ -42,7 +40,7 @@ export async function verifyOTP(req: Request, res: Response, next: NextFunction)
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, password } = req.body as { email: string; password: string };
-    const result = await authService.login(email, password);
+    const result = await User.login(email, password);
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true,
       secure: process.env['NODE_ENV'] === 'production',
@@ -84,7 +82,10 @@ export async function refresh(req: Request, res: Response, next: NextFunction): 
 export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const authReq = req as AuthenticatedRequest;
-    const user = await User.findById(authReq.user.userId);
+    const userId = authReq.user?.userId;
+    if (!userId) { error(res, { message: 'Unauthorized.', statusCode: 401 }); return; }
+
+    const user = await User.findById(userId);
     if (!user) { error(res, { message: 'User not found.', statusCode: 404 }); return; }
 
     const profiles = user.user_profiles as { full_name?: string; phone?: string } | null;
@@ -107,7 +108,7 @@ export async function getMe(req: Request, res: Response, next: NextFunction): Pr
 export async function resendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, type } = req.body as { email: string; type?: string };
-    const result = await authService.resendOTP(email, type ?? 'register');
+    const result = await User.resendOTP(email, type ?? 'register');
     success(res, {
       message: 'A new verification code has been sent to your email.',
       data: { email, ...(result.devOtp ? { devOtp: result.devOtp } : {}) },

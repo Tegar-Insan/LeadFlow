@@ -1,6 +1,5 @@
-// @ts-nocheck
 import type { Request, Response } from 'express';
-import * as dashboardCalendarService from '../services/dashboardCalendarService.ts';
+import * as WeeklyDashboardReport from '../models/WeeklyDashboardReport.ts';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 
@@ -14,7 +13,7 @@ export const getOwnerCalendar = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const schedules = await dashboardCalendarService.getOwnerCalendar(year, month);
+    const schedules = await WeeklyDashboardReport.getOwnerCalendar(year, month);
     success(res, { message: 'Owner calendar loaded', data: { year, month, schedules } });
   } catch (err) {
     logger.error('[dashboardController.getOwnerCalendar]', err);
