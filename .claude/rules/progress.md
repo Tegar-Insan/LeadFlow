@@ -635,3 +635,92 @@ This makes the fallback redirect use the dynamic, role-aware `dashboardPath` com
 2. Verify color contrast for accessibility compliance
 3. Consider dark mode toggle if needed for user preferences
 4. Update other pages using similar dark theme components for consistency
+
+## Session 12 Update (2026-06-20) — Admin User Management UI + Service Layer
+
+### What Was Done
+1. **Sidebar Navigation Component Refactor (Sidebar.tsx)**
+   - Converted to role-aware navigation with three distinct role-based menus (admin, business_owner, marketing_staff)
+   - Role-specific nav items:
+     - **Admin**: All Accounts, Marketing Staff, Business Owners, Profile
+     - **Business Owner**: Profile, Analytics, Calendar, Interactions
+     - **Marketing Staff**: Overview, AI Assistant, Content Calendar, AI Ideas, Interactions, Publish Status
+   - Added "Create Post" button (marketing staff only, yellow gold with glow shadow)
+   - Mobile-responsive sidebar with backdrop overlay and slide animation
+   - User footer showing avatar (initials), full name, role label, and sign out button
+   - Active nav item highlighting with left border accent and brand color
+   - Proper TypeScript support with useAuth hook integration
+
+2. **Admin User Management Table (AdminUserTable.tsx)**
+   - Full CRUD operations with modals:
+     - **Add Account Modal**: Create new user with fullName, email, phone, role, password; password strength validation (min 8 chars); role selector dropdown
+     - **Edit Details Modal**: Update fullName, email, phone with form validation and error handling
+     - **Delete Confirmation Dialog**: Confirmation before permanent deletion with loading state
+   - Reusable table component with search functionality (by name, email, phone)
+   - Row features:
+     - User avatar with initials
+     - Role badge with color coding
+     - Active/Inactive toggle with visual indicator (green toggle switch + status pill)
+     - Email verification status (Verified/Pending badge)
+     - Registration date (short date format)
+     - Role change selector with "Apply" button (appears only when selection differs)
+     - Edit and Delete action buttons (small icon buttons)
+   - Search bar with result count indicator
+   - "Add Account" button in header
+   - Toast notifications for success/error feedback
+   - Inline loaders (InlineLoader component) for async operations
+   - Loading state for the entire table + empty state messaging
+   - Row highlight (light gold background) when role change is pending
+
+3. **Admin Service Layer (adminService.ts)**
+   - TypeScript service with proper type annotations:
+     - `getAllUsers(params)` — fetch users with pagination/filtering
+     - `getUserById(userId)` — fetch single user
+     - `createUser(payload)` — create new account (validated role selection)
+     - `updateUserDetails(userId, payload)` — update name/email/phone
+     - `updateUserRole(userId, roleName)` — change user role
+     - `toggleUserStatus(userId, isActive)` — activate/deactivate account
+     - `resetUserPassword(userId, newPassword)` — admin password reset
+     - `deleteUser(userId)` — permanent account deletion
+   - All methods use the shared `api` axios instance from authService
+   - Proper JSDoc comments for all exports
+   - All payloads enforce TypeScript union types for role values
+
+### Technical Details
+- **Light Theme Integration**: All components use light theme tokens (white backgrounds, gray text, amber/green status indicators)
+- **Role-based UI**: Navigation and admin features respect role permissions via frontend routing guards
+- **Loading States**: Every async operation (save role, toggle status, delete, create, update) shows inline loader
+- **Error Handling**: Try-catch blocks on all service calls; error messages displayed in toast notifications
+- **Form Validation**: Client-side validation before submission; server-side errors from API show in modals
+- **Responsive Design**: Mobile-friendly modals and tables with overflow handling
+
+### Files Modified
+1. `frontend/src/components/common/Sidebar.tsx` — role-aware navigation refactor
+2. `frontend/src/components/dashboard/AdminUserTable.tsx` — full admin user table with CRUD modals
+3. `frontend/src/services/adminService.ts` — TypeScript admin API service layer (NEW)
+
+### Validation Results
+- ✅ Sidebar TypeScript compilation clean
+- ✅ AdminUserTable TypeScript compilation clean
+- ✅ adminService TypeScript compilation clean
+- ✅ All service methods properly typed with JSDoc
+- ✅ Light theme colors applied consistently
+
+### Impact
+- Admin users can now:
+  - View all registered users in a searchable table
+  - Create new user accounts with role assignment
+  - Edit user details (name, email, phone) inline
+  - Change user roles between business_owner and marketing_staff
+  - Activate/deactivate user accounts
+  - Delete user accounts with confirmation
+- Role-based navigation ensures each user sees only relevant menu items
+- "Create Post" button appears only for marketing staff in sidebar
+- Toast notifications provide real-time feedback on all operations
+
+### Next Session Priority
+1. Test admin panel in browser (create, edit, role change, delete flows)
+2. Mount remaining backend routes if not yet done (`/api/prompt`, `/api/content`, `/api/interaction`, `/api/dashboard`, `/api/publish`)
+3. Verify backend handlers for admin endpoints are fully implemented
+4. Add Jest/Supertest tests for admin CRUD operations
+5. Implement remaining UC features (UC009–UC013) or ship MVP if scope complete

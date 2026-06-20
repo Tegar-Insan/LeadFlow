@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
-import { updateUserRole, toggleUserStatus, createUser } from '../../services/adminService';
+import { updateUserRole, toggleUserStatus, createUser, updateUserDetails, deleteUser } from '../../services/adminService';
 import { InlineLoader } from '../common/KineticLoader';
 
 const ROLE_OPTIONS = [
@@ -58,6 +58,120 @@ function Toast({ msg, type, onDismiss }) {
   );
 }
 
+// ── Edit Details Modal ───────────────────────────────────────────────────────
+
+function EditDetailsModal({ user, onClose, onUpdated }) {
+  const [form,   setForm]   = useState({ fullName: user.full_name || '', email: user.email || '', phone: user.phone || '' });
+  const [saving, setSaving] = useState(false);
+  const [err,    setErr]    = useState('');
+
+  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (!form.fullName.trim() || !form.email.trim()) {
+      setErr('Full name and email are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await updateUserDetails(user.id, {
+        full_name: form.fullName.trim(),
+        email:    form.email.trim().toLowerCase(),
+        phone:    form.phone.trim() || undefined,
+      });
+      if (res.success) {
+        onUpdated(res.data);
+      } else {
+        setErr(res.message || 'Failed to update account details.');
+      }
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Failed to update account details.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-surface rounded-2xl border border-surface-border w-full max-w-md animate-fade-in shadow-lg"
+        style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.1)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 pb-4 border-b border-surface-border">
+          <h2 className="text-base font-headline font-bold text-text-primary">Edit Account Details</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {err && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+              {err}
+            </p>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Full Name *</label>
+            <input
+              type="text"
+              value={form.fullName}
+              onChange={set('fullName')}
+              placeholder="e.g. Budi Santoso"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Email *</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={set('email')}
+              placeholder="e.g. budi@krench.id"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Phone</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={set('phone')}
+              placeholder="e.g. 0812-3456-7890"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-headline font-bold text-text-secondary hover:text-text-primary border border-surface-border rounded-lg transition-colors hover:bg-surface-overlay"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2 bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50"
+            >
+              {saving ? <InlineLoader size="sm" className="text-white" /> : null}
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Add Account Modal ─────────────────────────────────────────────────────────
 
 const EMPTY_FORM = { fullName: '', email: '', phone: '', roleName: 'marketing_staff', password: '' };
@@ -104,10 +218,10 @@ function AddAccountModal({ onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-[#191919]/90 backdrop-blur-2xl rounded-2xl border border-white/[0.08] w-full max-w-md animate-fade-in"
-        style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
+      <div className="bg-surface rounded-2xl border border-surface-border w-full max-w-md animate-fade-in shadow-lg"
+        style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.1)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-5 pb-4 border-b border-surface-border">
           <h2 className="text-base font-headline font-bold text-text-primary">Add Account</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -119,7 +233,7 @@ function AddAccountModal({ onClose, onCreated }) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {err && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
               {err}
             </p>
           )}
@@ -131,7 +245,7 @@ function AddAccountModal({ onClose, onCreated }) {
               value={form.fullName}
               onChange={set('fullName')}
               placeholder="e.g. Budi Santoso"
-              className="w-full bg-transparent border-0 border-b border-white/15 px-0 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand transition-colors font-body"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
             />
           </div>
 
@@ -142,7 +256,7 @@ function AddAccountModal({ onClose, onCreated }) {
               value={form.email}
               onChange={set('email')}
               placeholder="e.g. budi@krench.id"
-              className="w-full bg-transparent border-0 border-b border-white/15 px-0 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand transition-colors font-body"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
             />
           </div>
 
@@ -153,7 +267,7 @@ function AddAccountModal({ onClose, onCreated }) {
               value={form.phone}
               onChange={set('phone')}
               placeholder="e.g. 0812-3456-7890"
-              className="w-full bg-transparent border-0 border-b border-white/15 px-0 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand transition-colors font-body"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
             />
           </div>
 
@@ -162,7 +276,7 @@ function AddAccountModal({ onClose, onCreated }) {
             <select
               value={form.roleName}
               onChange={set('roleName')}
-              className="w-full bg-transparent border-0 border-b border-white/15 px-0 py-2 text-sm text-text-primary outline-none focus:border-brand transition-colors font-body"
+              className="w-full bg-surface-raised border border-surface-border px-3 py-2 text-sm text-text-primary outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -178,7 +292,7 @@ function AddAccountModal({ onClose, onCreated }) {
                 value={form.password}
                 onChange={set('password')}
                 placeholder="Min. 8 characters"
-                className="w-full bg-transparent border-0 border-b border-white/15 px-0 py-2 pr-8 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand transition-colors font-body"
+                className="w-full bg-surface-raised border border-surface-border px-3 py-2 pr-8 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors rounded-lg font-body"
               />
               <button
                 type="button"
@@ -200,7 +314,7 @@ function AddAccountModal({ onClose, onCreated }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-headline font-bold text-text-secondary hover:text-text-primary border border-white/[0.15] rounded-lg transition-colors hover:bg-white/[0.04]"
+              className="px-4 py-2 text-sm font-headline font-bold text-text-secondary hover:text-text-primary border border-surface-border rounded-lg transition-colors hover:bg-surface-overlay"
             >
               Cancel
             </button>
@@ -219,14 +333,62 @@ function AddAccountModal({ onClose, onCreated }) {
   );
 }
 
+// ── Delete Confirmation Dialog ────────────────────────────────────────────────
+
+function DeleteConfirmDialog({ user, onConfirm, onCancel, loading }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-surface rounded-2xl border border-surface-border w-full max-w-sm animate-fade-in shadow-lg">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-surface-border">
+          <h2 className="text-base font-headline font-bold text-text-primary">Delete Account</h2>
+          <p className="text-sm text-text-secondary mt-1">This action cannot be undone.</p>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-5">
+          <p className="text-sm text-text-primary mb-1">
+            Delete <span className="font-bold">{user.full_name || user.email}</span>?
+          </p>
+          <p className="text-xs text-text-muted">
+            All associated data will be removed from the system.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-border">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-headline font-bold text-text-secondary hover:text-text-primary border border-surface-border rounded-lg transition-colors hover:bg-surface-overlay disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-headline font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50"
+          >
+            {loading ? <InlineLoader size="sm" className="text-white" /> : null}
+            {loading ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main table ────────────────────────────────────────────────────────────────
 
 export default function AdminUserTable({ users, loading, onUsersChange }) {
-  const [search,     setSearch]     = useState('');
-  const [pending,    setPending]    = useState({}); // { userId: newRole }
-  const [saving,     setSaving]     = useState(null);
-  const [toast,      setToast]      = useState({ msg: '', type: 'success' });
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [search,       setSearch]       = useState('');
+  const [pending,      setPending]      = useState({}); // { userId: newRole }
+  const [saving,       setSaving]       = useState(null);
+  const [toast,        setToast]        = useState({ msg: '', type: 'success' });
+  const [showAddModal,     setShowAddModal]     = useState(false);
+  const [editingUser,      setEditingUser]      = useState(null);
+  const [deletingUser,     setDeletingUser]     = useState(null);
+  const [deleteLoading,    setDeleteLoading]    = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -292,11 +454,30 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setDeleteLoading(true);
+    try {
+      const res = await deleteUser(deletingUser.id);
+      if (res.success) {
+        showToast(`Account deleted for ${deletingUser.email}.`);
+        setDeletingUser(null);
+        onUsersChange((prev) => prev.filter((u) => u.id !== deletingUser.id));
+      } else {
+        showToast(res.message || 'Failed to delete account.', 'error');
+      }
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Failed to delete account.', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <>
       {/* Search + Add */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-3 py-2 border border-white/[0.08] flex-1 max-w-sm backdrop-blur-sm">
+        <div className="flex items-center gap-2 bg-surface-raised rounded-lg px-3 py-2 border border-surface-border flex-1 max-w-sm">
           <svg className="w-4 h-4 text-text-secondary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
@@ -338,8 +519,8 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                  {['Account', 'Email', 'Phone', 'Current Role', 'Status', 'Verified', 'Registered', 'Change Role', ''].map((h) => (
+                <tr className="border-b border-surface-border bg-surface-raised">
+                  {['Account', 'Email', 'Phone', 'Current Role', 'Status', 'Verified', 'Registered', 'Change Role', 'Actions'].map((h) => (
                     <th key={h} className="py-3 px-4 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
@@ -355,8 +536,8 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
                   return (
                     <tr
                       key={u.id}
-                      className={`border-b border-white/[0.05] last:border-0 transition-colors
-                        ${hasPending ? 'bg-brand/[0.06]' : 'hover:bg-white/[0.03]'}`}
+                      className={`border-b border-surface-border last:border-0 transition-colors
+                        ${hasPending ? 'bg-brand/[0.06]' : 'hover:bg-surface-overlay'}`}
                     >
                       {/* Account name */}
                       <td className="py-3 px-4">
@@ -418,8 +599,8 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
                           value={pending[u.id] || u.role_name || ''}
                           onChange={(e) => handleRoleSelect(u.id, u.role_name, e.target.value)}
                           disabled={isSavingRole}
-                          className={`bg-white/[0.04] border rounded px-3 py-1.5 text-sm font-body outline-none transition-colors disabled:opacity-50
-                            ${hasPending ? 'border-brand text-brand' : 'border-white/[0.12] text-text-primary'}`}
+                          className={`bg-surface-raised border rounded px-3 py-1.5 text-sm font-body outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors disabled:opacity-50
+                            ${hasPending ? 'border-brand text-brand' : 'border-surface-border text-text-primary'}`}
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r.value} value={r.value}>{r.label}</option>
@@ -427,7 +608,7 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
                         </select>
                       </td>
 
-                      {/* Apply button */}
+                      {/* Apply role button */}
                       <td className="py-3 px-4">
                         {hasPending ? (
                           <button
@@ -448,6 +629,30 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
                           <span className="text-xs text-text-muted">—</span>
                         )}
                       </td>
+
+                      {/* Edit & Delete buttons */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            title="Edit account details"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-overlay border border-surface-border transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setDeletingUser(u)}
+                            title="Delete account"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-red-600 hover:bg-red-50 border border-surface-border transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -465,7 +670,6 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
           onCreated={(newUser) => {
             setShowAddModal(false);
             showToast(`Account created for ${newUser.email}.`);
-            // Append a skeleton row so the table refreshes; parent will refetch on next load
             onUsersChange((prev) => [
               {
                 id:             newUser.userId,
@@ -480,6 +684,29 @@ export default function AdminUserTable({ users, loading, onUsersChange }) {
               ...prev,
             ]);
           }}
+        />
+      )}
+
+      {editingUser && (
+        <EditDetailsModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onUpdated={(updatedUser) => {
+            setEditingUser(null);
+            showToast(`Account details updated for ${updatedUser.email}.`);
+            onUsersChange((prev) =>
+              prev.map((u) => u.id === updatedUser.id ? { ...u, ...updatedUser } : u)
+            );
+          }}
+        />
+      )}
+
+      {deletingUser && (
+        <DeleteConfirmDialog
+          user={deletingUser}
+          loading={deleteLoading}
+          onConfirm={handleDeleteUser}
+          onCancel={() => setDeletingUser(null)}
         />
       )}
     </>

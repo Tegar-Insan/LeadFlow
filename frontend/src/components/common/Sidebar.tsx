@@ -88,8 +88,8 @@ function NavItem({ to, label, icon }) {
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-headline font-bold
         transition-all duration-200
         ${isActive
-          ? 'bg-white/[0.06] text-brand border-l-2 border-brand pl-[10px]'
-          : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border-l-2 border-transparent'
+          ? 'bg-surface-raised text-brand border-l-2 border-brand pl-[10px]'
+          : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay border-l-2 border-transparent'
         }
       `}
     >
@@ -119,7 +119,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside className={`
         fixed lg:sticky top-0 left-0 z-40 h-screen w-56 flex flex-col
-        bg-[#0e0e0e] border-r border-white/[0.06]
+        bg-surface border-r border-surface-border
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
@@ -164,7 +164,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-body font-medium text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-all duration-200"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-body font-medium text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-all duration-200"
           >
             {icons.signout}
             Sign out
