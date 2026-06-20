@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-04-25 (session 9)
+**Last updated:** 2026-06-21 (session 15)
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -228,6 +228,8 @@ All 13 core tables are defined and deployed to Supabase:
 | TikTok `scope_not_authorized` on token exchange | `video.publish`/`video.upload` require Content Posting API approval | Use `user.info.basic` only until TikTok app is approved for posting |
 | TikTok `scope_not_authorized` 401 on `/user/info` | `follower_count` field requires `user.info.stats` scope, not covered by `user.info.basic` | Remove `follower_count` from `fetchUserInfo` fields query; hardcode to `0` |
 | TikTok photo upload invalid_params | `FILE_UPLOAD` is only valid for video upload; photo upload requires `PULL_FROM_URL` + `MEDIA_UPLOAD` with `photo_images` | Keep photo requests on the documented URL-based photo post contract and do not send `photo_count` |
+| Same shared component rendered differently on two pages | Page-scoped `<style>` blocks (`.calendar-reframe aside {...}`) used CSS descendant selectors to patch a still-dark/175px `ContentLibrarySidebar`/`LibraryCard` instead of fixing the component itself — only pages with the patch looked right | Fix shared components at the source (correct theme + width in the component file); never paper over a component bug with page-local CSS overrides |
+| Native `window.confirm()` broke brand consistency | Browser-chrome confirm dialogs can't be themed and don't match `tailwind.config.ts` | Built `ConfirmContext`/`useConfirm()` (promise-based, same pattern as `NotificationContext`) + `ConfirmDialog` component; swapped into all 13 call sites app-wide |
 
 ## Session 3 Update (2026-04-20) — Publish Automation + UI Cleanup
 
@@ -757,4 +759,101 @@ The one real gap: 10 files touched by this refactor carried `// @ts-nocheck`, si
 
 ### Impact
 The service→model MVC migration for auth, dashboard, prompt, content ideas, and calendar/schedule is now complete *and* strictly typed — no silent `@ts-nocheck` debt remains in any file this refactor touched. The remaining 12 `@ts-nocheck` files are pre-existing and out of this session's scope.
-5. Implement remaining UC features (UC009–UC013) or ship MVP if scope complete
+
+---
+
+## Session 15 Update (2026-06-21) — Idea-Generation Metadata Removal, Confirm Dialog Rollout, Content Library Parity Fix
+
+Four independent, user-directed changes in one session. Each followed the `leadflow-implement` planning gate (AskUserQuestion before code) since all four touched shared components or cut across multiple files.
+
+### 1. Removed music / duration / best-time / engagement fields from UC005 idea generation
+**Scope decision (confirmed with user):** full stack removal; DB columns left inert (same precedent as the interaction-module deletion in Session 13 — `database/migrations` 005/006/019 views referencing `suggested_music`, `estimated_duration`, `estimated_engagement`, `best_time_to_post_wib` are untouched, nothing in `backend/src` queries them anymore).
+
+**Frontend:**
+- `frontend/src/pages/content/GeneratedIdeasPage.tsx` — deleted the 4-box meta grid (Musik/Durasi/Best Time/Engagement) and the engagement badge in the card header; removed now-unused `fLongDateTime` import
+- `frontend/src/services/contentService.ts` — removed the 4 fields from `GeneratedScheduleDraft` and `ApproveIdeaResult` interfaces
+- `frontend/tests/pages/GeneratedIdeasPage.test.tsx` — removed the 4 fields from fixtures + the now-dead `formatDate` mock
+
+**Backend:**
+- `backend/src/models/ContentIdea.ts` — removed the fields from `GeneratedScheduleDraft`/`ModelDraft` interfaces, the Claude system prompt (AI no longer asked to generate them), `insertDraft`, `listPendingIdeasForUser`, and `approveIdea`'s nested select + return shape
+
+**Verified:** `backend` and `frontend` `tsc --noEmit` clean on every touched file (5 pre-existing unrelated frontend errors remain — missing `socket.io-client` package, stale `interaction` type import, one `AdminUserTable` field-name mismatch — none introduced this session). Could not run frontend Vitest — `node_modules` has a broken `@rollup/rollup-win32-x64-msvc` optional dependency (pre-existing npm bug, unrelated).
+
+### 2. Removed dead "Interaction" nav button from SmallSidebar
+The Interaction module itself was deleted in Session 13, but `frontend/src/components/common/smallsidebar.tsx` still had a leftover nav item pointing to the now-404 `/interaction` route. Removed the `interaction` key from `NavItem`, the `getInteractionIcon()` SVG, and the entry in `getNavItems()`. Single shared component — fix applies automatically to all 6 importing pages (`GeneratedIdeasPage`, `OwnerDashboard`, `CalendarPage`, `CalendarReadOnly`, `ListPage`, `ProfilePage`) since none of them override nav items via props.
+
+### 3. Replaced native `window.confirm()` with a themed confirm dialog (13 call sites)
+**Scope decision (confirmed with user):** build it reusable, wire into all 13 call sites; promise-based `useConfirm()` hook API (drop-in for `if (!confirm(...))`).
+
+**New files:**
+- `frontend/src/context/ConfirmContext.tsx` — `ConfirmProvider` + `useConfirm()`. `await confirm('message')` or `await confirm({ title, message, confirmLabel, cancelLabel, variant })`. Mirrors `NotificationContext`'s pattern exactly.
+- `frontend/src/components/common/ConfirmDialog.tsx` — white rounded-3xl card, pill buttons, `bg-brand` (#f6b70a) for default actions, red for `variant: 'danger'` (used on every destructive action), Escape/Enter handling, backdrop-click-to-cancel.
+
+**Wired in:** `main.tsx` (mounted `ConfirmProvider` alongside `NotificationProvider`), `GeneratedIdeasPage.tsx` (bulk-delete pending ideas), `MediaUploader.tsx`, `MediaPreview.tsx`, `Marketingdashboard.tsx`, `ListPage.tsx` (×4 — delete comment, disconnect TikTok, delete schedule ×2), `ContentScheduleQueuePage.tsx`, `CalendarPage.tsx` (×3 — delete comment, disconnect TikTok, delete schedule), `AdminDashboard.tsx` (remove user).
+
+**Verified:** zero `window.confirm`/`confirm(` calls remain in `frontend/src`. `tsc --noEmit` clean on all 11 touched files.
+
+### 4. Fixed Content Library sidebar inconsistency between CalendarPage and GeneratedIdeasPage
+**Root cause (found by reading the actual rendering code, not guessed):** `ContentLibrarySidebar.tsx` (`w-[175px]`) and `LibraryCard` in `ContentCard.tsx` (hardcoded dark `bg-[#1e1e1e]`/`text-white/90`) were never converted to the light theme during the Session 11 migration. `CalendarPage.tsx` and `ListPage.tsx` each carried an identical page-scoped `<style>` block (`.calendar-reframe aside { width: 268px; ... } .calendar-reframe aside [draggable='true'] { background: #f8fbff; }`) that silently CSS-overrode both the width and the card color back to looking correct — but only on those two pages. `GeneratedIdeasPage.tsx` had no such patch, so the same component rendered at its true (narrow, dark) state, matching the user's screenshot exactly.
+
+**Scope decision (confirmed with user):** fix at the source, not patch the third page too.
+
+- `frontend/src/components/Schedule/ContentCard.tsx` — `LibraryCard` re-themed to light (`bg-white`, `text-gray-900`, `text-gray-500/400`, `text-amber-600` for drafts), matching `tailwind.config.ts`. `SlotCard` in the same file was already correctly light-themed — untouched.
+- `frontend/src/components/Schedule/ContentLibrarySidebar.tsx` — canonical width changed `w-[175px]` → `w-[268px]`
+- `frontend/src/pages/schedule/CalendarPage.tsx` + `frontend/src/pages/schedule/ListPage.tsx` — deleted the now-redundant `.calendar-reframe aside {...}` override blocks (confirmed zero visual impact on `SmallSidebar`, which already self-styles via its own Tailwind classes + inline `width:72`)
+
+**Data parity (separate bug, also fixed):** `GeneratedIdeasPage.tsx` only fetched `/calendar/drafts` (status=`'draft'` only) and hardcoded `schedules={[]}`, so anything already promoted to scheduled/uploaded/published never appeared in its sidebar — unlike `CalendarPage`, which feeds `ContentLibrarySidebar` both `drafts` and `schedules` from `useSchedule()`. Switched `GeneratedIdeasPage` to the same `useSchedule()` hook; on approve, calls `loadMonth()` to refetch (picking up the real DB-trigger-created row) instead of optimistically faking a draft object. Removed the now-dead `existingDrafts`/`approvedDrafts` state and `fetchDrafts`/`ApproveIdeaResult` imports.
+
+**Verified:** `tsc --noEmit` clean on all 4 touched files; confirmed zero remaining `.calendar-reframe aside` selectors anywhere in `frontend/src`.
+
+### 5. Idea-generation backlog constraint — 15-item cap + hard "Clear All" delete
+**Bug reported:** after change #1's fix made `GeneratedIdeasPage` fetch pending ideas from the DB on mount (so they survive a refresh), the page started showing ~170 cards even though the user had generated well under 100 ideas total. Root cause was **not** a broken per-generation cap — `MAX_DRAFTS = 3` in `ContentIdea.ts` was already correctly enforced per call to `/content/generate`. The real cause: the pending-ideas fetch had no upper bound, so it surfaced the *entire historical backlog* of every `pending_validation` row ever created across every past brief submission, not just the current session's batch.
+
+**Scope decisions (confirmed via 3 `AskUserQuestion` rounds):** hard delete (not soft-delete — different from the existing single-idea reject path); cap the list query at 15 (not block generation, not auto-prune older rows); "Clear All" wipes **every** pending idea for the user (not just the current page-visit batch).
+
+**Backend:**
+- `backend/src/models/ContentIdea.ts` — added `const MAX_PENDING_IDEAS_LISTED = 15` and `.limit(15)` on `listPendingIdeasForUser`'s Supabase query; added `clearPendingIdeasForUser(userId)` — hard `DELETE` on `content_ideas` where `created_by = userId AND status = 'pending_validation'`, returns `{ deleted_count }`
+- `backend/src/controllers/contentIdeaController.ts` — new `clearPending` handler (401 guard, delegates to model, `responseHelper` throughout)
+- `backend/src/routes/contentIdeaRoutes.ts` — new `DELETE /api/content/pending`, gated `roleMiddleware(['marketing_staff', 'admin'])`, mounted alongside the existing `GET /pending`
+
+**Frontend:**
+- `frontend/src/services/contentService.ts` — new `clearPendingIdeas()` calling the DELETE endpoint
+- `frontend/src/pages/content/GeneratedIdeasPage.tsx` — "Clear All (N)" button in the header (rendered only when `drafts.length > 0`), confirms via dialog, then blanks `drafts` to `[]` on success with a success toast
+
+**Verified:** `backend` `tsc --noEmit -p tsconfig.json` clean. `frontend` typecheck clean on every file touched this round; the 5 pre-existing unrelated errors from change #1 are still present and confirmed unrelated via `grep` (none reference `GeneratedIdeasPage`/`contentService`).
+
+**Found but deferred:** `frontend/src/components/dashboard/AdminUserTable.tsx:201` has a real pre-existing TS error — sends `fullName` but the API client type expects `full_name`. Possibly the "admin page bug" the user alluded to earlier in the session without details; not yet confirmed or fixed.
+
+### Files Modified/Created This Session
+```
+NEW:
+  frontend/src/context/ConfirmContext.tsx
+  frontend/src/components/common/ConfirmDialog.tsx
+
+MODIFIED:
+  frontend/src/pages/content/GeneratedIdeasPage.tsx
+  frontend/src/services/contentService.ts
+  frontend/tests/pages/GeneratedIdeasPage.test.tsx
+  backend/src/models/ContentIdea.ts
+  backend/src/controllers/contentIdeaController.ts
+  backend/src/routes/contentIdeaRoutes.ts
+  frontend/src/components/common/smallsidebar.tsx
+  frontend/src/main.tsx
+  frontend/src/components/media/MediaUploader.tsx
+  frontend/src/components/media/MediaPreview.tsx
+  frontend/src/pages/dashboard/Marketingdashboard.tsx
+  frontend/src/pages/schedule/ListPage.tsx
+  frontend/src/pages/schedule/ContentScheduleQueuePage.tsx
+  frontend/src/pages/schedule/CalendarPage.tsx
+  frontend/src/pages/dashboard/AdminDashboard.tsx
+  frontend/src/components/Schedule/ContentCard.tsx
+  frontend/src/components/Schedule/ContentLibrarySidebar.tsx
+```
+
+### Next Session Priority
+1. Fix the broken `@rollup/rollup-win32-x64-msvc` optional dependency in `frontend/node_modules` (blocks running Vitest locally) — likely needs `rm -rf node_modules package-lock.json && npm i`
+2. Manually verify in-browser: Content Library sidebar now renders identically (width + color + content) on `/calendar` and `/calendar/ideas`
+3. Manually verify the new `ConfirmDialog` across a few of the 13 wired call sites (especially the two `DetailModal` sub-components in `CalendarPage.tsx`/`ListPage.tsx`, which needed their own `useConfirm()` call since they're separate component scopes from the main page)
+4. Manually verify the new "Clear All" button on `/calendar/ideas` — confirm dialog → hard delete → list goes to zero → regenerate still caps at 3
+5. Investigate/fix the `fullName`/`full_name` TS mismatch in `AdminUserTable.tsx:201`
+6. Continue Phase 2/3 backlog from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite

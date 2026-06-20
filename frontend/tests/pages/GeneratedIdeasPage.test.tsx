@@ -48,10 +48,6 @@ vi.mock('../../src/context/NotificationContext', () => ({
   }),
 }));
 
-vi.mock('../../src/utils/formatDate', () => ({
-  fLongDateTime: (iso: string) => (iso ? iso.slice(0, 16) : '—'),
-}));
-
 // ── Imports after mocks ──────────────────────────────────────────
 import {
   generateDrafts,
@@ -70,10 +66,6 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
     content_title: 'Spicy Wings Monday',
     tiktok_caption: 'Come try our hottest drop 🔥',
     hashtag: ['#KrenchChicken', '#BogorFood'],
-    suggested_music: 'Trending pop',
-    estimated_duration: 30,
-    estimated_engagement: 'high',
-    best_time_to_post_wib: '2026-05-02T19:00:00+07:00',
     category: 'PROMOTION',
     status: 'pending_validation',
     ai_model_used: 'claude-sonnet-4-6',
@@ -85,10 +77,6 @@ const sampleDrafts: GeneratedScheduleDraft[] = [
     content_title: 'Behind the Fryer',
     tiktok_caption: 'From 6AM to lunch ⏰',
     hashtag: ['#KrenchChicken', '#BehindTheScenes'],
-    suggested_music: 'Lofi',
-    estimated_duration: 45,
-    estimated_engagement: 'medium',
-    best_time_to_post_wib: '2026-05-03T12:00:00+07:00',
     category: 'BEHIND-THE-SCENES',
     status: 'pending_validation',
     ai_model_used: 'claude-sonnet-4-6',
@@ -104,10 +92,6 @@ const approveResult: ApproveIdeaResult = {
   tiktok_caption: 'Come try our hottest drop 🔥',
   hashtag: ['#KrenchChicken', '#BogorFood'],
   category: 'PROMOTION',
-  estimated_engagement: 'high',
-  suggested_music: 'Trending pop',
-  estimated_duration: 30,
-  best_time_to_post_wib: '2026-05-02T19:00:00+07:00',
 };
 
 function renderPage() {

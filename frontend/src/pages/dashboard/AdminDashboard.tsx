@@ -7,6 +7,7 @@ import { getAllUsers, updateUserRole, toggleUserStatus, deleteUser } from '../..
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { fShortDate } from '../../utils/formatDate';
 import { InlineLoader } from '../../components/common/KineticLoader';
+import { useConfirm } from '../../context/ConfirmContext';
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -503,6 +504,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ msg: '', type: 'success' });
   const [deletingUserId, setDeletingUserId] = useState(null);
+  const confirm = useConfirm();
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -556,7 +558,11 @@ export default function AdminDashboard() {
   };
 
   const handleRemoveUser = async (userId, label = 'this user') => {
-    const ok = window.confirm(`Remove ${label}? This action cannot be undone.`);
+    const ok = await confirm({
+      message: `Remove ${label}? This action cannot be undone.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
     if (!ok) return;
 
     setDeletingUserId(userId);

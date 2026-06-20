@@ -1,1 +1,1 @@
-{"version":3,"file":"WeeklyDashboardReport.d.ts","sourceRoot":"","sources":["../../../src/models/WeeklyDashboardReport.ts"],"names":[],"mappings":""}
+{"version":3,"file":"WeeklyDashboardReport.d.ts","sourceRoot":"","sources":["../../../src/models/WeeklyDashboardReport.ts"],"names":[],"mappings":"AAOA,KAAK,WAAW,GAAG,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,CAAC;AAmB3C,eAAO,MAAM,gBAAgB,GAC3B,MAAM,MAAM,EACZ,OAAO,MAAM,KACZ,OAAO,CAAC,WAAW,EAAE,CA6CvB,CAAC"}

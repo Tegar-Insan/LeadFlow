@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   approveIdea,
+  clearPendingIdeas,
   generateDrafts,
+  listPendingIdeas,
   rejectIdea,
   type GeneratedScheduleDraft,
-  type ApproveIdeaResult,
 } from '../../services/contentService';
-import { fetchDrafts } from '../../services/scheduleService';
+import { useSchedule } from '../../hooks/useSchedule';
 import { useNotification } from '../../context/NotificationContext';
-import { fLongDateTime } from '../../utils/formatDate';
+import { useConfirm } from '../../context/ConfirmContext';
 import { InlineLoader } from '../../components/common/KineticLoader';
 import SmallSidebar from '../../components/common/smallsidebar';
 import ContentLibrarySidebar from '../../components/Schedule/ContentLibrarySidebar';
@@ -65,9 +66,6 @@ const IdeaCard = ({
             {draft.category || 'Content Idea'}
           </span>
         </div>
-        <span className="text-[10px] px-2.5 py-1 rounded-full bg-brand/[0.08] border border-brand/[0.15] text-brand/70 font-body">
-          {draft.estimated_engagement || 'Medium'}
-        </span>
       </div>
 
       <div className="px-5 py-5 space-y-4">
@@ -115,23 +113,6 @@ const IdeaCard = ({
               <p className="text-[11px] font-body">Gambar belum tersedia</p>
             </div>
           )}
-        </div>
-
-        {/* Meta grid */}
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: 'Musik', value: draft.suggested_music || '—', icon: '🎵' },
-            { label: 'Durasi', value: draft.estimated_duration ? `${draft.estimated_duration}s` : '—', icon: '⏱' },
-            { label: 'Best Time', value: draft.best_time_to_post_wib ? fLongDateTime(draft.best_time_to_post_wib) : '—', icon: '📅' },
-            { label: 'Engagement', value: draft.estimated_engagement || '—', icon: '📈' },
-          ].map(({ label, value, icon }) => (
-            <div key={label} className="rounded-xl bg-gray-50 border border-gray-300 px-3 py-2.5">
-              <p className="text-[9px] font-headline font-semibold uppercase tracking-widest text-gray-600 mb-1">
-                {icon} {label}
-              </p>
-              <p className="text-xs text-gray-700 font-body truncate">{value}</p>
-            </div>
-          ))}
         </div>
 
         {/* Action buttons */}
@@ -213,31 +194,59 @@ const IdeaCard = ({
 export default function GeneratedIdeasPage(): JSX.Element {
   const navigate = useNavigate();
   const { toast } = useNotification();
+  const confirm = useConfirm();
   const [brief, setBrief] = useState('');
   const [lastBrief, setLastBrief] = useState('');
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<DraftCardViewModel[]>([]);
-  // Content Library: existing drafts from DB + newly approved from this session
-  const [existingDrafts, setExistingDrafts] = useState<any[]>([]);
-  const [approvedDrafts, setApprovedDrafts] = useState<any[]>([]);
+  // Content Library: same data source as CalendarPage, so both pages show
+  // identical drafts + scheduled/uploaded/published items.
+  const { drafts: scheduleDrafts, schedules, loadMonth } = useSchedule();
 
   useEffect(() => {
-    fetchDrafts()
-      .then((res: any) => {
-        const nestedDrafts = Array.isArray(res?.data?.data?.drafts)
-          ? res.data.data.drafts
-          : Array.isArray(res?.data?.data)
-            ? res.data.data
-            : [];
-        setExistingDrafts(nestedDrafts);
+    // Restore any previously-generated, not-yet-validated ideas from the DB
+    // (content_ideas status='pending_validation') so cards survive a refresh
+    // instead of only living in this component's React state.
+    listPendingIdeas()
+      .then((pending) => {
+        if (pending.length === 0) return;
+        setDrafts((prev) => {
+          const seen = new Set(prev.map((x) => x.id));
+          const restored: DraftCardViewModel[] = pending
+            .filter((p) => !seen.has(p.id))
+            .map((p) => ({ ...p, ui_state: 'idle' }));
+          return [...prev, ...restored];
+        });
       })
       .catch(() => {
-        console.error('Failed to fetch drafts. Initializing as empty array.');
-        setExistingDrafts([]);
+        console.error('Failed to fetch pending ideas.');
       });
   }, []);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [clearing, setClearing] = useState(false);
+
+  async function handleClearAll(): Promise<void> {
+    if (drafts.length === 0) return;
+    const confirmed = await confirm({
+      title: 'Hapus semua ide?',
+      message: `Hapus semua ${drafts.length} ide yang belum divalidasi? Tindakan ini permanen dan tidak bisa dibatalkan.`,
+      confirmLabel: 'Hapus',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    setClearing(true);
+    try {
+      await clearPendingIdeas();
+      setDrafts([]);
+      toast.success('Semua ide pending berhasil dihapus');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus ide pending');
+    } finally {
+      setClearing(false);
+    }
+  }
 
   async function populateDrafts(briefText: string, append = false): Promise<void> {
     const normalized = briefText.trim();
@@ -263,7 +272,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
   async function handleApprove(idea: DraftCardViewModel): Promise<void> {
     setDrafts((prev) => prev.map((d) => d.id === idea.id ? { ...d, ui_state: 'approving' } : d));
     try {
-      const result: ApproveIdeaResult = await approveIdea(idea.id);
+      await approveIdea(idea.id);
 
       // Fade out the approved card from the ideas list
       setDrafts((prev) => prev.map((d) => d.id === idea.id ? { ...d, ui_state: 'fading' } : d));
@@ -271,31 +280,9 @@ export default function GeneratedIdeasPage(): JSX.Element {
         setDrafts((prev) => prev.filter((d) => d.id !== idea.id));
       }, 400);
 
-      // Push full metadata into the Content Library sidebar immediately.
-      // Use the schedule id when available; otherwise fall back to the idea id
-      // so the approved item still appears in the library on the same page.
-      if (result.idea_id || result.schedule_id || result.content_title || result.tiktok_caption) {
-        const libraryId = result.schedule_id ?? result.idea_id;
-        setApprovedDrafts((prev) => [
-          {
-            id: libraryId,
-            status: result.schedule_status ?? 'draft',
-            custom_caption: result.tiktok_caption ?? result.content_title,
-            custom_hashtags: result.hashtag ?? [],
-            content_title: result.content_title,
-            tiktok_caption: result.tiktok_caption,
-            hashtag: result.hashtag ?? [],
-            category: result.category,
-            estimated_engagement: result.estimated_engagement,
-            suggested_music: result.suggested_music,
-            estimated_duration: result.estimated_duration,
-            best_time_to_post_wib: result.best_time_to_post_wib,
-            scheduled_at: null,
-            created_at: new Date().toISOString(),
-          },
-          ...prev,
-        ]);
-      }
+      // Migration 006 trigger auto-creates the draft row — refetch so the
+      // Content Library sidebar picks it up exactly like CalendarPage does.
+      loadMonth();
 
       toast.success('Ide disetujui — draft ditambahkan ke Content Library');
     } catch (err) {
@@ -344,10 +331,10 @@ export default function GeneratedIdeasPage(): JSX.Element {
       
       {/* Main Layout */}
       <div className="flex-1 flex">
-        {/* Content Library Sidebar — pre-loaded with existing drafts + newly approved */}
+        {/* Content Library Sidebar — same data source as CalendarPage */}
         <ContentLibrarySidebar
-          drafts={[...approvedDrafts, ...existingDrafts]}
-          schedules={[]}
+          drafts={scheduleDrafts}
+          schedules={schedules}
         />
         
         {/* Main Content */}
@@ -363,7 +350,7 @@ export default function GeneratedIdeasPage(): JSX.Element {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
+          <div className="flex-1">
             <p className="text-[10px] font-headline font-bold uppercase tracking-[0.28em] text-brand">
               AI Content Assistant
             </p>
@@ -371,6 +358,24 @@ export default function GeneratedIdeasPage(): JSX.Element {
               Generate Ideas
             </h1>
           </div>
+
+          {drafts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleClearAll()}
+              disabled={clearing}
+              className="h-9 px-3.5 rounded-xl border border-gray-300 text-xs font-headline font-semibold text-gray-600 hover:border-red-500/50 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            >
+              {clearing ? (
+                <InlineLoader size="sm" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
+              Clear All ({drafts.length})
+            </button>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-[380px_1fr] gap-6 items-start">

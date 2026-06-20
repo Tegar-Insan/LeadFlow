@@ -24,10 +24,6 @@ export interface GeneratedScheduleDraft {
   content_title: string;
   tiktok_caption: string;
   hashtag: string[];
-  suggested_music: string;
-  estimated_duration: number;
-  estimated_engagement: 'low' | 'medium' | 'high';
-  best_time_to_post_wib: string;
   category:
     | 'BEHIND-THE-SCENES'
     | 'MENU-SHOWCASE'
@@ -56,10 +52,6 @@ interface ModelDraft {
   content_title: string;
   tiktok_caption: string;
   hashtag: string[];
-  suggested_music: string;
-  estimated_duration: number;
-  estimated_engagement: 'low' | 'medium' | 'high';
-  best_time_to_post_wib: string;
   category: GeneratedScheduleDraft['category'];
 }
 
@@ -133,18 +125,12 @@ Each element must match this TypeScript shape exactly:
   "content_title": string,             // <= 80 chars, punchy
   "tiktok_caption": string,            // full TikTok caption, 2–4 sentences
   "hashtag": string[],                 // 4–7 items, each starts with '#'
-  "suggested_music": string,           // e.g. "Trending Indonesian pop 2026"
-  "estimated_duration": number,        // seconds, 15–60
-  "estimated_engagement": "low" | "medium" | "high",
-  "best_time_to_post_wib": string,     // ISO 8601 with "+07:00" offset, within next 7 days,
-                                       // and within WIB peak windows: 11:00–13:00 OR 19:00–21:00
   "category": "BEHIND-THE-SCENES" | "MENU-SHOWCASE" | "PROMOTION" | "TESTIMONIAL" | "TRENDING"
 }
 
 Rules:
 - Mix categories across the 2–3 ideas (do not return three of the same category).
 - Hashtags must include "#KrenchChicken" and "#BogorFood" plus 2–5 contextual ones.
-- best_time_to_post_wib must be a real future date within the next 7 days.
 - Captions may mix English and casual Bahasa Indonesia — this matches the brand voice.`;
 
 // ---------------------------------------------------------------------------
@@ -176,8 +162,7 @@ function parseModelOutput(raw: string): ModelDraft[] {
       item !== null &&
       typeof (item as ModelDraft).content_title === 'string' &&
       typeof (item as ModelDraft).tiktok_caption === 'string' &&
-      Array.isArray((item as ModelDraft).hashtag) &&
-      typeof (item as ModelDraft).best_time_to_post_wib === 'string'
+      Array.isArray((item as ModelDraft).hashtag)
     ) {
       valid.push(item as ModelDraft);
     } else {
@@ -197,8 +182,7 @@ async function insertDraft(promptId: string, userId: string, d: ModelDraft): Pro
       content_title: d.content_title,
       tiktok_caption: d.tiktok_caption,
       hashtag: d.hashtag,
-      suggested_music: d.suggested_music,
-      estimated_duration: d.estimated_duration,
+      category: d.category,
       status: 'pending_validation',
       ai_model_used: MODEL_ID,
     })
@@ -216,10 +200,6 @@ async function insertDraft(promptId: string, userId: string, d: ModelDraft): Pro
     content_title: d.content_title,
     tiktok_caption: d.tiktok_caption,
     hashtag: d.hashtag,
-    suggested_music: d.suggested_music,
-    estimated_duration: d.estimated_duration,
-    estimated_engagement: d.estimated_engagement,
-    best_time_to_post_wib: d.best_time_to_post_wib,
     category: d.category,
     status: 'pending_validation',
     ai_model_used: MODEL_ID,
@@ -420,16 +400,19 @@ FINAL IDEAS:
 // ---------------------------------------------------------------------------
 // List currently-pending ideas for a user (soft-delete consequence: must filter)
 // ---------------------------------------------------------------------------
+const MAX_PENDING_IDEAS_LISTED = 15;
+
 export async function listPendingIdeasForUser(userId: string): Promise<GeneratedScheduleDraft[]> {
   const { data, error } = await supabase
     .from('content_ideas')
     .select(
-      'id, prompt_id, content_title, tiktok_caption, hashtag, suggested_music, ' +
-        'estimated_duration, status, ai_model_used, generated_image_url, created_at',
+      'id, prompt_id, content_title, tiktok_caption, hashtag, category, ' +
+        'status, ai_model_used, generated_image_url, created_at',
     )
     .eq('created_by', userId)
     .eq('status', 'pending_validation')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(MAX_PENDING_IDEAS_LISTED);
 
   if (error) {
     logger.error('[ContentIdea] failed to list pending ideas', { error });
@@ -442,8 +425,7 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
     content_title: string;
     tiktok_caption: string;
     hashtag: string[] | null;
-    suggested_music: string | null;
-    estimated_duration: number | null;
+    category: GeneratedScheduleDraft['category'] | null;
     ai_model_used: string | null;
     generated_image_url: string | null;
   }>;
@@ -454,15 +436,34 @@ export async function listPendingIdeasForUser(userId: string): Promise<Generated
     content_title: row.content_title,
     tiktok_caption: row.tiktok_caption,
     hashtag: row.hashtag ?? [],
-    suggested_music: row.suggested_music ?? '',
-    estimated_duration: row.estimated_duration ?? 30,
-    estimated_engagement: 'medium' as const,
-    best_time_to_post_wib: '',
-    category: 'TRENDING' as const,
+    category: row.category ?? 'TRENDING',
     status: 'pending_validation' as const,
     ai_model_used: row.ai_model_used ?? MODEL_ID,
     generated_image_url: row.generated_image_url ?? null,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Clear (hard-delete) ALL pending_validation ideas for a user — lets the
+// Generated Ideas page reset to zero when the historical pending backlog
+// grows past what the user wants to review (e.g. many past brief
+// submissions accumulating in the list). Permanent: no soft-delete/audit
+// trail, by explicit choice — different from the single-idea reject flow.
+// ---------------------------------------------------------------------------
+export async function clearPendingIdeasForUser(userId: string): Promise<{ deleted_count: number }> {
+  const { data, error } = await supabase
+    .from('content_ideas')
+    .delete()
+    .eq('created_by', userId)
+    .eq('status', 'pending_validation')
+    .select('id');
+
+  if (error) {
+    logger.error('[ContentIdea] failed to clear pending ideas', { error, userId });
+    throw new Error('Failed to clear pending ideas');
+  }
+
+  return { deleted_count: (data ?? []).length };
 }
 
 // ---------------------------------------------------------------------------
@@ -485,6 +486,23 @@ export async function listByPromptId(promptId: string): Promise<unknown[]> {
 // ---------------------------------------------------------------------------
 // UC006 — Validate AI Content Ideas (moved from IdeaValidationController.ts)
 // ---------------------------------------------------------------------------
+
+// Used to route an "idea approved/rejected" notification to whoever submitted
+// the idea, when that's a different user from the one validating it.
+export async function getIdeaOwner(ideaId: string): Promise<string | null> {
+  const { data, error: lookupErr } = await supabase
+    .from('content_ideas')
+    .select('created_by')
+    .eq('id', ideaId)
+    .maybeSingle();
+
+  if (lookupErr) {
+    logger.warn('[ContentIdea.getIdeaOwner] lookup failed', { lookupErr, ideaId });
+    return null;
+  }
+  return (data as { created_by: string | null } | null)?.created_by ?? null;
+}
+
 export async function approveIdea(ideaId: string, userId: string): Promise<{
   idea_id: string;
   schedule_id: string | null;
@@ -493,10 +511,6 @@ export async function approveIdea(ideaId: string, userId: string): Promise<{
   tiktok_caption: string | null;
   hashtag: string[];
   category: string | null;
-  estimated_engagement: string | null;
-  suggested_music: string | null;
-  estimated_duration: number | null;
-  best_time_to_post_wib: string | null;
 }> {
   // UPDATE guarded by status='pending_validation' — prevents double-approve race.
   // Side-effect: migration 006 trigger auto-creates a draft in content_queue_schedules.
@@ -533,11 +547,7 @@ export async function approveIdea(ideaId: string, userId: string): Promise<{
         content_title,
         tiktok_caption,
         hashtag,
-        category,
-        estimated_engagement,
-        suggested_music,
-        estimated_duration,
-        best_time_to_post_wib
+        category
       )
     `)
     .eq('idea_id', ideaId)
@@ -555,14 +565,10 @@ export async function approveIdea(ideaId: string, userId: string): Promise<{
     idea_id: ideaId,
     schedule_id: draft?.id ?? null,
     schedule_status: draft?.status ?? null,
-    content_title:        idea.content_title        ?? null,
-    tiktok_caption:       idea.tiktok_caption       ?? draft?.custom_caption ?? null,
-    hashtag:              idea.hashtag              ?? draft?.custom_hashtags ?? [],
-    category:             idea.category             ?? null,
-    estimated_engagement: idea.estimated_engagement ?? null,
-    suggested_music:      idea.suggested_music      ?? null,
-    estimated_duration:   idea.estimated_duration   ?? null,
-    best_time_to_post_wib: idea.best_time_to_post_wib ?? null,
+    content_title:  idea.content_title  ?? null,
+    tiktok_caption: idea.tiktok_caption ?? draft?.custom_caption ?? null,
+    hashtag:        idea.hashtag        ?? draft?.custom_hashtags ?? [],
+    category:       idea.category       ?? null,
   };
 }
 

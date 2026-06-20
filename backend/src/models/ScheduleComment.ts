@@ -110,6 +110,18 @@ export async function getScheduleStatus(
   return (schedule as { id: string; status: string } | null) ?? null;
 }
 
+// Used to route a "new comment" notification to the schedule's owner.
+export async function getScheduleOwner(scheduleId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from('content_queue_schedules')
+    .select('created_by')
+    .eq('id', scheduleId)
+    .maybeSingle();
+
+  if (error) throw new Error(`ScheduleComment.getScheduleOwner: ${error.message}`);
+  return (data as { created_by: string | null } | null)?.created_by ?? null;
+}
+
 export async function create({
   scheduleId,
   userId,

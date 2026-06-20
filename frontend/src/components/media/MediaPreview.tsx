@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const ASSET_TYPE_ICON = {
   video:    '🎬',
@@ -61,6 +62,7 @@ const MediaPreview = ({ assets = [], onDeleteAsset }) => {
   const [selected, setSelected] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [brokenAssets, setBrokenAssets] = useState([]);
+  const confirm = useConfirm();
 
   useEffect(() => {
     setBrokenAssets([]);
@@ -148,7 +150,7 @@ const MediaPreview = ({ assets = [], onDeleteAsset }) => {
                   type="button"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    const confirmed = window.confirm('Delete this media file?');
+                    const confirmed = await confirm('Delete this media file?');
                     if (!confirmed) return;
                     try {
                       setDeletingId(asset.id);

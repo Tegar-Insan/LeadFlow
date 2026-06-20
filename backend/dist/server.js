@@ -18,6 +18,7 @@ async function startServer() {
     const { validateTikTokConfig } = await import("./src/config/tiktok.js");
     const { default: logger } = await import("./src/utils/logger.js");
     const { startAutoPublishJob } = await import("./src/jobs/autoPublishJob.js");
+    const { default: commentWSService } = await import("./src/services/commentWebSocketService.js");
     validateEnv();
     validateTikTokConfig();
     const { error } = await db.from('roles').select('count').limit(1);
@@ -40,6 +41,8 @@ async function startServer() {
     });
     // Store io instance on app for use in controllers
     app.io = io;
+    // Initialize comment WebSocket service
+    commentWSService.init(io);
     // Socket.io connection handler
     io.on('connection', (socket) => {
         const userId = socket.handshake.auth.userId || socket.handshake.query.userId;
@@ -138,6 +141,8 @@ async function startServer() {
         logger.error('[Server] Unhandled rejection:', reason);
     });
     startAutoPublishJob(io);
+    // Store comment service on app for use in controllers
+    app.commentWSService = commentWSService;
     return server;
 }
 startServer();

@@ -46,14 +46,14 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart
         e.dataTransfer.setData('scheduleId', schedule.id);
         onDragStart?.(schedule);
       }}
-      className="relative rounded-xl overflow-hidden bg-[#1e1e1e] border border-white/8 cursor-grab active:cursor-grabbing group hover:border-white/20 transition-all duration-200"
+      className="relative rounded-xl overflow-hidden bg-white border border-gray-300 cursor-grab active:cursor-grabbing group hover:border-gray-400 transition-all duration-200"
     >
       {/* Thumbnail */}
-      <div className="relative h-[88px] bg-zinc-800 overflow-hidden">
+      <div className="relative h-[88px] bg-gray-100 overflow-hidden">
         {hasImage ? (
           <img src={schedule.primary_asset_url} alt={schedule.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl opacity-30">
+          <div className="w-full h-full flex items-center justify-center text-2xl opacity-40">
             {schedule.primary_asset_type === 'short_video' ? '🎬' : '📷'}
           </div>
         )}
@@ -102,12 +102,12 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart
 
       {/* Info */}
       <div className="p-2.5">
-        <p className="text-xs font-semibold text-white/90 truncate leading-tight">{schedule.title || schedule.custom_caption || 'Untitled'}</p>
-        <p className={`mt-1 text-[10px] truncate ${isDraft ? 'text-amber-300' : 'text-zinc-400'}`}>
+        <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{schedule.title || schedule.custom_caption || 'Untitled'}</p>
+        <p className={`mt-1 text-[10px] truncate ${isDraft ? 'text-amber-600' : 'text-gray-500'}`}>
           {scheduleText}
         </p>
         <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-gray-400">
             {schedule.duration_seconds ? `⏱ ${schedule.duration_seconds}s` : '📷 Photo'}
           </span>
           <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${badge.cls}`}>

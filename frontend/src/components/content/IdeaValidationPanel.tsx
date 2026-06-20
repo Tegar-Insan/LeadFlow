@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotification } from '../../context/NotificationContext';
-import { approveScheduleFromChat, rejectScheduleFromChat, sendChatMessage } from '../../services/chatbotService';
+import {
+  approveScheduleFromChat,
+  rejectScheduleFromChat,
+  sendChatMessage,
+  getChatSessions,
+  getChatSessionMessages,
+} from '../../services/chatbotService';
 import GeneratedIdeasList, { type ScheduleIdea } from './GeneratedIdeasList';
 import PromptInputForm from './PromptInputForm';
 
@@ -31,6 +37,7 @@ const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProp
     ...defaultWelcome,
     content: intro || defaultWelcome.content,
   }]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,22 +48,53 @@ const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProp
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  // Resume the user's global chat thread (shared with the floating AIChatbot
+  // FAB) so navigating between /content/prompt and /content/validate keeps
+  // the same conversation instead of resetting to the welcome message.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sessions = await getChatSessions();
+        const latest = sessions?.[0];
+        if (!latest || cancelled) return;
+        const history = await getChatSessionMessages(latest.id);
+        if (cancelled || history.length === 0) return;
+        setSessionId(latest.id);
+        setMessages(history.map((m: Record<string, unknown>) => ({
+          id: m['id'] as string,
+          role: m['role'] as 'user' | 'assistant',
+          content: m['content'] as string,
+          type: m['message_type'] as string,
+          schedules: Array.isArray(m['schedules'])
+            ? (m['schedules'] as Record<string, unknown>[]).map((schedule) => ({
+                schedule, approved: false, rejected: false, approving: false,
+              }))
+            : undefined,
+        })));
+      } catch {
+        // Resume is best-effort — fall back to the local welcome message.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const send = useCallback(async (text: string) => {
     const content = String(text || '').trim();
     if (!content || loading) return;
 
     const userMessage = { id: `user_${Date.now()}`, role: 'user' as const, content, type: 'text' };
-    const nextMessages = [...messages, userMessage];
-
-    setMessages(nextMessages);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setError('');
     setLoading(true);
 
     try {
-      const response = await sendChatMessage(
-        nextMessages.map(({ role, content: c }) => ({ role, content: c }))
-      );
+      // Only the new turn is sent — the backend owns history via
+      // chatbot_sessions/chatbot_messages (long-term memory).
+      const response = await sendChatMessage(sessionId, content);
+      if (!sessionId && response.session_id) setSessionId(response.session_id);
+
       const schedules: ScheduleIdea[] = Array.isArray(response.schedules)
         ? response.schedules.map((schedule: Record<string, unknown>) => ({
             schedule,
@@ -78,7 +116,7 @@ const IdeaValidationPanel = ({ title, subtitle, intro }: IdeaValidationPanelProp
     } finally {
       setLoading(false);
     }
-  }, [loading, messages]);
+  }, [loading, sessionId]);
 
   const updateScheduleAt = useCallback((msgId: string, index: number, patch: Partial<ScheduleIdea>) => {
     setMessages((prev) => prev.map((m) => {

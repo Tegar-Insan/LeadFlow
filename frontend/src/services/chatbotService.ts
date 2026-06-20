@@ -14,17 +14,39 @@ const authHeader = () => ({
 });
 
 /**
- * Send a conversation turn to the AI assistant.
- * @param {Array<{role: 'user'|'assistant', content: string}>} messages
- * @returns {Promise<{ reply: string, type: 'text'|'schedule_recommendation', schedule: object|null, model: string }>}
+ * Send a single conversation turn to the AI assistant. History is owned by
+ * the backend (chatbot_sessions/chatbot_messages) — only the new message is
+ * sent; the server loads prior context from the DB.
+ * @param {string|null} sessionId — null/undefined resumes (or creates) the caller's active session
+ * @param {string} message
+ * @returns {Promise<{ session_id: string, reply: string, type: 'text'|'schedule_recommendation', schedules: object[], model: string }>}
  */
-export const sendChatMessage = async (messages) => {
+export const sendChatMessage = async (sessionId, message) => {
   const res = await axios.post(
     `${API}/chatbot/message`,
-    { messages },
+    { session_id: sessionId ?? undefined, message },
     { headers: authHeader() }
   );
   return res.data.data;
+};
+
+/**
+ * List the caller's chat sessions, most recently active first.
+ * @returns {Promise<Array<{ id: string, title: string|null, last_message_at: string }>>}
+ */
+export const getChatSessions = async () => {
+  const res = await axios.get(`${API}/chatbot/sessions`, { headers: authHeader() });
+  return res.data.data.sessions;
+};
+
+/**
+ * Fetch the full message history for one session (oldest first).
+ * @param {string} sessionId
+ * @returns {Promise<Array<{ id: string, role: 'user'|'assistant', content: string, message_type: string, schedules: object[]|null, created_at: string }>>}
+ */
+export const getChatSessionMessages = async (sessionId) => {
+  const res = await axios.get(`${API}/chatbot/sessions/${sessionId}/messages`, { headers: authHeader() });
+  return res.data.data.messages;
 };
 
 /**

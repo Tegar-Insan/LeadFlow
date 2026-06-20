@@ -1,11 +1,11 @@
 import { supabaseAdmin } from "../config/supabase.js";
-import * as scheduleService from "../services/scheduleService.js";
+import * as ContentAsset from "../models/ContentAsset.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
 const STORAGE_BUCKET = process.env['SUPABASE_STORAGE_BUCKET'] ?? 'leadflow-media';
 export const serveMedia = async (req, res) => {
     try {
-        const asset = await scheduleService.getAssetById(req.params['assetId']);
+        const asset = await ContentAsset.getAssetById(req.params['assetId']);
         if (!asset || !asset.storage_path) {
             error(res, { message: 'Asset not found', statusCode: 404 });
             return;

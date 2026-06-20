@@ -1,7 +1,7 @@
 // backend/src/controllers/contentIdeaController.ts
-// Session 9 — thin controller delegating to contentIdeaService.
+// Thin controller delegating to models/ContentIdea.ts (MVC: business logic lives in model)
 // SRS: UC004 Input Prompt Idea, UC005 Generate Content Idea
-import { generateScheduleDraftsFromBrief, generateScheduleDraftsWithStepsFromBrief, listPendingIdeasForUser, } from "../services/contentIdeaService.js";
+import * as ContentIdea from "../models/ContentIdea.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
 // POST /api/content/generate
@@ -18,7 +18,7 @@ export async function generate(req, res) {
         return;
     }
     try {
-        const drafts = await generateScheduleDraftsFromBrief(brief, userId);
+        const drafts = await ContentIdea.generateScheduleDraftsFromBrief(brief, userId);
         if (drafts.length === 0) {
             error(res, {
                 message: 'AI generation returned no valid ideas. Please try a different brief.',
@@ -47,7 +47,7 @@ export async function generateWithSteps(req, res) {
         return;
     }
     try {
-        const result = await generateScheduleDraftsWithStepsFromBrief(brief, userId);
+        const result = await ContentIdea.generateScheduleDraftsWithStepsFromBrief(brief, userId);
         if (result.drafts.length === 0) {
             error(res, {
                 message: 'AI generation returned no valid ideas. Please try a different brief.',
@@ -70,7 +70,7 @@ export async function listPending(req, res) {
         return;
     }
     try {
-        const ideas = await listPendingIdeasForUser(userId);
+        const ideas = await ContentIdea.listPendingIdeasForUser(userId);
         success(res, { message: 'Pending ideas listed', data: { ideas }, statusCode: 200 });
     }
     catch (err) {

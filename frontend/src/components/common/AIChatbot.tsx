@@ -11,6 +11,8 @@ import {
   sendChatMessage,
   approveScheduleFromChat,
   rejectScheduleFromChat,
+  getChatSessions,
+  getChatSessionMessages,
 } from '../../services/chatbotService';
 
 // ── AI sparkle icon ─────────────────────────────────────────────
@@ -184,17 +186,18 @@ type AIChatbotProps = {
   onOpenChange?: (open: boolean) => void;
 };
 
+const WELCOME_MESSAGE = {
+  id:      'welcome',
+  role:    'assistant',
+  content: 'Halo! 👋 Saya AI Assistant Krench Chicken — ditenagai Gemini + data TikTok terkini.\n\nTanya saya tentang jadwal posting, ide konten, hashtag, atau minta rekomendasi jadwal otomatis!',
+  type:    'text',
+};
+
 const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) => {
   const navigate = useNavigate();
   const [open,     setOpen]     = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id:      'welcome',
-      role:    'assistant',
-      content: 'Halo! 👋 Saya AI Assistant Krench Chicken — ditenagai Gemini + data TikTok terkini.\n\nTanya saya tentang jadwal posting, ide konten, hashtag, atau minta rekomendasi jadwal otomatis!',
-      type:    'text',
-    },
-  ]);
+  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  const [sessionId, setSessionId] = useState(null);
   const [input,    setInput]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState(null);
@@ -215,6 +218,36 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
     }
   }, [openOnMount, setOpenState]);
 
+  // Resume the user's global chat thread (shared with /content/prompt and
+  // /content/validate) so context survives navigation/refresh instead of
+  // resetting to the welcome message every time the FAB mounts.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sessions = await getChatSessions();
+        const latest = sessions?.[0];
+        if (!latest || cancelled) return;
+        const history = await getChatSessionMessages(latest.id);
+        if (cancelled || history.length === 0) return;
+        setSessionId(latest.id);
+        setMessages(history.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          type: m.message_type,
+          schedule: Array.isArray(m.schedules) ? m.schedules[0] ?? null : null,
+          approved: false,
+          rejected: false,
+          approving: false,
+        })));
+      } catch {
+        // Resume is best-effort — fall back to the local welcome message.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -228,24 +261,23 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
     if (!content || loading) return;
 
     const userMsg = { id: nextId(), role: 'user', content, type: 'text' };
-    const updated = [...messages, userMsg];
-
-    setMessages(updated);
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setError(null);
     setLoading(true);
 
     try {
-      // Send only role+content — backend doesn't need our UI fields
-      const payload = updated.map(({ role, content }) => ({ role, content }));
-      const data    = await sendChatMessage(payload);
+      // Only the new turn is sent — the backend loads prior context from
+      // chatbot_sessions/chatbot_messages (long-term memory), not the client.
+      const data = await sendChatMessage(sessionId, content);
+      if (!sessionId && data.session_id) setSessionId(data.session_id);
 
       const aiMsg = {
         id:       nextId(),
         role:     'assistant',
         content:  data.reply,
-        type:     data.type     || 'text',
-        schedule: data.schedule || null,
+        type:     data.type || 'text',
+        schedule: Array.isArray(data.schedules) ? data.schedules[0] ?? null : null,
         approved: false,
         rejected: false,
         approving: false,
@@ -257,7 +289,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
     } finally {
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [sessionId, loading]);
 
   // ── Approve handler ─────────────────────────────────────────
   const handleApprove = useCallback(async (schedule, msgId) => {

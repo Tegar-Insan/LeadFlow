@@ -1,4 +1,3 @@
-import * as authService from "../services/authService.js";
 import * as User from "../models/User.js";
 import * as Role from "../models/Role.js";
 import { verifyRefreshToken, signAccessToken } from "../utils/jwtHelper.js";
@@ -7,7 +6,7 @@ import logger from "../utils/logger.js";
 export async function register(req, res, next) {
     try {
         const { email, password, fullName, phone, role } = req.body;
-        const result = await authService.initiateRegistration({ email, password, fullName, phone, roleName: role });
+        const result = await User.initiateRegistration({ email, password, fullName, phone, roleName: role });
         success(res, {
             message: `Verification code sent to ${email}. Please check your inbox.`,
             data: { email, otpSent: true, ...(result.devOtp ? { devOtp: result.devOtp } : {}) },
@@ -20,7 +19,7 @@ export async function register(req, res, next) {
 export async function verifyOTP(req, res, next) {
     try {
         const { email, otp } = req.body;
-        const result = await authService.completeRegistration(email, otp);
+        const result = await User.completeRegistration(email, otp);
         res.cookie('refreshToken', result.refreshToken, {
             httpOnly: true,
             secure: process.env['NODE_ENV'] === 'production',
@@ -40,7 +39,7 @@ export async function verifyOTP(req, res, next) {
 export async function login(req, res, next) {
     try {
         const { email, password } = req.body;
-        const result = await authService.login(email, password);
+        const result = await User.login(email, password);
         res.cookie('refreshToken', result.refreshToken, {
             httpOnly: true,
             secure: process.env['NODE_ENV'] === 'production',
@@ -89,7 +88,12 @@ export async function refresh(req, res, next) {
 export async function getMe(req, res, next) {
     try {
         const authReq = req;
-        const user = await User.findById(authReq.user.userId);
+        const userId = authReq.user?.userId;
+        if (!userId) {
+            error(res, { message: 'Unauthorized.', statusCode: 401 });
+            return;
+        }
+        const user = await User.findById(userId);
         if (!user) {
             error(res, { message: 'User not found.', statusCode: 404 });
             return;
@@ -116,7 +120,7 @@ export async function getMe(req, res, next) {
 export async function resendOTP(req, res, next) {
     try {
         const { email, type } = req.body;
-        const result = await authService.resendOTP(email, type ?? 'register');
+        const result = await User.resendOTP(email, type ?? 'register');
         success(res, {
             message: 'A new verification code has been sent to your email.',
             data: { email, ...(result.devOtp ? { devOtp: result.devOtp } : {}) },

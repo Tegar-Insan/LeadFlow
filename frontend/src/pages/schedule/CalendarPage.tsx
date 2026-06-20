@@ -31,6 +31,7 @@ import CalendarNavbar from '../../components/common/Navbar';
 import SmallSidebar from '../../components/common/smallsidebar';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
   listComments,
@@ -557,6 +558,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
 // ─── Detail Modal ─────────────────────────────────────────────
 const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLoading = false, onMediaUpload, onMediaDeleted, onMediaDelete, assets, loadingAssets, canEdit }) => {
   const { toast } = useNotification();
+  const confirm = useConfirm();
   const authCtx = useContext(AuthContext);
   const currentUserId = authCtx?.user?.userId || authCtx?.user?.id;
   const currentRole = authCtx?.user?.roleName || authCtx?.user?.role_name;
@@ -620,7 +622,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
 
   const handleDeleteComment = async (commentId) => {
     if (deletingCommentId) return;
-    if (!window.confirm('Delete this comment?')) return;
+    if (!(await confirm({ message: 'Delete this comment?', confirmLabel: 'Delete', variant: 'danger' }))) return;
 
     setDeletingCommentId(commentId);
     try {
@@ -924,6 +926,7 @@ const CalendarPage = () => {
 
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
+  const confirm                           = useConfirm();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);  // null=unknown, object=connected, false=not connected
   const [tiktokLoading, setTiktokLoading] = useState(false);
 
@@ -947,7 +950,7 @@ const CalendarPage = () => {
   };
 
   const handleDisconnectTikTok = async () => {
-    if (!window.confirm('Disconnect TikTok account?')) return;
+    if (!(await confirm({ message: 'Disconnect TikTok account?', confirmLabel: 'Disconnect', variant: 'danger' }))) return;
     try {
       await disconnectTikTok();
       setTiktokStatus(false);
@@ -1162,7 +1165,7 @@ const CalendarPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this schedule and all its media?')) return;
+    if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); setModal(null); }
     catch (err) { alert(err.response?.data?.message || 'Failed to delete'); }
   };
@@ -1220,33 +1223,6 @@ const CalendarPage = () => {
             radial-gradient(900px 420px at 92% -18%, #fff1e7 0%, rgba(255,241,231,0) 66%),
             #f7f9fc;
           color: #1f2937;
-        }
-
-        .calendar-reframe aside {
-          width: 268px;
-          background: #ffffff;
-          border-right: 1px solid #d7e0ea;
-        }
-
-        .calendar-reframe aside h2 {
-          color: #0f172a;
-          font-size: 0.95rem;
-        }
-
-        .calendar-reframe aside p,
-        .calendar-reframe aside span {
-          color: #64748b;
-        }
-
-        .calendar-reframe aside [draggable='true'] {
-          background: #f8fbff;
-          border-color: #dbe7f3;
-        }
-
-        .calendar-reframe aside [draggable='true']:hover {
-          border-color: #93c5fd;
-          box-shadow: 0 8px 18px rgba(59, 130, 246, 0.12);
-          transform: translateY(-1px);
         }
 
         .calendar-reframe .calendar-main {

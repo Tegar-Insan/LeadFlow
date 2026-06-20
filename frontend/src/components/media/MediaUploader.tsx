@@ -8,6 +8,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { uploadMedia, deleteMediaAsset } from '../../services/mediaService';
 import { KineticLoader, InlineLoader } from '../common/KineticLoader';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const ACCEPTED = '.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi';
 const MAX_SIZE_MB = 200;
@@ -118,6 +119,7 @@ const MediaUploader = ({
   const [uploadError,   setUploadError]    = useState(null);
   const [isDragOver,    setIsDragOver]     = useState(false);
   const [uploadedAssets, setUploadedAssets] = useState([]);
+  const confirm = useConfirm();
 
   useEffect(() => {
     setUploadedAssets((prev) => {
@@ -199,7 +201,7 @@ const MediaUploader = ({
   };
 
   const handleDeleteExisting = async (assetId: string) => {
-    if (!confirm('Delete this media file?')) return;
+    if (!(await confirm('Delete this media file?'))) return;
     setDeletingId(assetId);
     try {
       await deleteMediaAsset(assetId);

@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import * as scheduleService from "../services/scheduleService.js";
+import * as ContentQueueSchedule from "../models/ContentQueueSchedule.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
 import { broadcastCalendarUpdateFromDate } from "../utils/calendarSocket.js";
@@ -11,7 +11,7 @@ export const getCalendarByMonth = async (req, res) => {
             error(res, { message: 'Invalid month value (1–12)', statusCode: 400 });
             return;
         }
-        const schedules = await scheduleService.getSchedulesByMonth(year, month);
+        const schedules = await ContentQueueSchedule.getSchedulesByMonth(year, month);
         success(res, { message: 'Calendar loaded', data: { year, month, schedules } });
     }
     catch (err) {
@@ -21,7 +21,7 @@ export const getCalendarByMonth = async (req, res) => {
 };
 export const getDrafts = async (_req, res) => {
     try {
-        const drafts = await scheduleService.getDraftSchedules();
+        const drafts = await ContentQueueSchedule.getDraftSchedules();
         success(res, { message: 'Drafts loaded', data: { drafts } });
     }
     catch (err) {
@@ -31,7 +31,7 @@ export const getDrafts = async (_req, res) => {
 };
 export const getScheduleById = async (req, res) => {
     try {
-        const schedule = await scheduleService.getScheduleById(req.params['id']);
+        const schedule = await ContentQueueSchedule.getScheduleById(req.params['id']);
         if (!schedule) {
             error(res, { message: 'Schedule not found', statusCode: 404 });
             return;
@@ -51,10 +51,15 @@ export const createSchedule = async (req, res) => {
     }
     try {
         const authReq = req;
+        const userId = authReq.user?.userId;
+        if (!userId) {
+            error(res, { message: 'Unauthorized', statusCode: 401 });
+            return;
+        }
         const { content_idea_id, title, description, caption, hashtags, scheduled_at, status, priority } = req.body;
-        const schedule = await scheduleService.createSchedule({
+        const schedule = await ContentQueueSchedule.createSchedule({
             idea_id: content_idea_id ?? null,
-            created_by: authReq.user.userId,
+            created_by: userId,
             title: title,
             description: description,
             caption: caption,
@@ -63,10 +68,10 @@ export const createSchedule = async (req, res) => {
             status: status,
             priority: priority ?? 0,
         });
-        logger.info(`[Calendar] Schedule created id=${schedule.id} by user=${authReq.user.userId}`);
+        logger.info(`[Calendar] Schedule created id=${schedule['id']} by user=${userId}`);
         const _io1 = req.app.io;
         if (_io1)
-            broadcastCalendarUpdateFromDate(_io1, schedule.scheduled_at);
+            broadcastCalendarUpdateFromDate(_io1, schedule['scheduled_at']);
         success(res, { message: 'Schedule created', data: { schedule }, statusCode: 201 });
     }
     catch (err) {
@@ -81,7 +86,7 @@ export const updateSchedule = async (req, res) => {
         return;
     }
     try {
-        const existing = await scheduleService.getScheduleById(req.params['id']);
+        const existing = await ContentQueueSchedule.getScheduleById(req.params['id']);
         if (!existing) {
             error(res, { message: 'Schedule not found', statusCode: 404 });
             return;
@@ -90,7 +95,7 @@ export const updateSchedule = async (req, res) => {
             error(res, { message: 'Cannot edit a published schedule', statusCode: 409 });
             return;
         }
-        const schedule = await scheduleService.updateSchedule(req.params['id'], req.body);
+        const schedule = await ContentQueueSchedule.updateSchedule(req.params['id'], req.body);
         logger.info(`[Calendar] Schedule updated id=${schedule.id}`);
         const _io2 = req.app.io;
         if (_io2)
@@ -109,7 +114,7 @@ export const moveSchedule = async (req, res) => {
             error(res, { message: 'scheduled_at is required for move', statusCode: 400 });
             return;
         }
-        const existing = await scheduleService.getScheduleById(req.params['id']);
+        const existing = await ContentQueueSchedule.getScheduleById(req.params['id']);
         if (!existing) {
             error(res, { message: 'Schedule not found', statusCode: 404 });
             return;
@@ -118,7 +123,7 @@ export const moveSchedule = async (req, res) => {
             error(res, { message: 'Cannot move a published schedule', statusCode: 409 });
             return;
         }
-        const schedule = await scheduleService.moveSchedule(req.params['id'], scheduled_at);
+        const schedule = await ContentQueueSchedule.moveSchedule(req.params['id'], scheduled_at);
         logger.info(`[Calendar] Schedule moved id=${schedule.id} to ${scheduled_at}`);
         const _io3 = req.app.io;
         if (_io3)
@@ -132,7 +137,7 @@ export const moveSchedule = async (req, res) => {
 };
 export const deleteSchedule = async (req, res) => {
     try {
-        const existing = await scheduleService.getScheduleById(req.params['id']);
+        const existing = await ContentQueueSchedule.getScheduleById(req.params['id']);
         if (!existing) {
             error(res, { message: 'Schedule not found', statusCode: 404 });
             return;
@@ -141,7 +146,7 @@ export const deleteSchedule = async (req, res) => {
             error(res, { message: 'Cannot delete a published schedule', statusCode: 409 });
             return;
         }
-        await scheduleService.deleteSchedule(req.params['id']);
+        await ContentQueueSchedule.deleteSchedule(req.params['id']);
         logger.info(`[Calendar] Schedule deleted id=${req.params['id']}`);
         const _io4 = req.app.io;
         if (_io4)
@@ -162,12 +167,12 @@ export const getListView = async (req, res) => {
             return;
         }
         const filter = req.query['filter'] || 'month';
-        const date = req.query['date'] || new Date().toISOString().split('T')[0];
+        const date = req.query['date'] || new Date().toISOString().split('T')[0] || '';
         if (!['day', 'week', 'month'].includes(filter)) {
             error(res, { message: 'Invalid filter. Must be day, week, or month', statusCode: 400 });
             return;
         }
-        const schedules = await scheduleService.getSchedulesForListView(userId, filter, date);
+        const schedules = await ContentQueueSchedule.getSchedulesForListView(userId, filter, date);
         logger.info(`[Calendar] List view filter=${filter} date=${date} count=${schedules.length}`);
         success(res, { message: 'Schedules retrieved', data: schedules });
     }

@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import authMiddleware from '../middleware/authMiddleware.ts';
 import roleMiddleware from '../middleware/roleMiddleware.ts';
-import { generate, generateWithSteps, listPending } from '../controllers/contentIdeaController.ts';
+import { generate, generateWithSteps, listPending, clearPending } from '../controllers/contentIdeaController.ts';
 import {
   approveIdea,
   rejectIdea,
@@ -32,6 +32,12 @@ router.get(
   '/pending',
   roleMiddleware(['marketing_staff', 'admin']),
   listPending,
+);
+
+router.delete(
+  '/pending',
+  roleMiddleware(['marketing_staff', 'admin']),
+  clearPending,
 );
 
 router.post(

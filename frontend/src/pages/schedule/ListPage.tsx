@@ -32,6 +32,7 @@ import SmallSidebar from '../../components/common/smallsidebar';
 import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
   listComments,
@@ -310,6 +311,7 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
 // ─── Detail Modal (identical to CalendarPage) ────────────────
 const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLoading = false, onMediaUpload, onMediaDeleted, onMediaDelete, assets, loadingAssets, canEdit }) => {
   const { toast } = useNotification();
+  const confirm = useConfirm();
   const authCtx = useContext(AuthContext);
   const currentUserId = authCtx?.user?.userId || authCtx?.user?.id;
   const currentRole = authCtx?.user?.roleName || authCtx?.user?.role_name;
@@ -350,7 +352,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
 
   const handleDeleteComment = async (commentId) => {
     if (deletingCommentId) return;
-    if (!window.confirm('Delete this comment?')) return;
+    if (!(await confirm({ message: 'Delete this comment?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     setDeletingCommentId(commentId);
     try {
       await deleteComment(commentId);
@@ -533,6 +535,7 @@ export default function ListPage() {
   const [listViewDate, setListViewDate] = useState(dayjs().tz('Asia/Jakarta').format('YYYY-MM-DD'));
 
   const { toast } = useNotification();
+  const confirm = useConfirm();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);
   const [tiktokLoading, setTiktokLoading] = useState(false);
 
@@ -580,7 +583,7 @@ export default function ListPage() {
   };
 
   const handleDisconnectTikTok = async () => {
-    if (!window.confirm('Disconnect TikTok account?')) return;
+    if (!(await confirm({ message: 'Disconnect TikTok account?', confirmLabel: 'Disconnect', variant: 'danger' }))) return;
     try {
       await disconnectTikTok();
       setTiktokStatus(false);
@@ -667,7 +670,7 @@ export default function ListPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this schedule and all its media?')) return;
+    if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); setModal(null); }
     catch (err) { alert(err.response?.data?.message || 'Failed to delete'); }
   };
@@ -715,20 +718,6 @@ export default function ListPage() {
             radial-gradient(900px 420px at 92% -18%, #fff1e7 0%, rgba(255,241,231,0) 66%),
             #f7f9fc;
           color: #1f2937;
-        }
-        .calendar-reframe aside {
-          width: 268px;
-          background: #ffffff;
-          border-right: 1px solid #d7e0ea;
-        }
-        .calendar-reframe aside h2 { color: #0f172a; font-size: 0.95rem; }
-        .calendar-reframe aside p,
-        .calendar-reframe aside span { color: #64748b; }
-        .calendar-reframe aside [draggable='true'] { background: #f8fbff; border-color: #dbe7f3; }
-        .calendar-reframe aside [draggable='true']:hover {
-          border-color: #93c5fd;
-          box-shadow: 0 8px 18px rgba(59, 130, 246, 0.12);
-          transform: translateY(-1px);
         }
         .calendar-reframe .calendar-main { background: #f7f9fc; }
         .calendar-reframe .calendar-topbar {
@@ -1051,7 +1040,7 @@ export default function ListPage() {
                                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 </button>
                                 <button
-                                  onClick={() => { if (window.confirm('Delete this post?')) handleDelete(item.id); }}
+                                  onClick={async () => { if (await confirm({ message: 'Delete this post?', confirmLabel: 'Delete', variant: 'danger' })) handleDelete(item.id); }}
                                   className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>

@@ -1,4 +1,4 @@
-import * as dashboardCalendarService from "../services/dashboardCalendarService.js";
+import * as WeeklyDashboardReport from "../models/WeeklyDashboardReport.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
 export const getOwnerCalendar = async (req, res) => {
@@ -9,7 +9,7 @@ export const getOwnerCalendar = async (req, res) => {
             error(res, { message: 'Invalid month value (1–12)', statusCode: 400 });
             return;
         }
-        const schedules = await dashboardCalendarService.getOwnerCalendar(year, month);
+        const schedules = await WeeklyDashboardReport.getOwnerCalendar(year, month);
         success(res, { message: 'Owner calendar loaded', data: { year, month, schedules } });
     }
     catch (err) {

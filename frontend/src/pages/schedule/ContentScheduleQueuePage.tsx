@@ -15,6 +15,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { useSchedule }  from '../../hooks/useSchedule';
 import AuthContext       from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { fLongDateTime } from '../../utils/formatDate';
 import { InlineLoader }  from '../../components/common/KineticLoader';
 import { LEADFLOW_BG } from '../../utils/contentModuleTheme';
@@ -165,6 +166,7 @@ const ContentScheduleQueuePage = () => {
   const roleName = authCtx?.user?.roleName || authCtx?.user?.role_name;
   const canEdit  = ['marketing_staff', 'admin'].includes(roleName);
   const { toast } = useNotification();
+  const confirm = useConfirm();
 
   const {
     year, month,
@@ -212,7 +214,7 @@ const ContentScheduleQueuePage = () => {
   });
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this schedule and all its media?')) return;
+    if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); }
     catch { alert('Failed to delete.'); }
   };

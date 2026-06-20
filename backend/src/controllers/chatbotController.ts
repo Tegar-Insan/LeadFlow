@@ -4,6 +4,7 @@ import logger from '../utils/logger.ts';
 import { chatWithAnthropic } from '../services/anthropicService.ts';
 import { createSchedule } from '../models/ContentQueueSchedule.ts';
 import { requestIdeaImages } from '../services/imageGenerationClient.ts';
+import * as ChatbotSession from '../models/ChatbotSession.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
 
 // Chat-proposed schedules are ephemeral (not yet a content_ideas row) until
@@ -27,40 +28,102 @@ async function attachGeneratedImages(
   });
 }
 
+// POST /api/chatbot/message
+// body: { session_id?: string, message: string }
+// Server-owned history: the client sends only the new turn. The backend
+// resolves (or creates) the caller's session, loads a sliding window of
+// prior turns from the DB for context, and persists both the user message
+// and the assistant reply — this is the long-term memory layer.
 export const sendMessage = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { messages } = req.body as { messages?: Array<{ role: string; content: string }> };
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.userId;
+    if (!userId) { error(res, { message: 'Unauthorized', statusCode: 401 }); return; }
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      error(res, { message: 'messages array is required', statusCode: 400 }); return;
-    }
-    const last = messages[messages.length - 1];
-    if (last?.role !== 'user') {
-      error(res, { message: 'Last message must be from user', statusCode: 400 }); return;
-    }
+    const { session_id, message } = req.body as { session_id?: string; message?: string };
+    const content = typeof message === 'string' ? message.trim() : '';
+    if (!content) { error(res, { message: 'message is required', statusCode: 400 }); return; }
 
-    const trimmed = messages.slice(-10);
-    const { visibleText, schedules, model } = await chatWithAnthropic(trimmed);
+    const session = session_id
+      ? await ChatbotSession.getOwnedSession(session_id, userId)
+      : await ChatbotSession.getOrCreateActiveSession(userId);
+
+    const history = await ChatbotSession.getRecentMessages(session.id);
+    const anthropicHistory = history.map((m) => ({ role: m.role, content: m.content }));
+
+    await ChatbotSession.appendMessage({ sessionId: session.id, role: 'user', content });
+
+    const { visibleText, schedules, model } = await chatWithAnthropic([
+      ...anthropicHistory,
+      { role: 'user', content },
+    ]);
     const schedulesWithImages = await attachGeneratedImages(schedules);
+    const replyType = schedulesWithImages.length > 0 ? 'schedule_recommendation' : 'text';
+
+    await ChatbotSession.appendMessage({
+      sessionId: session.id,
+      role: 'assistant',
+      content: visibleText,
+      messageType: replyType,
+      schedules: schedulesWithImages.length > 0 ? schedulesWithImages : null,
+      aiModelUsed: model,
+    });
 
     success(res, {
       message: 'Chat response generated',
       data: {
+        session_id: session.id,
         reply: visibleText,
-        type: schedulesWithImages.length > 0 ? 'schedule_recommendation' : 'text',
+        type: replyType,
         schedules: schedulesWithImages,
         model,
       },
     });
   } catch (err: unknown) {
-    const e = err as { message?: string; status?: number; response?: { status?: number } };
+    const e = err as { message?: string; status?: number; statusCode?: number; response?: { status?: number } };
     logger.error('[chatbotController.sendMessage]', e.message);
-    const statusCode = e.status ?? e.response?.status;
+    const statusCode = e.statusCode ?? e.status ?? e.response?.status;
+    if (statusCode === 404) { error(res, { message: 'Chat session not found', statusCode: 404 }); return; }
     if (e.message?.includes('authentication_error') || statusCode === 400) {
       error(res, { message: 'Anthropic API key tidak valid.', statusCode: 503 }); return;
     }
     if (statusCode === 429) { error(res, { message: 'AI service sedang rate-limited.', statusCode: 429 }); return; }
     error(res, { message: 'Gagal mendapatkan respons AI', statusCode: 500 });
+  }
+};
+
+// GET /api/chatbot/sessions
+export const getSessions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.userId;
+    if (!userId) { error(res, { message: 'Unauthorized', statusCode: 401 }); return; }
+
+    const sessions = await ChatbotSession.listSessionsForUser(userId);
+    success(res, { message: 'Sessions listed', data: { sessions } });
+  } catch (err: unknown) {
+    const e = err as { message?: string };
+    logger.error('[chatbotController.getSessions]', e.message);
+    error(res, { message: 'Failed to fetch chat sessions', statusCode: 500 });
+  }
+};
+
+// GET /api/chatbot/sessions/:sessionId/messages
+export const getSessionMessages = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.userId;
+    if (!userId) { error(res, { message: 'Unauthorized', statusCode: 401 }); return; }
+
+    const { sessionId } = req.params;
+    if (!sessionId) { error(res, { message: 'sessionId required', statusCode: 400 }); return; }
+
+    const messages = await ChatbotSession.getSessionMessages(sessionId as string, userId);
+    success(res, { message: 'Messages listed', data: { messages } });
+  } catch (err: unknown) {
+    const e = err as { message?: string; statusCode?: number };
+    logger.error('[chatbotController.getSessionMessages]', e.message);
+    error(res, { message: e.statusCode === 404 ? 'Session not found' : 'Failed to fetch messages', statusCode: e.statusCode ?? 500 });
   }
 };
 

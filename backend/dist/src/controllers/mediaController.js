@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * mediaController.ts
  * UC008 – Upload Content Feed in Calendar
@@ -8,13 +7,13 @@
 import multer from 'multer';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
-import * as scheduleService from "../services/scheduleService.js";
+import { supabaseAdmin } from "../config/supabase.js";
+import * as ContentQueueSchedule from "../models/ContentQueueSchedule.js";
+import * as ContentAsset from "../models/ContentAsset.js";
 import { getConnectedAccountForUser } from "../services/tiktokOAuthService.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
-const supabaseStorage = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
+const STORAGE_BUCKET = process.env['SUPABASE_STORAGE_BUCKET'] || 'leadflow-media';
 const ALLOWED_MIME = [
     'image/jpeg', 'image/png', 'image/webp', 'image/gif',
     'video/mp4', 'video/quicktime', 'video/x-msvideo',
@@ -22,10 +21,10 @@ const ALLOWED_MIME = [
 const MAX_FILE_SIZE = 52428800; // 50 MB per STD TC008_04
 const upload = multer({
     storage: multer.memoryStorage(),
-    fileFilter: (req, file, cb) => {
+    fileFilter: (_req, file, cb) => {
         ALLOWED_MIME.includes(file.mimetype)
             ? cb(null, true)
-            : cb(new Error(`Unsupported file type: ${file.mimetype}`), false);
+            : cb(new Error(`Unsupported file type: ${file.mimetype}`));
     },
     limits: { fileSize: MAX_FILE_SIZE },
 });
@@ -35,11 +34,10 @@ const getContentType = (mimetype) => mimetype.startsWith('video/') ? 'short_vide
 const hydrateAssetPreview = (asset) => {
     if (!asset)
         return asset;
-    let previewUrl = asset.preview_url || asset.file_url || null;
-    if (asset.storage_path) {
-        const { data } = supabaseStorage
-            .storage.from(STORAGE_BUCKET)
-            .getPublicUrl(asset.storage_path);
+    let previewUrl = asset['preview_url'] ?? asset['file_url'] ?? null;
+    const storagePath = asset['storage_path'];
+    if (storagePath) {
+        const { data } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
         previewUrl = data?.publicUrl || previewUrl;
     }
     return {
@@ -53,40 +51,54 @@ const hydrateAssetPreview = (asset) => {
 // ─────────────────────────────────────────────
 export const uploadMedia = async (req, res) => {
     try {
+        const authReq = req;
+        const userId = authReq.user?.userId;
+        if (!userId) {
+            error(res, { message: 'Unauthorized', statusCode: 401 });
+            return;
+        }
         const { scheduleId } = req.params;
-        const schedule = await scheduleService.getScheduleById(scheduleId);
-        if (!schedule)
-            return error(res, { message: 'Schedule not found', statusCode: 404 });
-        if (schedule.status === 'published') {
-            return error(res, { message: 'Cannot upload to a published schedule', statusCode: 409 });
+        const schedule = await ContentQueueSchedule.getScheduleById(scheduleId);
+        if (!schedule) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
         }
-        if (!req.files || req.files.length === 0) {
-            return error(res, { message: 'No files uploaded', statusCode: 400 });
+        if (schedule['status'] === 'published') {
+            error(res, { message: 'Cannot upload to a published schedule', statusCode: 409 });
+            return;
         }
-        if (!schedule.tiktok_account_id) {
-            const connectedAccount = await getConnectedAccountForUser(req.user.userId);
-            if (connectedAccount?.id) {
-                const { error: linkError } = await supabaseStorage
+        const files = req.files;
+        if (!files || files.length === 0) {
+            error(res, { message: 'No files uploaded', statusCode: 400 });
+            return;
+        }
+        let tiktokAccountId = schedule['tiktok_account_id'];
+        if (!tiktokAccountId) {
+            const connectedAccount = await getConnectedAccountForUser(userId);
+            const connectedId = connectedAccount?.['id'];
+            if (connectedId) {
+                const { error: linkError } = await supabaseAdmin
                     .from('content_queue_schedules')
                     .update({
-                    tiktok_account_id: connectedAccount.id,
+                    tiktok_account_id: connectedId,
                     updated_at: new Date().toISOString(),
                 })
                     .eq('id', scheduleId);
                 if (linkError) {
                     logger.error('[mediaController] Failed to attach TikTok account to schedule', linkError);
-                    return error(res, {
+                    error(res, {
                         message: `Failed to attach TikTok account to schedule: ${linkError.message}`,
                         statusCode: 502,
                     });
+                    return;
                 }
-                schedule.tiktok_account_id = connectedAccount.id;
+                tiktokAccountId = connectedId;
             }
         }
         const uploadAsset = async (file) => {
             const ext = path.extname(file.originalname) || '.bin';
             const storagePath = `schedules/${scheduleId}/${randomUUID()}${ext}`;
-            const { error: storageErr } = await supabaseStorage
+            const { error: storageErr } = await supabaseAdmin
                 .storage.from(STORAGE_BUCKET)
                 .upload(storagePath, file.buffer, {
                 contentType: file.mimetype,
@@ -94,14 +106,14 @@ export const uploadMedia = async (req, res) => {
             });
             if (storageErr) {
                 logger.error('[mediaController] Storage error', storageErr);
-                return error(res, { message: `Storage upload failed: ${storageErr.message}`, statusCode: 502 });
+                throw new Error(`Storage upload failed: ${storageErr.message}`);
             }
-            const { data: urlData } = supabaseStorage
+            const { data: urlData } = supabaseAdmin
                 .storage.from(STORAGE_BUCKET)
                 .getPublicUrl(storagePath);
-            const asset = await scheduleService.createAsset({
+            const asset = await ContentAsset.createAsset({
                 queue_schedule_id: scheduleId,
-                uploaded_by: req.user.userId,
+                uploaded_by: userId,
                 content_type: getContentType(file.mimetype),
                 file_name: file.originalname,
                 file_url: urlData.publicUrl,
@@ -111,15 +123,15 @@ export const uploadMedia = async (req, res) => {
             });
             return hydrateAssetPreview(asset);
         };
-        const uploadedAssets = req.files.length === 1
-            ? [await uploadAsset(req.files[0])]
-            : await Promise.all(req.files.map((file) => uploadAsset(file)));
-        logger.info(`[Media] ${req.files.length} file(s) uploaded to schedule ${scheduleId}`);
-        return success(res, {
+        const uploadedAssets = files.length === 1
+            ? [await uploadAsset(files[0])]
+            : await Promise.all(files.map((file) => uploadAsset(file)));
+        logger.info(`[Media] ${files.length} file(s) uploaded to schedule ${scheduleId}`);
+        success(res, {
             message: 'Media uploaded',
             data: {
                 scheduleId,
-                tiktok_account_id: schedule.tiktok_account_id || null,
+                tiktok_account_id: tiktokAccountId || null,
                 assets: uploadedAssets,
             },
             statusCode: 201,
@@ -127,7 +139,7 @@ export const uploadMedia = async (req, res) => {
     }
     catch (err) {
         logger.error('[mediaController.uploadMedia]', err);
-        return error(res, { message: 'Media upload failed', statusCode: 500 });
+        error(res, { message: 'Media upload failed', statusCode: 500 });
     }
 };
 // ─────────────────────────────────────────────
@@ -135,16 +147,20 @@ export const uploadMedia = async (req, res) => {
 // ─────────────────────────────────────────────
 export const getMediaBySchedule = async (req, res) => {
     try {
-        const schedule = await scheduleService.getScheduleById(req.params.scheduleId);
-        if (!schedule)
-            return error(res, { message: 'Schedule not found', statusCode: 404 });
-        const assets = await scheduleService.getAssetsBySchedule(req.params.scheduleId);
+        const { scheduleId } = req.params;
+        const schedule = await ContentQueueSchedule.getScheduleById(scheduleId);
+        if (!schedule) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        const assets = await ContentAsset.getAssetsBySchedule(scheduleId);
         const hydratedAssets = assets.map(hydrateAssetPreview);
+        const scheduleAssets = schedule['assets'] ?? [];
         const hydratedSchedule = {
             ...schedule,
-            assets: (schedule.assets || []).map(hydrateAssetPreview),
+            assets: scheduleAssets.map(hydrateAssetPreview),
         };
-        return success(res, {
+        success(res, {
             message: 'Assets loaded',
             data: {
                 schedule: hydratedSchedule,
@@ -154,7 +170,7 @@ export const getMediaBySchedule = async (req, res) => {
     }
     catch (err) {
         logger.error('[mediaController.getMediaBySchedule]', err);
-        return error(res, { message: 'Failed to load media', statusCode: 500 });
+        error(res, { message: 'Failed to load media', statusCode: 500 });
     }
 };
 // ─────────────────────────────────────────────
@@ -162,31 +178,39 @@ export const getMediaBySchedule = async (req, res) => {
 // ─────────────────────────────────────────────
 export const deleteMedia = async (req, res) => {
     try {
-        const asset = await scheduleService.getAssetById(req.params.assetId);
-        if (!asset)
-            return error(res, { message: 'Asset not found', statusCode: 404 });
-        const schedule = await scheduleService.getScheduleById(asset.queue_schedule_id);
-        if (!schedule)
-            return error(res, { message: 'Schedule not found', statusCode: 404 });
-        if (schedule.status === 'published') {
-            return error(res, {
+        const { assetId } = req.params;
+        const asset = await ContentAsset.getAssetById(assetId);
+        if (!asset) {
+            error(res, { message: 'Asset not found', statusCode: 404 });
+            return;
+        }
+        const queueScheduleId = asset['queue_schedule_id'];
+        const schedule = await ContentQueueSchedule.getScheduleById(queueScheduleId);
+        if (!schedule) {
+            error(res, { message: 'Schedule not found', statusCode: 404 });
+            return;
+        }
+        if (schedule['status'] === 'published') {
+            error(res, {
                 message: 'Cannot delete media from a published schedule',
                 statusCode: 409,
             });
+            return;
         }
-        await scheduleService.deleteAsset(req.params.assetId);
-        const { error: removeError } = await supabaseStorage
+        await ContentAsset.deleteAsset(assetId);
+        const storagePath = asset['storage_path'];
+        const { error: removeError } = await supabaseAdmin
             .storage.from(STORAGE_BUCKET)
-            .remove([asset.storage_path]);
+            .remove([storagePath]);
         if (removeError) {
             logger.error('[mediaController] Storage delete warning', removeError);
         }
-        logger.info(`[Media] Asset deleted id=${asset.id}`);
-        return success(res, { message: 'Media deleted', data: { assetId: asset.id } });
+        logger.info(`[Media] Asset deleted id=${asset['id']}`);
+        success(res, { message: 'Media deleted', data: { assetId: asset['id'] } });
     }
     catch (err) {
         logger.error('[mediaController.deleteMedia]', err);
-        return error(res, { message: 'Failed to delete media', statusCode: 500 });
+        error(res, { message: 'Failed to delete media', statusCode: 500 });
     }
 };
 //# sourceMappingURL=mediaController.js.map

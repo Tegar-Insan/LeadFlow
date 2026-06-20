@@ -95,7 +95,7 @@ const ContentLibrarySidebar = ({
   const unscheduledCount = items.filter(s => s.status === 'draft' || !s.scheduled_at).length;
 
   return (
-    <aside className="w-[175px] flex-shrink-0 bg-white border-r border-gray-300 flex flex-col h-full overflow-hidden">
+    <aside className="w-[268px] flex-shrink-0 bg-white border-r border-gray-300 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="p-3.5 border-b border-gray-300">
         <h2 className="font-headline font-bold text-sm text-gray-900">Content Library</h2>

@@ -21,10 +21,6 @@ export interface GeneratedScheduleDraft {
   content_title: string;
   tiktok_caption: string;
   hashtag: string[];
-  suggested_music: string;
-  estimated_duration: number;
-  estimated_engagement: 'low' | 'medium' | 'high';
-  best_time_to_post_wib: string;
   category:
     | 'BEHIND-THE-SCENES'
     | 'MENU-SHOWCASE'
@@ -88,10 +84,6 @@ export interface ApproveIdeaResult {
   tiktok_caption: string | null;
   hashtag: string[];
   category: string | null;
-  estimated_engagement: 'low' | 'medium' | 'high' | null;
-  suggested_music: string | null;
-  estimated_duration: number | null;
-  best_time_to_post_wib: string | null;
 }
 
 export async function approveIdea(ideaId: string): Promise<ApproveIdeaResult> {
@@ -127,4 +119,15 @@ export async function listPendingIdeas(): Promise<GeneratedScheduleDraft[]> {
     { headers: authHeaders() },
   );
   return unwrap(data).ideas;
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /content/pending — hard-deletes every pending idea for the caller
+// ---------------------------------------------------------------------------
+export async function clearPendingIdeas(): Promise<{ deleted_count: number }> {
+  const { data } = await axios.delete<ApiResponse<{ deleted_count: number }>>(
+    `${BASE}/content/pending`,
+    { headers: authHeaders() },
+  );
+  return unwrap(data);
 }

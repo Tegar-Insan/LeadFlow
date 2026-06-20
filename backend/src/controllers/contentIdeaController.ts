@@ -86,3 +86,23 @@ export async function listPending(req: AuthenticatedRequest, res: Response): Pro
     error(res, { message: 'Failed to fetch pending ideas', statusCode: 500 });
   }
 }
+
+// DELETE /api/content/pending
+// Hard-deletes every pending_validation idea for the caller — resets the
+// Generated Ideas list to zero so the historical backlog can't keep
+// accumulating across every past brief submission.
+export async function clearPending(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const userId = req.user?.userId;
+  if (!userId) {
+    error(res, { message: 'Unauthorized', statusCode: 401 });
+    return;
+  }
+
+  try {
+    const result = await ContentIdea.clearPendingIdeasForUser(userId);
+    success(res, { message: 'Pending ideas cleared', data: result, statusCode: 200 });
+  } catch (err) {
+    logger.error('[contentIdeaController.clearPending]', { err });
+    error(res, { message: 'Failed to clear pending ideas', statusCode: 500 });
+  }
+}

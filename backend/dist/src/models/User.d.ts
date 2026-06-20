@@ -18,4 +18,28 @@ export declare function findAll({ page, limit, roleId }?: {
     users: unknown;
     total: number | null;
 }>;
+export declare function initiateRegistration({ email, password, fullName, phone, roleName }: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone?: string | null;
+    roleName: string;
+}): Promise<{
+    otpSent: boolean;
+    devOtp?: string;
+}>;
+export declare function completeRegistration(email: string, otp: string): Promise<{
+    user: Record<string, unknown>;
+    accessToken: string;
+    refreshToken: string;
+}>;
+export declare function login(email: string, password: string): Promise<{
+    user: Record<string, unknown>;
+    accessToken: string;
+    refreshToken: string;
+}>;
+export declare function resendOTP(email: string, type?: string): Promise<{
+    otpSent: boolean;
+    devOtp?: string;
+}>;
 //# sourceMappingURL=User.d.ts.map

@@ -4,6 +4,7 @@ import Sidebar from '../../components/common/Sidebar';
 import DashboardNavbar from '../../components/common/DashboardNavbar';
 import AuthContext from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { useSchedule } from '../../hooks/useSchedule';
 import { nowWIB } from '../../utils/formatDate';
 import { LibraryCard } from '../../components/Schedule/ContentCard';
@@ -29,6 +30,7 @@ export default function Marketingdashboard() {
   const roleName = authCtx?.user?.roleName || authCtx?.user?.role_name;
   const canEdit = ['marketing_staff', 'admin'].includes(roleName);
   const { toast } = useNotification();
+  const confirm = useConfirm();
   const { schedules, drafts, loading, error, removeSchedule, publishNow } = useSchedule();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filter, setFilter] = useState('drafts');
@@ -48,7 +50,7 @@ export default function Marketingdashboard() {
   const handleEdit = (schedule) => navigate('/calendar', { state: { editScheduleId: schedule.id } });
 
   const handleDelete = async (scheduleId) => {
-    if (!window.confirm('Delete this content?')) return;
+    if (!(await confirm({ message: 'Delete this content?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try {
       await removeSchedule(scheduleId);
       toast.success('Content removed');

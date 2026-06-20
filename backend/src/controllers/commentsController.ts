@@ -4,14 +4,19 @@
 
 import type { Response } from 'express';
 import * as ScheduleComment from '../models/ScheduleComment.ts';
+import * as Notification from '../models/Notification.ts';
 import { success, error } from '../utils/responseHelper.ts';
 import logger from '../utils/logger.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
+import type { NotificationRow } from '../models/Notification.ts';
 
 type AppWithServices = {
   commentWSService?: {
     broadcastCommentAdded: (scheduleId: string, comment: unknown) => void;
     broadcastCommentDeleted: (scheduleId: string, commentId: string) => void;
+  };
+  notificationWSService?: {
+    broadcastNew: (userId: string, notification: NotificationRow) => void;
   };
 };
 
@@ -118,6 +123,23 @@ export async function createComment(req: AuthenticatedRequest, res: Response): P
     } catch (wsErr) {
       logger.error('[createComment] WebSocket broadcast failed', { wsErr });
     }
+  }
+
+  // Persistent notification to the schedule's owner (skip if they posted it themselves)
+  try {
+    const ownerId = await ScheduleComment.getScheduleOwner(schedule_id);
+    if (ownerId && ownerId !== userId) {
+      const notification = await Notification.createNotification({
+        userId: ownerId,
+        type: 'comment_added',
+        title: 'New comment on your schedule',
+        message: comment_text.trim().slice(0, 200),
+        relatedId: schedule_id,
+      });
+      app?.notificationWSService?.broadcastNew(ownerId, notification);
+    }
+  } catch (notifyErr) {
+    logger.error('[createComment] notification creation failed', { notifyErr });
   }
 
   success(res, {
