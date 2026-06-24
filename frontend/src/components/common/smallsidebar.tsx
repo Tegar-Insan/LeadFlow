@@ -8,7 +8,7 @@ interface SmallSidebarProps {
 }
 
 interface NavItem {
-  key: 'calendar';
+  key: 'calendar' | 'dashboard';
   label: string;
   path: string;
   icon: React.ReactNode;
@@ -20,17 +20,36 @@ const getCalendarIcon = () => (
   </svg>
 );
 
-function getNavItems(role?: string): NavItem[] {
-  const calendarPath = role === 'business_owner' ? '/dashboard/calendar/read-only' : '/calendar/month';
+const getDashboardIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5h3.75V21H3v-7.5zM10.125 8.25h3.75V21h-3.75V8.25zM17.25 3h3.75v18h-3.75V3z" />
+  </svg>
+);
 
-  return [
-    {
-      key: 'calendar',
-      label: 'Calendar',
-      path: calendarPath,
-      icon: getCalendarIcon(),
-    },
-  ];
+function getNavItems(role?: string): NavItem[] {
+  const isBusinessOwner = role === 'business_owner';
+  const calendarPath = isBusinessOwner ? '/dashboard/calendar/read-only' : '/calendar/month';
+
+  const items: NavItem[] = [];
+
+  // Dashboard is scoped to business_owner only — marketing staff/admin have their own landing pages.
+  if (isBusinessOwner) {
+    items.push({
+      key: 'dashboard',
+      label: 'Dashboard',
+      path: '/dashboard',
+      icon: getDashboardIcon(),
+    });
+  }
+
+  items.push({
+    key: 'calendar',
+    label: 'Calendar',
+    path: calendarPath,
+    icon: getCalendarIcon(),
+  });
+
+  return items;
 }
 
 export default function SmallSidebar({ currentPath, className = '' }: SmallSidebarProps) {

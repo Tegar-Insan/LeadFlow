@@ -26,6 +26,7 @@ const getPrimaryAssetType = (item) => {
   const mime = String(item?.primary_asset_mime || item?.assets?.[0]?.mime_type || '').toLowerCase();
   if (mime.startsWith('video/')) return 'short_video';
   if (mime.startsWith('image/')) return 'poster_photo';
+  if (item?.generated_image_url) return 'poster_photo';
   return null;
 };
 

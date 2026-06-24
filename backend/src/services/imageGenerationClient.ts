@@ -52,7 +52,11 @@ export async function requestIdeaImage(
         axios.post<ImageGenerateApiResponse>(
           `${AI_SERVICE_URL}/image/generate`,
           { idea },
-          { timeout: 60_000 },
+          // gpt-image-1 at 1024x1536 routinely takes 50-61s by itself — a
+          // 60s timeout left almost no margin and was the deciding factor
+          // in whichever draft's image call landed on the slow side of that
+          // range (typically the last one in a 3-idea sequential batch).
+          { timeout: 120_000 },
         ),
       {
         ...IMAGE_GEN_RETRY,

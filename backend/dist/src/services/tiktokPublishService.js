@@ -6,6 +6,8 @@ import { TIKTOK_CONFIG } from "../config/tiktok.js";
 import { getConnectedAccountForUser } from "./tiktokOAuthService.js";
 import logger from "../utils/logger.js";
 import { retryWithBackoff, TIKTOK_RETRY } from "../utils/retryHelper.js";
+import * as Notification from "../models/Notification.js";
+import notificationWSService from "./notificationWebSocketService.js";
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'leadflow-media';
 const SIGNED_URL_TTL_SECONDS = 3600;
 const DEFAULT_PRIVACY_LEVEL = process.env.TIKTOK_DEFAULT_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE';
@@ -613,6 +615,32 @@ async function finalizePublish(scheduleId, outcome) {
         catch {
             // Best-effort fallback
         }
+    }
+    // UC009 — persistent notification to whoever owns the schedule (best-effort,
+    // never blocks the publish flow itself).
+    try {
+        const { data: ownerRow } = await supabaseAdmin
+            .from('content_queue_schedules')
+            .select('created_by, custom_caption, content_ideas ( content_title )')
+            .eq('id', scheduleId)
+            .maybeSingle();
+        const ownerId = ownerRow?.created_by;
+        if (ownerId) {
+            const label = ownerRow?.custom_caption || ownerRow?.content_ideas?.content_title || 'Your scheduled content';
+            const notification = await Notification.createNotification({
+                userId: ownerId,
+                type: result === 'success' ? 'publish_success' : 'publish_failed',
+                title: result === 'success' ? 'Published to TikTok' : 'Publish failed',
+                message: result === 'success'
+                    ? `"${label}" was published successfully.`
+                    : `"${label}" failed to publish: ${message}`,
+                relatedId: scheduleId,
+            });
+            notificationWSService.broadcastNew(ownerId, notification);
+        }
+    }
+    catch (notifyErr) {
+        console.error('[tiktokPublishService] notification creation failed:', notifyErr?.message);
     }
 }
 // ─────────────────────────────────────────────────────────────────────────────

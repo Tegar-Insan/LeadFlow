@@ -147,12 +147,21 @@ export const uploadMedia = async (req: Request, res: Response): Promise<void> =>
       ? [await uploadAsset(files[0] as Express.Multer.File)]
       : await Promise.all(files.map((file) => uploadAsset(file)));
 
-    logger.info(`[Media] ${files.length} file(s) uploaded to schedule ${scheduleId}`);
+    // Advance the schedule to 'uploaded' so it becomes eligible for the
+    // auto-publish cron (publishService.getDueSchedules only polls
+    // status='uploaded'). Without this, media can be attached forever and
+    // the schedule never qualifies for auto-publish regardless of
+    // scheduled_at. Already excluded 'published' schedules above; this also
+    // lets a previously 'failed' schedule retry on re-upload.
+    await ContentQueueSchedule.updateSchedule(scheduleId, { status: 'uploaded' });
+
+    logger.info(`[Media] ${files.length} file(s) uploaded to schedule ${scheduleId}, status -> uploaded`);
     success(res, {
       message: 'Media uploaded',
       data: {
         scheduleId,
         tiktok_account_id: tiktokAccountId || null,
+        status: 'uploaded',
         assets: uploadedAssets,
       },
       statusCode: 201,

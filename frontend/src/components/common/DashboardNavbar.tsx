@@ -1,3 +1,5 @@
+import Notification from './Notification';
+
 interface DashboardNavbarProps {
   onMenuToggle?: () => void;
 }
@@ -18,6 +20,10 @@ export default function DashboardNavbar({ onMenuToggle }: DashboardNavbarProps) 
           </svg>
         </button>
       )}
+
+      <div className="ml-auto flex items-center">
+        <Notification />
+      </div>
     </header>
   );
 }

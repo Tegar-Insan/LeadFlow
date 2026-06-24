@@ -54,7 +54,12 @@ def get_client() -> openai.AsyncOpenAI:
 
     if _client is None:
         api_key = os.getenv("IMAGE_GPT_API_KEY", "").strip()
-        _client = openai.AsyncOpenAI(api_key=api_key)
+        # max_retries=0: the SDK's own built-in retry is invisible to
+        # retry_with_backoff and holds get_image_generation_semaphore() for
+        # its full duration (observed up to 60s+ on a single transient 520),
+        # starving every image call queued behind it. retry_with_backoff is
+        # the only retry layer now.
+        _client = openai.AsyncOpenAI(api_key=api_key, max_retries=0)
 
     return _client
 

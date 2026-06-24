@@ -20,6 +20,8 @@ import tiktokRoutes from "./routes/tiktokRoutes.js";
 import publicMediaRoutes from "./routes/publicMediaRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import agentRoutes from "./routes/agentRoutes.js";
 const app = express();
 app.use((_req, res, next) => {
     res.setHeader('ngrok-skip-browser-warning', 'true');
@@ -126,6 +128,8 @@ app.use('/api/tiktok', tiktokRoutes);
 app.use('/tiktok/public', publicMediaRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/agent', agentRoutes);
 app.use((_req, res) => {
     res.status(404).json({
         success: false,

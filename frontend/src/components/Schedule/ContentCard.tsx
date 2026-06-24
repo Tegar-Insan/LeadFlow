@@ -32,7 +32,11 @@ const STATUS_BADGE = {
 // Library sidebar card (vertical)
 export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart, publishLoading = false }: LibraryCardProps) => {
   const badge = STATUS_BADGE[schedule.status] || STATUS_BADGE.draft;
-  const hasImage = schedule.primary_asset_url;
+  // No media uploaded yet — fall back to the AI-generated cover image from
+  // idea generation (Supabase Storage `leadflow-media` bucket) so the card
+  // isn't blank between approve and upload.
+  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url;
+  const hasImage = Boolean(imageUrl);
   const slideCount = schedule.slide_count || 1;
   const canPublish = ['scheduled', 'uploaded', 'failed'].includes(schedule.status);
   const isDraft = schedule.status === 'draft' || schedule.status === 'planned' || !schedule.scheduled_at;
@@ -51,7 +55,7 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart
       {/* Thumbnail */}
       <div className="relative h-[88px] bg-gray-100 overflow-hidden">
         {hasImage ? (
-          <img src={schedule.primary_asset_url} alt={schedule.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={imageUrl} alt={schedule.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-2xl opacity-40">
             {schedule.primary_asset_type === 'short_video' ? '🎬' : '📷'}
@@ -121,7 +125,8 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart
 
 // Compact calendar slot card (horizontal) — fits inside weekly time-slot cells
 export const SlotCard = ({ schedule, onClick }: SlotCardProps) => {
-  const hasImage = schedule.primary_asset_url;
+  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url;
+  const hasImage = Boolean(imageUrl);
   const badge = STATUS_BADGE[schedule.status] || STATUS_BADGE.draft;
   const isDraft = schedule.status === 'draft' || schedule.status === 'planned' || !schedule.scheduled_at;
 
@@ -139,7 +144,7 @@ export const SlotCard = ({ schedule, onClick }: SlotCardProps) => {
       {/* Thumbnail — only when image exists */}
       {hasImage && (
         <div className="h-[48px] overflow-hidden">
-          <img src={schedule.primary_asset_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img src={imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         </div>
       )}
 

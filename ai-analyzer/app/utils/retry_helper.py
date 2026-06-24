@@ -17,7 +17,7 @@ T = TypeVar("T")
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_BASE_DELAY_SECONDS = 1.0
 DEFAULT_MAX_DELAY_SECONDS = 30.0
-DEFAULT_RETRYABLE_STATUSES: Set[int] = {429, 500, 502, 503}
+DEFAULT_RETRYABLE_STATUSES: Set[int] = {429, 500, 502, 503, 520}
 
 # Server-provided RetryInfo.retryDelay is authoritative — honor it even if it
 # exceeds our own jitter ceiling, but never wait absurdly long for one call.

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import TikTokLoginButton from './TikTokLoginButton';
+import Notification from './Notification';
 import ViewModeToggle from '../Schedule/ViewModeToggle';
 
 const POST_FILTER_OPTIONS = [
@@ -196,6 +197,9 @@ export default function CalendarNavbar({
             </svg>
           </button>
         </div>
+
+        {/* Notifications */}
+        <Notification />
 
         {/* TikTok connect button */}
         {canEdit && (

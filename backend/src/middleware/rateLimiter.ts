@@ -24,7 +24,25 @@ export const apiLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  // Agent run status polling is exempted here and covered by its own,
+  // more generous limiter (agentRunStatusLimiter) instead. A single
+  // Agentic Mode run polls this endpoint every few seconds for as long as
+  // the run takes, which legitimately exhausts a 100-req/15-min budget on
+  // its own and was causing normal usage to 429-storm (see agentRoutes.ts).
+  skip: (req: Request) => req.path.startsWith('/agent/runs/'),
   handler: makeHandler('API rate limit exceeded'),
+});
+
+// Scoped to GET /agent/runs/:runId only — deliberately much tighter window
+// (60s vs 15min) but a higher relative ceiling, since the expected access
+// pattern is one client polling a single run every ~4s for the run's
+// duration, not a one-off request.
+export const agentRunStatusLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: makeHandler('Agent run status rate limit exceeded'),
 });
 
 export const authLimiter = rateLimit({

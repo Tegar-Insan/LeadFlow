@@ -18,7 +18,7 @@ export const getOwnerSummary = async (req, res) => {
             error(res, { message: 'User not authenticated', statusCode: 401 });
             return;
         }
-        const summary = await analyticsService.getOwnerAnalyticsSummary(userId);
+        const summary = await analyticsService.getOwnerAnalyticsSummary();
         success(res, { message: 'Analytics summary loaded', data: { analytics: summary } });
     }
     catch (err) {

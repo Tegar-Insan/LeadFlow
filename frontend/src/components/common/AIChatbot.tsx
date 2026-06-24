@@ -43,7 +43,7 @@ const ScheduleCard = ({ schedule, onApprove, onReject, approved, rejected, appro
 
   if (approved) {
     return (
-      <div className="mt-2 px-3 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs font-body text-green-400">
+      <div className="mt-2 px-3 py-2.5 rounded-xl bg-success/10 border border-success/20 text-xs font-body text-success">
         ✅ Jadwal dibuat — <strong>{dateLabel}</strong> pukul <strong>{timeLabel}</strong>
       </div>
     );
@@ -51,7 +51,7 @@ const ScheduleCard = ({ schedule, onApprove, onReject, approved, rejected, appro
 
   if (rejected) {
     return (
-      <div className="mt-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs font-body text-text-muted">
+      <div className="mt-2 px-3 py-2 rounded-xl bg-gray-100 border border-gray-200 text-xs font-body text-text-muted">
         ❌ Rekomendasi ditolak
       </div>
     );
@@ -109,7 +109,7 @@ const ScheduleCard = ({ schedule, onApprove, onReject, approved, rejected, appro
           onClick={onApprove}
           disabled={approving}
           className="flex-1 h-8 rounded-lg bg-brand text-black text-xs font-headline font-bold
-            hover:bg-[#d4960a] active:scale-95 transition-all
+            hover:bg-brand-dark active:scale-95 transition-all
             disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
           {approving ? (
@@ -123,8 +123,8 @@ const ScheduleCard = ({ schedule, onApprove, onReject, approved, rejected, appro
         <button
           onClick={onReject}
           disabled={approving}
-          className="flex-1 h-8 rounded-lg border border-white/[0.12] text-text-secondary text-xs font-headline font-semibold
-            hover:border-white/20 hover:text-text-primary active:scale-95 transition-all
+          className="flex-1 h-8 rounded-lg border border-gray-300 text-text-secondary text-xs font-headline font-semibold
+            hover:border-gray-400 hover:text-text-primary active:scale-95 transition-all
             disabled:opacity-40"
         >
           ❌ Tolak
@@ -150,7 +150,7 @@ const MessageBubble = ({ msg, onApprove, onReject }) => {
           className={`px-3.5 py-2.5 rounded-2xl text-sm font-body leading-relaxed whitespace-pre-wrap ${
             isUser
               ? 'bg-brand text-black rounded-br-sm font-medium'
-              : 'bg-white/[0.06] border border-white/[0.08] text-text-primary rounded-bl-sm'
+              : 'bg-gray-100 border border-gray-200 text-text-primary rounded-bl-sm'
           }`}
         >
           {msg.content}
@@ -381,7 +381,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
         aria-label="Open AI Assistant"
         className="fab-pulse fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-brand text-black
           flex items-center justify-center shadow-[0_8px_32px_rgba(246,183,10,0.45)]
-          hover:bg-[#d4960a] hover:shadow-[0_0_28px_rgba(246,183,10,0.6)]
+          hover:bg-brand-dark hover:shadow-[0_0_28px_rgba(246,183,10,0.6)]
           active:scale-95 transition-all duration-200 select-none"
       >
         {open ? (
@@ -395,13 +395,12 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
       {open && (
         <div className="chat-panel-in fixed bottom-24 right-6 z-40 w-[360px] max-h-[540px]
           flex flex-col rounded-2xl overflow-hidden
-          
-          bg-[#111111]/95 backdrop-blur-2xl
-          border border-white/[0.08]
-          shadow-[0_24px_64px_rgba(0,0,0,0.6),0_0_0_1px_rgba(246,183,10,0.06)]"
+          bg-white
+          border border-gray-200
+          shadow-[0_24px_64px_rgba(0,0,0,0.14),0_0_0_1px_rgba(246,183,10,0.06)]"
         >
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.06] flex-shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-200 flex-shrink-0">
             <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center">
               <span className="text-brand"><AIIcon size={16} /></span>
             </div>
@@ -409,7 +408,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
               <p className="text-sm font-headline font-bold text-text-primary leading-none">AI Assistant</p>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse"/>
               <span className="text-[11px] font-body text-text-muted">Online</span>
             </div>
           </div>
@@ -431,7 +430,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
                 <div className="w-7 h-7 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center mr-2 mt-0.5 flex-shrink-0">
                   <span className="text-brand"><AIIcon size={14}/></span>
                 </div>
-                <div className="bg-white/[0.06] border border-white/[0.08] rounded-2xl rounded-bl-sm">
+                <div className="bg-gray-100 border border-gray-200 rounded-2xl rounded-bl-sm">
                   <TypingDots/>
                 </div>
               </div>
@@ -439,7 +438,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
 
             {/* Error banner */}
             {error && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-body mb-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-600 font-body mb-3">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -468,7 +467,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
                 {SUGGESTIONS.map(s => (
                   <button key={s} onClick={() => handleSuggestion(s)}
                     className="block w-full text-left px-3 py-2 rounded-xl text-xs font-body text-text-secondary
-                      bg-white/[0.03] border border-white/[0.06]
+                      bg-gray-50 border border-gray-200
                       hover:border-brand/30 hover:bg-brand/[0.06] hover:text-text-primary
                       transition-all duration-150">
                     {s}
@@ -481,7 +480,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-white/[0.05] flex-shrink-0"/>
+          <div className="h-px bg-gray-200 flex-shrink-0"/>
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-3 flex-shrink-0">
@@ -493,10 +492,10 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
               placeholder="Tanya strategi TikTok atau minta jadwal…"
               rows={1}
               disabled={loading}
-              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5
                 text-sm font-body text-text-primary placeholder:text-text-muted
                 outline-none resize-none min-h-[40px] max-h-[100px] overflow-y-auto
-                focus:border-brand/40 focus:bg-white/[0.06]
+                focus:border-brand/40 focus:bg-white
                 transition-all duration-150 disabled:opacity-50 leading-relaxed"
               style={{ height: 'auto' }}
               onInput={e => {
@@ -508,7 +507,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
             <button type="submit" disabled={!input.trim() || loading}
               className="w-10 h-10 rounded-xl bg-brand text-black flex items-center justify-center
                 flex-shrink-0 transition-all duration-150
-                hover:bg-[#d4960a] hover:shadow-[0_0_16px_rgba(246,183,10,0.4)]
+                hover:bg-brand-dark hover:shadow-[0_0_16px_rgba(246,183,10,0.4)]
                 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Send">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -519,7 +518,7 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
 
           {/* Footer */}
           <div className="px-4 pb-2.5 flex-shrink-0">
-            <p className="text-[10px] font-body text-text-muted/50 text-center">
+            <p className="text-[10px] font-body text-text-muted text-center">
               Powered by Anthropic
             </p>
           </div>

@@ -26,8 +26,8 @@ export default function Button({
 
   const variants = {
     primary:   'bg-brand hover:bg-brand-dark text-black focus:ring-2 focus:ring-brand/40 hover:shadow-[0_0_20px_rgba(246,183,10,0.35)]',
-    secondary: 'bg-white/[0.04] hover:bg-white/[0.08] text-text-primary border border-white/[0.15] backdrop-blur-sm focus:ring-2 focus:ring-white/10',
-    ghost:     'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]',
+    secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 focus:ring-2 focus:ring-gray-300',
+    ghost:     'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
     danger:    'bg-red-600 hover:bg-red-700 text-white focus:ring-2 focus:ring-red-500/40',
     outline:   'border border-brand/50 text-brand hover:bg-brand/10 hover:border-brand focus:ring-2 focus:ring-brand/30',
   };

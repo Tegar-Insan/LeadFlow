@@ -7,6 +7,5 @@ export declare const chatWithAnthropic: (messages: ChatMessage[]) => Promise<{
     schedules: Record<string, unknown>[];
     model: string;
 }>;
-export declare const analyzeTikTokData: () => Promise<Record<string, unknown>>;
 export {};
 //# sourceMappingURL=anthropicService.d.ts.map

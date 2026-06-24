@@ -11,7 +11,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand",
+    "test": "jest --config jest.config.cjs --runInBand",
     "clean": "rm -rf dist"
   },
   "dependencies": {

@@ -27,6 +27,7 @@ export declare function getScheduleStatus(scheduleId: string): Promise<{
     id: string;
     status: string;
 } | null>;
+export declare function getScheduleOwner(scheduleId: string): Promise<string | null>;
 export declare function create({ scheduleId, userId, commentText, }: {
     scheduleId: string;
     userId: string;

@@ -42,7 +42,7 @@ export const getSchedulesByMonth = async (year, month) => {
         .select(`
       *,
       content_assets(id, content_type, file_url, mime_type),
-      content_ideas(content_title, tiktok_caption, hashtag)
+      content_ideas(content_title, tiktok_caption, hashtag, generated_image_url)
     `)
         .gte('scheduled_at', startUTC.toISOString())
         .lt('scheduled_at', endUTC.toISOString())
@@ -60,7 +60,7 @@ export const getDraftSchedules = async () => {
         .select(`
       *,
       content_assets(id, content_type, file_url, mime_type),
-      content_ideas(content_title, tiktok_caption, hashtag)
+      content_ideas(content_title, tiktok_caption, hashtag, generated_image_url)
     `)
         .eq('status', 'draft')
         .order('created_at', { ascending: false });
@@ -151,8 +151,13 @@ export const updateSchedule = async (id, updates) => {
         throw error;
     return schedule;
 };
-export const moveSchedule = async (id, newScheduledAt) => {
-    const status = newScheduledAt ? 'scheduled' : 'draft';
+export const moveSchedule = async (id, newScheduledAt, currentStatus) => {
+    // Media already attached (or a prior publish attempt failed) — rescheduling
+    // the date/time must not clobber that back to 'scheduled', or the
+    // auto-publish cron (which only polls status='uploaded') silently loses
+    // eligibility for this row even though the asset is still attached.
+    const preserveStatus = currentStatus === 'uploaded' || currentStatus === 'failed';
+    const status = preserveStatus ? currentStatus : (newScheduledAt ? 'scheduled' : 'draft');
     const { data: schedule, error } = await supabaseAdmin
         .from('content_queue_schedules')
         .update({ scheduled_at: newScheduledAt, status, updated_at: new Date().toISOString() })

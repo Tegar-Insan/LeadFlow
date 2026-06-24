@@ -5,6 +5,8 @@ import { TIKTOK_CONFIG } from "../config/tiktok.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { encrypt } from "../utils/encryptionHelper.js";
 import logger from "../utils/logger.js";
+import * as Notification from "../models/Notification.js";
+import notificationWSService from "./notificationWebSocketService.js";
 function getJwtSecret() {
     const secret = process.env['JWT_SECRET'];
     if (!secret)
@@ -172,5 +174,20 @@ export async function markDisconnected(userId, reason) {
         .eq('connection_status', 'connected');
     if (error)
         throw error;
+    // Best-effort persistent notification — never blocks the disconnect itself.
+    try {
+        const notification = await Notification.createNotification({
+            userId,
+            type: 'tiktok_disconnected',
+            title: 'TikTok disconnected',
+            message: reason === 'user_initiated'
+                ? 'Your TikTok account was disconnected.'
+                : `Your TikTok account was disconnected: ${reason}`,
+        });
+        notificationWSService.broadcastNew(userId, notification);
+    }
+    catch (notifyErr) {
+        logger.error('[tiktokOAuthService.markDisconnected] notification creation failed', { notifyErr });
+    }
 }
 //# sourceMappingURL=tiktokOAuthService.js.map

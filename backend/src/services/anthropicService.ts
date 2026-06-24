@@ -123,19 +123,3 @@ export const chatWithAnthropic = async (
     throw new Error(msg || 'Anthropic API error');
   }
 };
-
-export const analyzeTikTokData = async (): Promise<Record<string, unknown>> => {
-  const { default: axios } = await import('axios');
-  const AI_SERVICE = process.env['AI_SERVICE_URL'] ?? 'http://127.0.0.1:8000';
-  try {
-    const response = await axios.post<Record<string, unknown>>(
-      `${AI_SERVICE}/chatbot/analyze-tiktok`,
-      {},
-      { timeout: 60_000 },
-    );
-    return response.data;
-  } catch {
-    logger.warn('[anthropicService] analyzeTikTokData: Python AI service unavailable — skipped');
-    return { analysis: '', post_count: 0, model: 'unavailable' };
-  }
-};

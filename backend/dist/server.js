@@ -19,6 +19,7 @@ async function startServer() {
     const { default: logger } = await import("./src/utils/logger.js");
     const { startAutoPublishJob } = await import("./src/jobs/autoPublishJob.js");
     const { default: commentWSService } = await import("./src/services/commentWebSocketService.js");
+    const { default: notificationWSService } = await import("./src/services/notificationWebSocketService.js");
     validateEnv();
     validateTikTokConfig();
     const { error } = await db.from('roles').select('count').limit(1);
@@ -43,6 +44,8 @@ async function startServer() {
     app.io = io;
     // Initialize comment WebSocket service
     commentWSService.init(io);
+    // Initialize notification WebSocket service (persistent bell/dropdown center)
+    notificationWSService.init(io);
     // Socket.io connection handler
     io.on('connection', (socket) => {
         const userId = socket.handshake.auth.userId || socket.handshake.query.userId;
@@ -143,6 +146,8 @@ async function startServer() {
     startAutoPublishJob(io);
     // Store comment service on app for use in controllers
     app.commentWSService = commentWSService;
+    // Store notification service on app for use in controllers/models
+    app.notificationWSService = notificationWSService;
     return server;
 }
 startServer();

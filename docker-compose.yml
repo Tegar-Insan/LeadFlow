@@ -29,6 +29,10 @@ services:
         SMTP_USER: ${SMTP_USER}
         SMTP_PASS: ${SMTP_PASS}
         EMAIL_FROM: ${EMAIL_FROM}
+        TAVILY_API_KEY: ${TAVILY_API_KEY}
+        IMAGE_GPT_API_KEY: ${IMAGE_GPT_API_KEY}
+        OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL}
+        
         
       ports:
         - "5000:5000"
@@ -81,8 +85,14 @@ services:
       container_name: leadflow-ai
       environment:
         ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+        ANTHROPIC_MODEL: ${ANTHROPIC_MODEL}
         IMAGE_GPT_API_KEY: ${IMAGE_GPT_API_KEY}
         OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL}
+        # Agentic Mode (PLAN.md) — Tavily MCP trend search + the agent's
+        # direct Supabase tool (slot-collision check + draft insert)
+        TAVILY_API_KEY: ${TAVILY_API_KEY}
+        SUPABASE_URL: ${SUPABASE_URL}
+        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       ports:
         - "8000:8000"
       networks:

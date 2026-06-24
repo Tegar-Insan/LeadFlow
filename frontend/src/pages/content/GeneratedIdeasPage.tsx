@@ -14,6 +14,8 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { InlineLoader } from '../../components/common/KineticLoader';
 import SmallSidebar from '../../components/common/smallsidebar';
 import ContentLibrarySidebar from '../../components/Schedule/ContentLibrarySidebar';
+import ScheduleModal from '../../components/Schedule/ScheduleModal';
+import { uploadMedia } from '../../services/mediaService';
 
 type CardState = 'idle' | 'approving' | 'rejecting' | 'fading';
 
@@ -201,7 +203,41 @@ export default function GeneratedIdeasPage(): JSX.Element {
   const [drafts, setDrafts] = useState<DraftCardViewModel[]>([]);
   // Content Library: same data source as CalendarPage, so both pages show
   // identical drafts + scheduled/uploaded/published items.
-  const { drafts: scheduleDrafts, schedules, loadMonth } = useSchedule();
+  const { drafts: scheduleDrafts, schedules, loadMonth, editSchedule, removeSchedule } = useSchedule();
+
+  // Content Library edit/delete — mirrors CalendarPage/ListPage's handlers.
+  const [libraryModal, setLibraryModal] = useState<'edit' | null>(null);
+  const [activeSchedule, setActiveSchedule] = useState<any>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleEditSchedule = async (payload: any, files: File[] = []) => {
+    if (!activeSchedule) return;
+    setFormLoading(true);
+    setFormError(null);
+    try {
+      await editSchedule(activeSchedule.id, payload);
+      if (files.length > 0) {
+        await uploadMedia(activeSchedule.id, files, () => {});
+        loadMonth();
+      }
+      setLibraryModal(null);
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message || 'Failed to update');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
+    try {
+      await removeSchedule(id);
+      toast.success('Schedule deleted');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete');
+    }
+  };
 
   useEffect(() => {
     // Restore any previously-generated, not-yet-validated ideas from the DB
@@ -335,6 +371,8 @@ export default function GeneratedIdeasPage(): JSX.Element {
         <ContentLibrarySidebar
           drafts={scheduleDrafts}
           schedules={schedules}
+          onEdit={(s) => { setActiveSchedule(s); setFormError(null); setLibraryModal('edit'); }}
+          onDelete={handleDeleteSchedule}
         />
         
         {/* Main Content */}
@@ -358,6 +396,17 @@ export default function GeneratedIdeasPage(): JSX.Element {
               Generate Ideas
             </h1>
           </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/calendar/ideas/agentic-mode')}
+            className="h-9 px-3.5 rounded-xl bg-brand/10 border border-brand/30 text-xs font-headline font-semibold text-brand hover:bg-brand/20 transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Agentic Mode
+          </button>
 
           {drafts.length > 0 && (
             <button
@@ -513,6 +562,17 @@ export default function GeneratedIdeasPage(): JSX.Element {
         </div>
         </div>
       </div>
+
+      {libraryModal === 'edit' && activeSchedule && (
+        <ScheduleModal
+          mode="edit"
+          initial={activeSchedule}
+          onClose={() => setLibraryModal(null)}
+          onSave={handleEditSchedule}
+          loading={formLoading}
+          error={formError}
+        />
+      )}
     </div>
   );
 }

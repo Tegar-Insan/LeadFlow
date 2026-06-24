@@ -123,7 +123,7 @@ export const moveSchedule = async (req, res) => {
             error(res, { message: 'Cannot move a published schedule', statusCode: 409 });
             return;
         }
-        const schedule = await ContentQueueSchedule.moveSchedule(req.params['id'], scheduled_at);
+        const schedule = await ContentQueueSchedule.moveSchedule(req.params['id'], scheduled_at, existing.status);
         logger.info(`[Calendar] Schedule moved id=${schedule.id} to ${scheduled_at}`);
         const _io3 = req.app.io;
         if (_io3)

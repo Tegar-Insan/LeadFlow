@@ -93,7 +93,7 @@ const WeeklyCalendarView = ({
                   onDrop={e => { e.preventDefault(); setDragOverKey(null); const id = e.dataTransfer.getData('scheduleId'); if (id && !past) onDrop?.(id, day.iso, hour); }}
                   onClick={() => { if (!past && isEmpty) onSlotClick?.(day.iso, hour); }}
                   className={`
-                    flex-1 border-r border-white/[0.06] last:border-r-0 p-2 relative transition-colors duration-100
+                    flex-1 min-w-0 border-r border-white/[0.06] last:border-r-0 p-2 relative transition-colors duration-100
                     ${day.isToday ? 'bg-gold/[0.04]' : ''}
                     ${isOver ? 'bg-brand/[0.08]' : ''}
                     ${past && isEmpty ? 'calendar-past-slot' : ''}

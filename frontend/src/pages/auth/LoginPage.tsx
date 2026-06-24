@@ -26,15 +26,6 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Unified Inbox',
-    description: 'Centralized command center for all your community engagement.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: 28, height: 28 }}>
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-  },
-  {
     title: 'Analytics',
     description: 'Deep-dive metrics with real-time conversion tracking.',
     icon: (
@@ -94,19 +85,8 @@ function RedirectOverlay() {
 }
 
 const Logo: React.FC = () => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 52 }}>
-    <div style={{
-      width: 38, height: 38, background: '#f5c518',
-      borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      <svg viewBox="0 0 20 20" fill="none" style={{ width: 20, height: 20 }}>
-        <path d="M10 2L14 8H6L10 2Z" fill="#111" />
-        <rect x="7" y="10" width="6" height="7" rx="1" fill="#111" />
-      </svg>
-    </div>
-    <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', color: '#111', textTransform: 'uppercase', fontFamily: "'DM Sans', sans-serif" }}>
-      Krench Chicken
-    </span>
+  <div style={{ marginBottom: 24 }}>
+    <img src="/logo-mark.png" alt="Krench Chicken" style={{ height: 110, width: 'auto', display: 'block' }} />
   </div>
 );
 

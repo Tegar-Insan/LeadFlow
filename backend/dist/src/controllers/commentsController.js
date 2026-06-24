@@ -2,6 +2,7 @@
 // SRS UC015 — Stakeholder rule #4: comments allowed only while schedule.status='draft'
 // Belt-and-braces: controller checks, then DB trigger from migration 018 blocks.
 import * as ScheduleComment from "../models/ScheduleComment.js";
+import * as Notification from "../models/Notification.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
 // GET /api/comments/:scheduleId  — list all comments for a schedule
@@ -97,6 +98,23 @@ export async function createComment(req, res) {
         catch (wsErr) {
             logger.error('[createComment] WebSocket broadcast failed', { wsErr });
         }
+    }
+    // Persistent notification to the schedule's owner (skip if they posted it themselves)
+    try {
+        const ownerId = await ScheduleComment.getScheduleOwner(schedule_id);
+        if (ownerId && ownerId !== userId) {
+            const notification = await Notification.createNotification({
+                userId: ownerId,
+                type: 'comment_added',
+                title: 'New comment on your schedule',
+                message: comment_text.trim().slice(0, 200),
+                relatedId: schedule_id,
+            });
+            app?.notificationWSService?.broadcastNew(ownerId, notification);
+        }
+    }
+    catch (notifyErr) {
+        logger.error('[createComment] notification creation failed', { notifyErr });
     }
     success(res, {
         message: 'Comment posted',

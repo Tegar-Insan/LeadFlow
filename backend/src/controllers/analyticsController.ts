@@ -25,7 +25,7 @@ export const getOwnerSummary = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const summary = await analyticsService.getOwnerAnalyticsSummary(userId);
+    const summary = await analyticsService.getOwnerAnalyticsSummary();
     success(res, { message: 'Analytics summary loaded', data: { analytics: summary } });
   } catch (err) {
     logger.error('[analyticsController.getOwnerSummary]', err);

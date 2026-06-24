@@ -14,7 +14,7 @@ export declare const createSchedule: ({ idea_id, created_by, title, description,
     priority?: number;
 }) => Promise<ScheduleRow>;
 export declare const updateSchedule: (id: string, updates: Record<string, unknown>) => Promise<ScheduleRow>;
-export declare const moveSchedule: (id: string, newScheduledAt: string) => Promise<ScheduleRow>;
+export declare const moveSchedule: (id: string, newScheduledAt: string, currentStatus?: string) => Promise<ScheduleRow>;
 export declare const deleteSchedule: (id: string) => Promise<void>;
 export declare const getSchedulesForListView: (userId: string, filter: "day" | "week" | "month", dateStr: string) => Promise<ScheduleRow[]>;
 export {};

@@ -47,13 +47,6 @@ class ChatResponse(BaseModel):
     model: str
 
 
-# ── /chatbot/analyze-tiktok ───────────────────────────────────────
-class TikTokAnalysisResponse(BaseModel):
-    analysis: str
-    post_count: int
-    model: str
-
-
 # ── /image/generate ───────────────────────────────────────────────
 # Triggered automatically right after Claude (Anthropic) produces a
 # content idea — image generation is chained onto idea generation,
@@ -75,3 +68,37 @@ class ImageGenerationResponse(BaseModel):
     mime_type: str = "image/png"
     model: str
     prompt_used: str
+
+
+# ── /agent/trigger, /agent/runs ───────────────────────────────────
+# Agentic Mode (PLAN.md). triggered_by is accepted directly here so this
+# endpoint can be exercised in isolation, bypassing the Node proxy, per the
+# Phase 1 manual verification checklist — Node still owns auth/RBAC once the
+# thin-proxy controller is wired in a later slice.
+class AgentTriggerRequest(BaseModel):
+    content_preference: str = Field(..., min_length=1)
+    hashtags: List[str] = []
+    preferred_times: List[str] = Field(..., min_length=1, description="['08:00','19:00'] WIB")
+    image_style: Optional[str] = None
+    ideas_per_day: int = Field(..., ge=1, le=10)
+    date_from: str = Field(..., description="ISO date YYYY-MM-DD, WIB")
+    date_to: str = Field(..., description="ISO date YYYY-MM-DD, WIB")
+    triggered_by: str = Field(..., description="users.id of the staff member triggering this run")
+
+
+class AgentTriggerResponse(BaseModel):
+    run_id: str
+
+
+class AgentRunResponse(BaseModel):
+    id: str
+    schedule_id: Optional[str] = None
+    trigger_source: str
+    status: str
+    ideas_requested: int
+    ideas_created: int
+    current_step: Optional[str] = None
+    error_message: Optional[str] = None
+    triggered_by: Optional[str] = None
+    created_at: str
+    updated_at: str

@@ -3,8 +3,30 @@
 // Implements UC006 Validate AI Content Ideas
 // Stakeholder Decision D2: Reject = soft-delete (UPDATE status='rejected')
 import * as ContentIdea from "../models/ContentIdea.js";
+import * as Notification from "../models/Notification.js";
 import { success, error } from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
+// Notifies the idea's original submitter, skipping if they validated it themselves
+// (UC006 allows both marketing_staff and business_owner to approve/reject).
+async function notifyIdeaOwner(res, ideaId, validatorId, type, title, message) {
+    try {
+        const ownerId = await ContentIdea.getIdeaOwner(ideaId);
+        if (!ownerId || ownerId === validatorId)
+            return;
+        const notification = await Notification.createNotification({
+            userId: ownerId,
+            type,
+            title,
+            message,
+            relatedId: ideaId,
+        });
+        const app = res.req.app;
+        app?.notificationWSService?.broadcastNew(ownerId, notification);
+    }
+    catch (notifyErr) {
+        logger.error('[IdeaValidationController.notifyIdeaOwner]', { notifyErr, ideaId });
+    }
+}
 // POST /api/content/:ideaId/approve
 // Side-effect: migration 006 trigger auto-creates a draft in content_queue_schedules.
 export async function approveIdea(req, res) {
@@ -20,6 +42,7 @@ export async function approveIdea(req, res) {
     }
     try {
         const result = await ContentIdea.approveIdea(ideaId, userId);
+        await notifyIdeaOwner(res, ideaId, userId, 'idea_approved', 'Idea approved', `"${result.content_title ?? 'Your idea'}" was approved and added to the calendar as a draft.`);
         success(res, { message: 'Idea approved — draft added to calendar', data: result, statusCode: 200 });
     }
     catch (err) {
@@ -45,6 +68,7 @@ export async function rejectIdea(req, res) {
     }
     try {
         const result = await ContentIdea.rejectIdea(ideaId, userId, rejected_reason);
+        await notifyIdeaOwner(res, ideaId, userId, 'idea_rejected', 'Idea rejected', rejected_reason ? `Your idea was rejected: ${rejected_reason}` : 'Your idea was rejected.');
         success(res, { message: 'Idea rejected', data: result, statusCode: 200 });
     }
     catch (err) {

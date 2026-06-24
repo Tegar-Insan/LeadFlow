@@ -20,11 +20,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface LeaderboardEntry {
+  userId: string;
+  fullName: string;
+  contentCount: number;
+}
+
 export interface OwnerAnalytics {
   totalPublishedContent: number;
   tiktokPublishedCount: number;
   totalScheduledContent: number;
   totalDraftContent: number;
+  currentMonthContent: number;
+  lastMonthContent: number;
+  monthOverMonthDeltaPct: number | null;
+  leaderboard: LeaderboardEntry[];
 }
 
 export const getOwnerAnalytics = async (): Promise<OwnerAnalytics> => {

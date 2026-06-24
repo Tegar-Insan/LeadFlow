@@ -63,7 +63,7 @@ const NAV_BY_ROLE = {
   ],
   business_owner: [
     { to: '/profile',        label: 'Profile',          icon: icons.publish      },
-    { to: '/analytics',      label: 'Analytics',        icon: icons.analytics    },
+    { to: '/dashboard',      label: 'Dashboard',        icon: icons.analytics    },
     { to: '/calendar',       label: 'Calendar',         icon: icons.calendar     },
   ],
   marketing_staff: [

@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-06-21 (session 15)
+**Last updated:** 2026-06-23 (session 18)
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -857,3 +857,124 @@ MODIFIED:
 4. Manually verify the new "Clear All" button on `/calendar/ideas` — confirm dialog → hard delete → list goes to zero → regenerate still caps at 3
 5. Investigate/fix the `fullName`/`full_name` TS mismatch in `AdminUserTable.tsx:201`
 6. Continue Phase 2/3 backlog from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite
+
+---
+
+## Session 16 Update (2026-06-21) — Persistent Notification Center (Bell + Dropdown)
+
+`frontend/src/components/common/Notification.tsx` was an empty, unused stub. Built it into a full persistent notification center, distinct from the existing ephemeral Toast popups (`NotificationContext.tsx`/`Toast.tsx`, which still exist unchanged and auto-dismiss). Scope was confirmed via 3 `AskUserQuestion` rounds before writing code: event sources = publish status (UC009) + schedule comments + TikTok disconnect + idea approve/reject (UC006); persistence = new DB table (read/unread must survive refresh/logout); delivery = WebSocket push + bell icon/dropdown (not polling).
+
+### Database
+- `database/migrations/023_create_notifications.sql` — `notifications(id, user_id, type, title, message, related_id, is_read, created_at)`, `type` CHECK-constrained to the 6 event types, RLS via `get_caller_user_id()`/`get_caller_role()` (ownership + admin-read), explicit `GRANT`s. Applied live via Supabase MCP (`apply_migration`) against project `bomdtkyteajtucptiici`.
+
+### Backend
+- `backend/src/models/Notification.ts` — `createNotification`, `listForUser` (limit 30, optional unread-only), `getUnreadCount`, `markAsRead` (ownership-checked, 404 on miss), `markAllAsRead`. Mirrors `ChatbotSession.ts`'s model-owns-business-logic pattern.
+- `backend/src/services/notificationWebSocketService.ts` — own `init(io)` (mirrors `commentWebSocketService.ts`), auto-joins a dedicated `notif:${userId}` room on connect (read from `socket.handshake.auth.userId`), `broadcastNew(userId, notification)` emits `notification:new`. Deliberately decoupled from the legacy/dead generic `user:${userId}` room wired in `server.ts` (that one is leftover plumbing from the deleted DM/Interaction module and nothing currently connects with `auth.userId` to populate it).
+- `backend/src/controllers/notificationController.ts` + `backend/src/routes/notificationRoutes.ts` — `GET /api/notifications`, `GET /api/notifications/unread-count`, `PUT /api/notifications/read-all`, `PUT /api/notifications/:id/read`. No `roleMiddleware` — every authenticated role can have notifications; ownership enforced in the model.
+- Mounted `/api/notifications` in `app.ts`; wired `notificationWSService.init(io)` + `app.notificationWSService` in `server.ts` alongside the existing `commentWSService` wiring.
+- **4 event sources wired** (each best-effort/try-caught so a notification failure never blocks the underlying action):
+  - **Comments** — `ScheduleComment.ts` gained `getScheduleOwner(scheduleId)`; `commentsController.ts`'s `createComment` notifies the schedule's `created_by` if different from the commenter.
+  - **UC006 idea approve/reject** — `ContentIdea.ts` gained `getIdeaOwner(ideaId)` (reads `content_ideas.created_by`); `IdeaValidationController.ts` notifies the original idea submitter if different from whoever validated it (marketing_staff or business_owner, per UC006).
+  - **UC009 publish status** — hooked into `tiktokPublishService.ts`'s `finalizePublish()`, the single funnel point for every publish outcome (success and failure); notifies `content_queue_schedules.created_by`.
+  - **TikTok disconnect** — hooked into `tiktokOAuthService.ts`'s `markDisconnected()`, so any future auto-detected disconnect path (not just the current user-initiated one) gets notification coverage for free.
+
+### Frontend
+- `frontend/src/services/notificationService.ts` — mirrors `commentService.ts`'s shape: `connect(userId)` (passes `auth: { userId, token }` so the backend joins `notif:${userId}`), `onNewNotification`/`offNewNotification`, `listNotifications`, `getUnreadCount`, `markAsRead`, `markAllAsRead`, `disconnect`, `isConnected`.
+- `frontend/src/components/common/Notification.tsx` — implemented the previously-empty stub: bell icon with unread-count badge, dropdown panel (fetches list on open, fetches unread count on mount), click-to-mark-read with optimistic local state, "Mark all read", outside-click-to-close. Self-contained styling (explicit Tailwind utility classes) rather than depending on the page-scoped `.toolbar-pill` class that only exists inside `.calendar-reframe` (`CalendarPage.tsx`/`ListPage.tsx`) — needed since the bell is also mounted in `DashboardNavbar.tsx`, used by 9 other pages that don't define that class.
+- Wired into both navbars: `Navbar.tsx` (calendar topbar, next to the TikTok connect button) and `DashboardNavbar.tsx` (previously near-empty header used by Admin/Owner/Marketing dashboard pages).
+- `App.tsx` — added a second `useEffect` mirroring the existing `commentService` connect/disconnect lifecycle, calling `notificationService.connect(user.userId)`/`.disconnect()` on auth state change.
+
+### Verification
+- Backend `tsc --noEmit -p tsconfig.json` — clean after the DB/service layer, after the controller/routes, and after all 4 event-source hookups (checked three times across the build-out).
+- Frontend `tsc --noEmit -p tsconfig.json` — same 5 pre-existing unrelated errors as Session 15 (`AdminUserTable.tsx` fullName mismatch, `useInteraction.ts` stale type import, `socket.io-client` unresolved) plus one **new instance of the same pre-existing `socket.io-client` resolution error** in the new `notificationService.ts` — confirmed via `grep`/`ls` that `socket.io-client` is declared in `package.json` but genuinely absent from `node_modules` (the broken-install issue already flagged as Next Session Priority #1 above). Not a code defect; cannot runtime-test the bell in-browser until that install is fixed.
+
+### Next Session Priority (carried forward + new)
+1. Fix the broken `node_modules` install (rollup optional-dependency bug) — this now also blocks verifying the new notification bell, not just Vitest.
+2. Manually verify end-to-end once install is fixed: post a comment / approve-reject an idea / disconnect TikTok / let auto-publish fire → bell badge increments live → dropdown shows the entry → mark-as-read persists across refresh.
+3. Items 2–6 from Session 15 (Content Library sidebar parity, ConfirmDialog spot-check, Clear-All button, `AdminUserTable.tsx` fullName fix, TikTok publish TypeScript cleanup/`/api/publish` mounting/Weekly Dashboard/Jest suite) remain outstanding.
+
+---
+
+## Session 17 Update (2026-06-23) — Agentic Mode: skills_agent Plugin Manifest Fix
+
+### Context
+`ai-analyzer/app/agent/agent_runner.py` (the Agentic Mode agent loop — runs a `ClaudeSDKClient` session per `agent_runs` row, one query per content idea) was already fully wired to load three skills from a local plugin:
+```python
+plugins=[{"type": "local", "path": str(SKILLS_AGENT_DIR)}],
+skills=["skills_agent:copywriting", "skills_agent:schedule", "skills_agent:searching"],
+```
+But `ai-analyzer/skills_agent/` only contained `skills/{copywriting,schedule,searching}/SKILL.md` — no plugin manifest. The Python SDK passes `plugins`/`skills` straight through to the Claude Code CLI subprocess (plugin-loading logic lives in the CLI, not the SDK), and the CLI has no way to resolve the `skills_agent` name prefix without a manifest declaring it.
+
+### Root Cause
+Missing `ai-analyzer/skills_agent/.claude-plugin/plugin.json`. Confirmed the required shape by inspecting real installed plugins under `~/.claude/plugins/cache/` (e.g. `claude-mem`) — a local plugin only needs a `name` field in `.claude-plugin/plugin.json`; skills under a `skills/<name>/SKILL.md` folder at the plugin root are auto-discovered by convention, no explicit skills list needed in the manifest.
+
+### Fix
+Added `ai-analyzer/skills_agent/.claude-plugin/plugin.json`:
+```json
+{
+  "name": "skills_agent",
+  "version": "1.0.0",
+  "description": "Agentic Mode skills for LeadFlow's content planner: searching, copywriting, and scheduling TikTok content ideas for Krench Chicken"
+}
+```
+No changes needed to `agent_runner.py` itself — it was already correctly wired; the plugin directory was just missing its manifest.
+
+### Final Structure
+```
+ai-analyzer/skills_agent/
+├── .claude-plugin/plugin.json   ← new
+└── skills/
+    ├── copywriting/SKILL.md
+    ├── schedule/SKILL.md
+    └── searching/SKILL.md
+```
+
+### Verification Status
+Not yet smoke-tested end-to-end (would require running `run_agent()` against a real `agent_runs` row with Tavily/image/Supabase tool credentials configured). Static structure now matches the convention confirmed against working installed plugins.
+
+### Next Step
+Run an Agentic Mode job end-to-end and confirm in logs that the `Skill` tool successfully resolves `skills_agent:copywriting`/`schedule`/`searching` (not a "skill not found" error).
+
+---
+
+## Session 18 Update (2026-06-23) — Content Library Edit/Delete Fix + ScheduleModal Deduplication + Dead Privacy Field Removal
+
+### Bug: Edit/Delete buttons on `/calendar/ideas` did nothing
+`ContentLibrarySidebar` (rendered inside `GeneratedIdeasPage.tsx`) showed Edit/Delete icon buttons on every `LibraryCard`, but clicking them was a no-op. Root cause: `GeneratedIdeasPage.tsx` rendered `<ContentLibrarySidebar drafts={...} schedules={...} />` with no `onEdit`/`onDelete` props at all — `LibraryCard` calls `onEdit?.(schedule)` / `onDelete?.(schedule.id)`, which silently does nothing when undefined. `CalendarPage.tsx` and `ListPage.tsx` both already wired these correctly via `useSchedule()`'s `editSchedule`/`removeSchedule`, plus a large local `ScheduleModal` form component for editing.
+
+### Refactor: extracted `ScheduleModal` into a shared component
+Both `CalendarPage.tsx` and `ListPage.tsx` carried **byte-for-byte duplicate** ~250–500 line `ScheduleModal` definitions (`ListPage.tsx` literally commented `// ScheduleModal (identical to CalendarPage)`). Adding a third copy into `GeneratedIdeasPage.tsx` to fix the bug would have made it worse, so — per user direction — extracted it once instead:
+
+- **New:** `frontend/src/components/Schedule/ScheduleModal.tsx` — the canonical create/edit form (bulk post creation, per-post media upload with drag/drop, draft vs. scheduled mode, hashtag/title/caption fields). Self-contained: only depends on `dayjs` + `TZ`/`toDatetimeLocal`/`datetimeLocalToUTCiso` from `utils/formatDate.ts`.
+- `CalendarPage.tsx` and `ListPage.tsx` — deleted their inline copies, now `import ScheduleModal from '../../components/Schedule/ScheduleModal'`. Removed now-dead imports (`toDatetimeLocal`, `datetimeLocalToUTCiso`) from both; kept `TZ`/`fLongDateTime` since those are still used elsewhere in each file.
+- `GeneratedIdeasPage.tsx` — added `editSchedule`/`removeSchedule` to its existing `useSchedule()` destructure, wired `onEdit`/`onDelete` on `ContentLibrarySidebar`, added `handleEditSchedule` (mirrors `CalendarPage`'s `handleEditSave`, including media re-upload via `uploadMedia`) and `handleDeleteSchedule` (confirm via `useConfirm()` → `removeSchedule` → toast). Publish was deliberately left unwired this round (user chose to scope it out — Delete/Edit only).
+
+Net effect: ~1000 duplicated lines removed across the two existing pages, and the bug is fixed in the third without adding a fourth copy.
+
+### Cleanup: removed dead Privacy field (Public/Friends/Private) from the create/edit form
+User pointed at a screenshot of the Privacy dropdown, initially attributed to `ContentCard.tsx` — traced it to the new shared `ScheduleModal.tsx` instead (`ContentCard.tsx` has no such field). Checked `tiktokPublishService.ts:469-472` — `resolvePrivacyLevel(schedule)` already ignores the stored value and unconditionally returns `FORCED_PUBLISH_PRIVACY_LEVEL` (comment: `// Force public privacy on publish as requested.`). The picker was controlling a DB column with zero effect on actual publish behavior.
+
+- Removed `privacy_level` from `ScheduleModal.tsx`'s `shared` state and from the payload built in `handleSubmit`.
+- Removed the Privacy `<select>` (Public/Friends/Private) and its wrapping flex row; Auto-publish checkbox is now its own left-aligned row instead of sharing a 2-column flex with Privacy.
+- Backend/DB column (`content_queue_schedules.privacy_level`) untouched — just no longer set from this form. `resolvePrivacyLevel`'s forced-public override is unaffected either way.
+
+### Verification
+- `cd frontend && npx tsc --noEmit -p tsconfig.json` — clean on every touched file (`ScheduleModal.tsx`, `CalendarPage.tsx`, `ListPage.tsx`, `GeneratedIdeasPage.tsx`). Only the same 2 pre-existing unrelated errors remain (`AdminUserTable.tsx` fullName/full_name mismatch, `useInteraction.ts` stale type import — both flagged in Session 15/16, still unfixed).
+- `grep -rn "ScheduleModal|EMPTY_POST_SLOT"` confirms exactly 4 files reference it (the 3 pages + the new shared component) — no stray duplicates left behind.
+- **Not yet done:** manual browser verification. Need to confirm in-browser that (1) Edit opens the modal pre-filled and Save persists changes from `/calendar/ideas`, (2) Delete confirms then removes the card, (3) the Auto-publish-only row renders correctly without the old Privacy column, on all three pages (`/calendar`, `/calendar/list` or equivalent, `/calendar/ideas`).
+
+### Files Modified/Created This Session
+```
+NEW:
+  frontend/src/components/Schedule/ScheduleModal.tsx
+
+MODIFIED:
+  frontend/src/pages/schedule/CalendarPage.tsx
+  frontend/src/pages/schedule/ListPage.tsx
+  frontend/src/pages/content/GeneratedIdeasPage.tsx
+```
+
+### Next Session Priority
+1. Manually verify the Edit/Delete fix and the Privacy-field removal in-browser across all three pages.
+2. Carried forward from Session 15/16: fix broken `node_modules` install (`@rollup/rollup-win32-x64-msvc`) blocking Vitest; fix `AdminUserTable.tsx` `fullName`/`full_name` mismatch; verify the notification bell end-to-end once install is fixed.
+3. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.

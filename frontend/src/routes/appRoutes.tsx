@@ -8,9 +8,9 @@ import TikTokStatusPage        from '../pages/auth/TikTokStatusPage';
 import CalendarPage            from '../pages/schedule/CalendarPage';
 import CalendarReadOnly        from '../pages/dashboard/CalendarReadOnly';
 import OwnerDashboard          from '../pages/dashboard/OwnerDashboard';
-import AnalyticsDashboard      from '../pages/analytics/AnalyticsDashboard';
 import PromptPage              from '../pages/content/PromptPage';
 import GeneratedIdeasPage      from '../pages/content/GeneratedIdeasPage';
+import AgenticModePage         from '../pages/content/AgenticModePage';
 import IdeaValidationPage      from '../pages/content/IdeaValidationPage';
 import ListPage                from '../pages/schedule/ListPage';
 import ProfilePage             from '../pages/profile/ProfilePage';
@@ -46,6 +46,7 @@ export default function AppRoutes() {
       <Route path="/unauthorized"     element={<UnauthorizedPage />} />
       <Route path="/content/prompt"   element={<ProtectedRoute allowedRoles={['marketing_staff']}><PromptPage /></ProtectedRoute>} />
       <Route path="/calendar/ideas"    element={<ProtectedRoute allowedRoles={['marketing_staff']}><GeneratedIdeasPage /></ProtectedRoute>} />
+      <Route path="/calendar/ideas/agentic-mode" element={<ProtectedRoute allowedRoles={['marketing_staff', 'admin']}><AgenticModePage /></ProtectedRoute>} />
       <Route path="/ideas"            element={<Navigate to="/calendar/ideas" replace />} />
       <Route path="/content/ideas"    element={<Navigate to="/calendar/ideas" replace />} />
       <Route path="/content/validate" element={<ProtectedRoute allowedRoles={['marketing_staff']}><IdeaValidationPage /></ProtectedRoute>} />
@@ -103,14 +104,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/analytics"
-        element={
-          <ProtectedRoute allowedRoles={['business_owner']}>
-            <AnalyticsDashboard />
-          </ProtectedRoute>
-        }
-      />
+      {/* Legacy alias — AnalyticsDashboard.tsx was merged into OwnerDashboard.tsx at /dashboard */}
+      <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
       <Route
         path="/calendar"
         element={<Navigate to="/calendar/month" replace />}

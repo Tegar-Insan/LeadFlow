@@ -44,11 +44,11 @@ function CountdownRing({ seconds, total }) {
   const progress = (seconds / total) * circ;
   return (
     <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
-      <circle cx="24" cy="24" r={r} fill="none" stroke="white" strokeOpacity={0.1} strokeWidth={3} />
+      <circle cx="24" cy="24" r={r} fill="none" stroke="#e5e7eb" strokeWidth={3} />
       <circle
         cx="24" cy="24" r={r}
         fill="none"
-        stroke="#22c55e"
+        stroke="#10b981"
         strokeWidth={3}
         strokeDasharray={`${progress} ${circ}`}
         strokeLinecap="round"
@@ -98,14 +98,14 @@ export default function TikTokStatusPage() {
     : 'An unknown error occurred';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Ambient glow */}
       <div
         className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${visible ? 'opacity-100' : 'opacity-0'}`}
         style={{
           background: success
-            ? 'radial-gradient(ellipse 600px 400px at 50% 40%, rgba(34,197,94,0.07) 0%, transparent 70%)'
+            ? 'radial-gradient(ellipse 600px 400px at 50% 40%, rgba(16,185,129,0.08) 0%, transparent 70%)'
             : 'radial-gradient(ellipse 600px 400px at 50% 40%, rgba(239,68,68,0.07) 0%, transparent 70%)',
         }}
       />
@@ -116,14 +116,14 @@ export default function TikTokStatusPage() {
           visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
-        <div className="bg-[#111111]/90 backdrop-blur-2xl border border-white/[0.07] rounded-2xl p-8 flex flex-col items-center text-center gap-6">
+        <div className="bg-white border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center gap-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
 
           {/* Brand row */}
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-black border border-white/10 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
               <TikTokGlyph className="w-4 h-4" />
             </div>
-            <span className="text-xs font-semibold text-white/40 tracking-widest uppercase font-body">
+            <span className="text-xs font-headline font-semibold text-gray-500 tracking-widest uppercase">
               TikTok Integration
             </span>
           </div>
@@ -131,14 +131,14 @@ export default function TikTokStatusPage() {
           {/* Status icon */}
           {success ? (
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+              <div className="w-20 h-20 rounded-full bg-success/10 border border-success/20 flex items-center justify-center text-success">
                 <CheckIcon />
               </div>
               {/* Pulse ring */}
-              <div className="absolute inset-0 rounded-full bg-green-500/10 animate-ping" />
+              <div className="absolute inset-0 rounded-full bg-success/10 animate-ping" />
             </div>
           ) : (
-            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
               <XIcon />
             </div>
           )}
@@ -147,10 +147,10 @@ export default function TikTokStatusPage() {
           {success ? (
             <>
               <div>
-                <h1 className="text-2xl font-display font-extrabold text-white mb-2">
+                <h1 className="text-2xl font-headline font-extrabold text-gray-900 mb-2">
                   Successfully Connected!
                 </h1>
-                <p className="text-sm text-white/50 font-body leading-relaxed">
+                <p className="text-sm text-gray-500 font-body leading-relaxed">
                   Your TikTok account has been linked to Krench Chicken. You can now
                   publish content directly from the calendar.
                 </p>
@@ -160,18 +160,18 @@ export default function TikTokStatusPage() {
               <div className="flex flex-col items-center gap-2">
                 <div className="relative">
                   <CountdownRing seconds={countdown} total={REDIRECT_DELAY} />
-                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white font-body">
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900 font-body">
                     {countdown}
                   </span>
                 </div>
-                <p className="text-xs text-white/30 font-body">
+                <p className="text-xs text-gray-400 font-body">
                   Redirecting to calendar in {countdown}s…
                 </p>
               </div>
 
               <button
                 onClick={() => navigate('/calendar', { replace: true })}
-                className="w-full h-10 rounded-xl bg-green-500 hover:bg-green-400 text-black text-sm font-bold font-body transition-colors"
+                className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-colors"
               >
                 Go to Calendar Now
               </button>
@@ -179,25 +179,25 @@ export default function TikTokStatusPage() {
           ) : (
             <>
               <div>
-                <h1 className="text-2xl font-display font-extrabold text-white mb-2">
+                <h1 className="text-2xl font-headline font-extrabold text-gray-900 mb-2">
                   Connection Failed
                 </h1>
-                <p className="text-sm text-white/50 font-body leading-relaxed mb-3">
+                <p className="text-sm text-gray-500 font-body leading-relaxed mb-3">
                   We couldn't link your TikTok account. Please check the details below
                   and try again.
                 </p>
                 {/* Error reason pill */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                  <span className="text-xs text-red-300 font-body font-medium capitalize">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                  <span className="text-xs text-red-600 font-body font-medium capitalize">
                     {errorLabel}
                   </span>
                 </div>
               </div>
 
               {/* Common causes */}
-              <div className="w-full bg-white/[0.03] rounded-xl p-4 text-left space-y-2">
-                <p className="text-xs text-white/40 font-body font-semibold uppercase tracking-wider mb-3">
+              <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-2">
+                <p className="text-xs text-gray-500 font-headline font-semibold uppercase tracking-wider mb-3">
                   Common causes
                 </p>
                 {[
@@ -207,8 +207,8 @@ export default function TikTokStatusPage() {
                   'Authorization code expired (complete flow within 2 minutes)',
                 ].map((tip, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <span className="text-white/20 text-xs mt-0.5 flex-shrink-0">—</span>
-                    <span className="text-xs text-white/40 font-body">{tip}</span>
+                    <span className="text-gray-400 text-xs mt-0.5 flex-shrink-0">—</span>
+                    <span className="text-xs text-gray-500 font-body">{tip}</span>
                   </div>
                 ))}
               </div>
@@ -217,13 +217,13 @@ export default function TikTokStatusPage() {
               <div className="w-full flex flex-col gap-2">
                 <button
                   onClick={() => navigate('/calendar', { replace: true })}
-                  className="w-full h-10 rounded-xl bg-brand hover:bg-brand/90 text-black text-sm font-bold font-body transition-colors"
+                  className="w-full h-10 rounded-xl bg-brand hover:bg-brand-dark text-black text-sm font-headline font-bold transition-colors"
                 >
                   Try Again from Calendar
                 </button>
                 <button
                   onClick={() => navigate('/calendar', { replace: true })}
-                  className="w-full h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] text-white/60 text-sm font-body transition-colors"
+                  className="w-full h-10 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 text-sm font-body transition-colors"
                 >
                   Back to Calendar
                 </button>
@@ -234,7 +234,7 @@ export default function TikTokStatusPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-white/20 font-body mt-4">
+        <p className="text-center text-xs text-gray-400 font-body mt-4">
           Krench Chicken · LeadFlow TikTok Integration
         </p>
       </div>
