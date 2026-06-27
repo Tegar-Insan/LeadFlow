@@ -269,9 +269,7 @@ export async function generateScheduleDraftsFromBrief(
 
   logger.info('[ContentIdea] drafts generated', { promptId, count: inserted.length, model: MODEL_ID });
 
-  // Chain GPT Image 2.0 generation onto idea generation — sequential, not
-  // Promise.all: ai-analyzer serializes generation behind a semaphore(1)
-  // (tight gpt-image-1 rate limit). Never throws (NFR-002).
+
   for (const d of inserted) {
     await attachGeneratedImage(d);
   }

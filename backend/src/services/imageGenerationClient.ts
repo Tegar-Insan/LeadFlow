@@ -1,6 +1,6 @@
 // backend/src/services/imageGenerationClient.ts
 // Thin HTTP client to the ai-analyzer FastAPI service's POST /image/generate
-// (GPT Image 2.0). Called automatically right after Claude (Anthropic)
+// (GPT Image 1). Called automatically right after Claude (Anthropic)
 // produces a content idea — see contentIdeaService.ts. Image generation
 // must never break idea generation (NFR-002): every failure is caught
 // here and surfaced as `null`, never thrown.
@@ -39,7 +39,7 @@ interface ImageGenerateApiResponse {
 }
 
 /**
- * Requests a GPT Image 2.0 image for the given idea from ai-analyzer.
+ * Requests a GPT Image 1 image for the given idea from ai-analyzer.
  * Returns null on any failure — callers must treat that as "no image yet"
  * and continue, never as a reason to fail idea generation.
  */
@@ -83,7 +83,7 @@ export async function requestIdeaImage(
 }
 
 /**
- * Requests one GPT Image 2.0 image per idea, sequentially. Sequential —
+ * Requests one GPT Image 1 image per idea, sequentially. Sequential —
  * not Promise.all — because ai-analyzer serializes generation behind a
  * semaphore(1) (gpt-image-1 rate limit); firing these concurrently would
  * burn each request's 60s timeout while it sits queued server-side (see

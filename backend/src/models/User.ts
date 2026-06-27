@@ -48,7 +48,6 @@ export async function emailExists(email: string): Promise<boolean> {
 }
 
 export async function create({ email, passwordHash, roleId }: { email: string; passwordHash: string; roleId: string }): Promise<Record<string, unknown>> {
-  // ✅ upsert — handles duplicate email from retry attempts
   const { data, error } = await db
     .from('users')
     .upsert(
