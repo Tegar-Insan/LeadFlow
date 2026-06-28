@@ -14,6 +14,7 @@ import ContentLibrarySidebar from '../../components/Schedule/ContentLibrarySideb
 import AgentPreferenceForm from '../../components/content/AgentPreferenceForm';
 import AgentRunningPanel from '../../components/content/AgentRunningPanel';
 import AgentResultSummary from '../../components/content/AgentResultSummary';
+import AgentScheduleCard from '../../components/content/AgentScheduleCard';
 
 type ViewState = 'form' | 'running' | 'result';
 
@@ -83,8 +84,22 @@ export default function AgenticModePage(): JSX.Element {
               </div>
             </div>
 
+            {/* Daily schedule config — always visible on the form view */}
             {view === 'form' && (
-              <AgentPreferenceForm onSubmit={handleSubmit} submitting={submitting} />
+              <div className="space-y-5">
+                <AgentScheduleCard />
+
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[10px] font-headline font-bold uppercase tracking-widest text-gray-400">
+                    Run Once Now
+                  </span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <AgentPreferenceForm onSubmit={handleSubmit} submitting={submitting} />
+              </div>
             )}
 
             {view === 'running' && runId && (

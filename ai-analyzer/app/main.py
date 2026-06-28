@@ -59,3 +59,10 @@ async def on_startup():
     logger.info("LeadFlow AI Microservice started on port 8000")
     logger.info(f"Anthropic model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-6')}")
     logger.info(f"Image model (Nano Banana 2): {os.getenv('OPENAI_IMAGE_MODEL', 'gpt-image-1')}")
+
+    if not os.getenv("TAVILY_API_KEY"):
+        logger.warning(
+            "TAVILY_API_KEY is not set — Agentic Mode web search (Tavily MCP) will "
+            "raise RuntimeError at the start of any agent run. Add TAVILY_API_KEY to "
+            "ai-analyzer/.env"
+        )

@@ -90,6 +90,16 @@ class AgentTriggerResponse(BaseModel):
     run_id: str
 
 
+class AgentTriggerTodayRequest(BaseModel):
+    triggered_by: str = Field(..., description="users.id — injected server-side by Node proxy, or passed directly for cron/GCP calls")
+
+
+class AgentTriggerTodayResponse(BaseModel):
+    triggered: bool
+    reason: Optional[str] = None   # 'no_active_schedule' | 'already_ran_today' | None
+    run_id: Optional[str] = None
+
+
 class AgentRunResponse(BaseModel):
     id: str
     schedule_id: Optional[str] = None

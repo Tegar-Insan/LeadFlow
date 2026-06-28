@@ -9,6 +9,7 @@ import TransitionLoader   from './components/common/TransitionLoader';
 import DirectAccessGuard  from './components/common/DirectAccessGuard';
 import commentService     from './services/commentService';
 import notificationService from './services/notificationService';
+import { triggerTodayAgent } from './services/agentService';
 
 export default function App() {
   const { isAuthenticated, user } = useAuth();
@@ -73,6 +74,20 @@ export default function App() {
       }
     };
   }, [isAuthenticated, user?.userId]);
+
+  // Daily agent auto-trigger (Phase 1 dev) — fires once per calendar day in WIB.
+  // Only for marketing_staff and admin; requires an active agent_schedules row.
+  // Guard lives in the backend — second open on the same day skips silently.
+  useEffect(() => {
+    const roleName = (user as any)?.roleName ?? (user as any)?.role_name;
+    if (!isAuthenticated || !roleName) return;
+    if (roleName !== 'marketing_staff' && roleName !== 'admin') return;
+
+    triggerTodayAgent().catch(() => {
+      // Silently ignore — no active schedule configured, already ran today,
+      // or AI service is offline. App still works.
+    });
+  }, [isAuthenticated, (user as any)?.userId]);
 
   return (
     <div className="pages-font-semibold">

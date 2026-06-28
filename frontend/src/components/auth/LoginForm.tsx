@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AuthErrorBanner from './AuthErrorBanner';
 
 interface LoginFormProps {
   onSubmit?: (data: { email: string; password: string }) => void;
@@ -73,20 +74,7 @@ export default function LoginForm({ onSubmit, loading = false, apiError = '' }: 
         Sign in to your LeadFlow account.
       </p>
 
-      {apiError && (
-        <div style={{
-          background: '#fff5f5',
-          border: '1px solid #ffc0c0',
-          borderRadius: 12,
-          padding: '12px 16px',
-          marginBottom: 24,
-          fontSize: 14,
-          color: '#c0392b',
-          fontFamily: "'DM Sans', sans-serif",
-        }}>
-          {apiError}
-        </div>
-      )}
+      {apiError && <AuthErrorBanner message={apiError} />}
 
       <form onSubmit={handleSubmit}>
         <label style={labelStyle}>Email Address</label>

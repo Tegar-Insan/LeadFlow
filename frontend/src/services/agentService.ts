@@ -51,6 +51,39 @@ export class AgentRunRateLimitError extends Error {
 
 const DEFAULT_RATE_LIMIT_RETRY_MS = 60_000;
 
+// ── Agent schedule settings (Phase 2) ───────────────────────────────────────
+
+export interface AgentScheduleSettings {
+  id: string;
+  content_preference: string;
+  hashtags: string[];
+  preferred_times: string[];
+  image_style: string | null;
+  ideas_per_day: number;
+  run_time: string;
+  active: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  created_by: string;
+}
+
+export async function getAgentSettings(): Promise<AgentScheduleSettings | null> {
+  const res = await axios.get(`${BASE}/agent/settings`, { headers: authHeaders() });
+  return res.data.data;
+}
+
+export async function patchAgentSettings(
+  data: Partial<Omit<AgentScheduleSettings, 'id' | 'created_by'>>,
+): Promise<AgentScheduleSettings> {
+  const res = await axios.patch(`${BASE}/agent/settings`, data, { headers: authHeaders() });
+  return res.data.data;
+}
+
+export async function triggerTodayAgent(): Promise<{ triggered: boolean; reason?: string; run_id?: string }> {
+  const res = await axios.post(`${BASE}/agent/trigger-today`, {}, { headers: authHeaders() });
+  return res.data.data;
+}
+
 export async function triggerAgent(payload: TriggerAgentPayload): Promise<{ run_id: string }> {
   const res = await axios.post(`${BASE}/agent/trigger`, payload, { headers: authHeaders() });
   return res.data.data;
