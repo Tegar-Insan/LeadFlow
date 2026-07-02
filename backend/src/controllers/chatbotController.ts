@@ -5,7 +5,62 @@ import { chatWithAnthropic } from '../services/anthropicService.ts';
 import { createSchedule } from '../models/ContentQueueSchedule.ts';
 import { requestIdeaImages } from '../services/imageGenerationClient.ts';
 import * as ChatbotSession from '../models/ChatbotSession.ts';
+import * as ContentAsset from '../models/ContentAsset.ts';
+import { supabaseAdmin } from '../config/supabase.ts';
 import type { AuthenticatedRequest } from '../types/index.ts';
+
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? 'leadflow-media';
+
+// The recommendation card's image only exists as an in-memory data URI (see
+// attachGeneratedImages below) until the user approves it — at that point it
+// gets a stable schedule id to key a storage path on, so it can finally be
+// uploaded to Supabase Storage and inserted as a real content_assets row
+// (content_type='poster_photo'), same table/shape as a manual upload
+// (mediaController.ts uploadMedia) so the Media panel and card thumbnails
+// pick it up with zero special-case code. Never throws: a failed upload must
+// not undo the schedule that was already created (NFR-002).
+async function persistApprovedScheduleImage(
+  scheduleId: string,
+  dataUri: string,
+  userId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const match = /^data:([^;]+);base64,(.+)$/.exec(dataUri);
+    if (!match) return null;
+    const [, mimeType, base64Data] = match as unknown as [string, string, string];
+    const ext = mimeType.split('/')[1] ?? 'png';
+    const storagePath = `chatbot-schedules/${scheduleId}.${ext}`;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const { error: storageErr } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, buffer, { contentType: mimeType, upsert: true });
+
+    if (storageErr) {
+      logger.warn('[chatbotController] AI cover storage upload failed', { storageErr, scheduleId });
+      return null;
+    }
+
+    const { data: urlData } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+    const publicUrl = urlData?.publicUrl;
+    if (!publicUrl) return null;
+
+    return await ContentAsset.createAsset({
+      queue_schedule_id: scheduleId,
+      uploaded_by: userId,
+      content_type: 'poster_photo',
+      file_name: `ai-cover.${ext}`,
+      file_url: publicUrl,
+      storage_path: storagePath,
+      mime_type: mimeType,
+      file_size_bytes: buffer.length,
+      is_ai_placeholder: true,
+    });
+  } catch (err) {
+    logger.warn('[chatbotController] AI cover persistence pipeline failed — continuing without image', { err, scheduleId });
+    return null;
+  }
+}
 
 // Chat-proposed schedules are ephemeral (not yet a content_ideas row) until
 // approved, so images are returned as inline data URLs rather than uploaded
@@ -144,7 +199,14 @@ export const approveSchedule = async (req: Request, res: Response): Promise<void
       priority: 0,
     });
 
-    logger.info(`[chatbot] Schedule approved: ${(newSchedule as { id: string }).id} by user ${userId}`);
+    const scheduleId = (newSchedule as { id: string }).id;
+    const dataUri = schedule['generated_image_url'] as string | undefined;
+    if (dataUri && dataUri.startsWith('data:')) {
+      const asset = await persistApprovedScheduleImage(scheduleId, dataUri, userId);
+      if (asset) (newSchedule as Record<string, unknown>)['assets'] = [asset];
+    }
+
+    logger.info(`[chatbot] Schedule approved: ${scheduleId} by user ${userId}`);
     success(res, { message: 'Jadwal berhasil dibuat dari rekomendasi AI', data: { schedule: newSchedule }, statusCode: 201 });
   } catch (err: unknown) {
     const e = err as { message?: string };

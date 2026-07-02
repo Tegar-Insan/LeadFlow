@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { supabaseAdmin } from '../config/supabase.ts';
 import { decrypt, encrypt } from '../utils/encryptionHelper.ts';
+import { signMediaToken } from '../utils/mediaTokenHelper.ts';
 import { TIKTOK_CONFIG } from '../config/tiktok.ts';
 import { getConnectedAccountForUser } from './tiktokOAuthService.ts';
 import logger from '../utils/logger.ts';
@@ -348,7 +349,11 @@ function buildPublicMediaUrl(assetId) {
   if (!baseUrl || !assetId) return null;
 
   const base = baseUrl.replace(/\/$/, '');
-  return `${base}/tiktok/public/media/${assetId}`;
+  // Signed so /tiktok/public/media/:assetId can't be scraped for arbitrary
+  // asset ids now that it sits behind a permanent, verified domain instead
+  // of a throwaway tunnel. See mediaTokenHelper.ts.
+  const token = signMediaToken(assetId);
+  return `${base}/tiktok/public/media/${assetId}?token=${encodeURIComponent(token)}`;
 }
 
 function isOwnedPublicBucketUrl(url) {
@@ -358,7 +363,8 @@ function isOwnedPublicBucketUrl(url) {
 }
 
 async function resolveAssetUrl(asset) {
-  // TikTok PULL_FROM_URL must use the verified public tunnel host.
+  // TikTok PULL_FROM_URL must use the verified public domain (TikTok "URL
+  // properties" — see leadflowuploadimage.my.id in the app's sandbox config).
   const publicMediaUrl = buildPublicMediaUrl(asset?.id);
   if (publicMediaUrl) {
     logger.info(`[TikTok Publish] Resolved public media URL for asset ${asset?.id}: ${publicMediaUrl}`);
@@ -578,19 +584,30 @@ async function uploadBinaryToTikTok(uploadUrl, binaryBuffer, mimeType) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Photo publish: PULL_FROM_URL (TikTok photo API only supports this method —
 // FILE_UPLOAD is not available for /v2/post/publish/content/init/)
-// 1. Resolve a public URL for each photo via TIKTOK_MEDIA_PUBLIC_BASE_URL tunnel
+// 1. Resolve a signed, publicly-reachable URL for each photo (see
+//    resolveAssetUrl / buildPublicMediaUrl — served from the TikTok-verified
+//    domain leadflowuploadimage.my.id via TIKTOK_MEDIA_PUBLIC_BASE_URL)
 // 2. Init publish — TikTok fetches the images from the provided URLs
+//
+// Per https://developers.tiktok.com/doc/content-posting-api-reference-photo-post:
+// post_mode=MEDIA_UPLOAD sends the photos to the creator's TikTok inbox as a
+// draft for them to finish and publish manually — privacy_level,
+// disable_comment, auto_add_music, brand_content_toggle and
+// brand_organic_toggle are documented as "DIRECT_POST mode only" and are
+// deliberately omitted here. photo_images is capped at TikTok's documented
+// max of 35 URLs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function initPhotoPublish(accessToken, schedule, photoAssets) {
   const photoUrls = photoAssets
     .map((asset) => buildPublicMediaUrl(asset?.id))
-    .filter(Boolean) as string[];
+    .filter(Boolean)
+    .slice(0, 35) as string[];
 
   if (photoUrls.length === 0) {
     throw new Error(
       'Photo publish failed: TIKTOK_MEDIA_PUBLIC_BASE_URL is not set — ' +
-      'PULL_FROM_URL requires a publicly reachable URL (set up the Cloudflare tunnel)',
+      'PULL_FROM_URL requires a publicly reachable, TikTok-verified URL',
     );
   }
 
@@ -598,9 +615,6 @@ async function initPhotoPublish(accessToken, schedule, photoAssets) {
     post_info: {
       title: resolveShortTitle(schedule),
       description: resolveCaption(schedule).slice(0, 4000),
-      privacy_level: resolvePrivacyLevel(schedule),
-      disable_comment: schedule.allow_comment === false,
-      auto_add_music: false,
     },
     source_info: {
       source: 'PULL_FROM_URL',
@@ -612,7 +626,7 @@ async function initPhotoPublish(accessToken, schedule, photoAssets) {
   };
 
   logger.info(
-    `[tiktokPublish] initPhotoPublish PULL_FROM_URL: ${photoUrls.length} photo(s) via tunnel ${TIKTOK_CONFIG.mediaPublicBaseUrl}`,
+    `[tiktokPublish] initPhotoPublish PULL_FROM_URL: ${photoUrls.length} photo(s) via ${TIKTOK_CONFIG.mediaPublicBaseUrl}`,
   );
 
   const response = await retryWithBackoff(

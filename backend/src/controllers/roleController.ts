@@ -44,6 +44,55 @@ export async function getAllUsers(req: Request, res: Response, next: NextFunctio
   } catch (err) { next(err); }
 }
 
+export async function updateUserDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+    const { full_name, email, phone } = req.body as { full_name?: string; email?: string; phone?: string };
+
+    if (full_name === undefined && email === undefined && phone === undefined) {
+      error(res, { message: 'At least one of full_name, email, or phone is required.', statusCode: 400 }); return;
+    }
+
+    const user = await User.findById(id);
+    if (!user) { error(res, { message: 'User not found.', statusCode: 404 }); return; }
+
+    if (email !== undefined) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail) { error(res, { message: 'Email cannot be empty.', statusCode: 400 }); return; }
+      if (normalizedEmail !== (user as { email: string }).email) {
+        const exists = await User.emailExists(normalizedEmail, id);
+        if (exists) { error(res, { message: 'An account with this email already exists.', statusCode: 409 }); return; }
+        await User.updateEmail(id, normalizedEmail);
+      }
+    }
+
+    if (full_name !== undefined || phone !== undefined) {
+      if (full_name !== undefined && !full_name.trim()) {
+        error(res, { message: 'Full name cannot be empty.', statusCode: 400 }); return;
+      }
+      await UserProfile.update(id, {
+        ...(full_name !== undefined ? { fullName: full_name.trim() } : {}),
+        ...(phone !== undefined ? { phone: phone.trim() || null } : {}),
+      });
+    }
+
+    const updated = await User.findById(id) as Record<string, unknown>;
+    const normalized = {
+      id: updated['id'],
+      email: updated['email'],
+      is_active: updated['is_active'],
+      email_verified: updated['email_verified'],
+      created_at: updated['created_at'],
+      role_id: updated['role_id'],
+      role_name: (updated['roles'] as { name?: string } | null)?.name ?? null,
+      full_name: (updated['user_profiles'] as { full_name?: string } | null)?.full_name ?? null,
+      phone: (updated['user_profiles'] as { phone?: string } | null)?.phone ?? null,
+    };
+
+    success(res, { message: 'Account details updated.', data: normalized });
+  } catch (err) { next(err); }
+}
+
 export async function updateUserRole(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const authReq = req as AuthenticatedRequest;

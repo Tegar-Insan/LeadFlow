@@ -148,7 +148,7 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
               )}
             </div>
             <h2 className="font-headline font-bold text-lg text-text-primary truncate">
-              {schedule.custom_caption || schedule.title || 'Untitled'}
+              {schedule.custom_caption || schedule.title || schedule.content_title || 'Untitled'}
             </h2>
             {schedule.scheduled_at && (
               <p className="text-xs text-text-secondary font-body mt-0.5">{fLongDateTime(schedule.scheduled_at)}</p>
@@ -164,9 +164,15 @@ const DetailModal = ({ schedule, onClose, onEdit, onDelete, onPublish, publishLo
         <div className="flex flex-1 max-h-[70vh] overflow-hidden">
           {/* LEFT PANEL — Schedule Details & Media */}
           <div className="flex-1 px-6 py-5 space-y-4 overflow-y-auto border-r border-surface-border">
-            {schedule.custom_hashtags?.length > 0 && (
+            {(schedule.custom_caption || schedule.tiktok_caption) && (
+              <p className="text-sm text-text-secondary font-body leading-relaxed">
+                {schedule.custom_caption || schedule.tiktok_caption}
+              </p>
+            )}
+
+            {(schedule.custom_hashtags?.length > 0 || schedule.hashtag?.length > 0) && (
               <div className="flex flex-wrap gap-1.5">
-                {schedule.custom_hashtags.map((h, idx) => (
+                {(schedule.custom_hashtags?.length > 0 ? schedule.custom_hashtags : schedule.hashtag).map((h, idx) => (
                   <span key={`${h}-${idx}`} className="text-xs px-2 py-0.5 rounded-full bg-surface-overlay text-text-secondary font-body">{h}</span>
                 ))}
               </div>
@@ -940,7 +946,7 @@ const CalendarPage = () => {
       )}
 
       {/* ── AI Chatbot FAB — bottom-right floating ── */}
-      <AIChatbot openOnMount={chatbotDrawerOpen} onOpenChange={setChatbotDrawerOpen} />
+      <AIChatbot openOnMount={chatbotDrawerOpen} onOpenChange={setChatbotDrawerOpen} onApproved={loadMonth} />
     </div>
   );
 };

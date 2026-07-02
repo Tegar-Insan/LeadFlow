@@ -2,13 +2,28 @@ import type { Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase.ts';
 import * as ContentAsset from '../models/ContentAsset.ts';
 import { success, error } from '../utils/responseHelper.ts';
+import { verifyMediaToken } from '../utils/mediaTokenHelper.ts';
 import logger from '../utils/logger.ts';
 
 const STORAGE_BUCKET = process.env['SUPABASE_STORAGE_BUCKET'] ?? 'leadflow-media';
 
 export const serveMedia = async (req: Request, res: Response): Promise<void> => {
   try {
-    const asset = await ContentAsset.getAssetById(req.params['assetId'] as string);
+    const assetId = req.params['assetId'] as string;
+    const token = req.query['token'] as string | undefined;
+
+    if (!token) {
+      error(res, { message: 'Missing media token', statusCode: 401 }); return;
+    }
+
+    try {
+      verifyMediaToken(token, assetId);
+    } catch (tokenErr) {
+      logger.warn('[publicMediaController] rejected media request — invalid/expired token', { tokenErr, assetId });
+      error(res, { message: 'Invalid or expired media token', statusCode: 401 }); return;
+    }
+
+    const asset = await ContentAsset.getAssetById(assetId);
     if (!asset || !(asset as { storage_path?: string }).storage_path) {
       error(res, { message: 'Asset not found', statusCode: 404 }); return;
     }

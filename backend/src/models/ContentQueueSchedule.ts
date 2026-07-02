@@ -97,14 +97,17 @@ export const getDraftSchedules = async (): Promise<ScheduleRow[]> => {
 export const getScheduleById = async (id: string): Promise<ScheduleRow | null> => {
   const { data: schedule, error } = await supabaseAdmin
     .from('content_queue_schedules')
-    .select('*')
+    .select('*, content_ideas(content_title, tiktok_caption, hashtag, generated_image_url, category)')
     .eq('id', id)
     .maybeSingle();
 
   if (error) throw error;
   if (!schedule) return null;
 
-  const s = schedule as ScheduleRow & { created_by?: string };
+  const s = schedule as ScheduleRow & { created_by?: string; content_ideas?: any };
+  const idea = s.content_ideas ?? {};
+  const { content_ideas, ...rest } = s;
+  void content_ideas;
 
   const [{ data: assets }, { data: profile }] = await Promise.all([
     supabaseAdmin
@@ -120,7 +123,8 @@ export const getScheduleById = async (id: string): Promise<ScheduleRow | null> =
   ]);
 
   return {
-    ...s,
+    ...rest,
+    ...idea,
     assets: assets ?? [],
     created_by_name: (profile as { full_name?: string } | null)?.full_name ?? null,
   };
@@ -136,6 +140,7 @@ export const createSchedule = async ({
   scheduled_at = null,
   status = null,
   priority = 0,
+  preview_image_url = null,
 }: {
   idea_id?: string | null;
   created_by: string;
@@ -146,6 +151,7 @@ export const createSchedule = async ({
   scheduled_at?: string | null;
   status?: string | null;
   priority?: number;
+  preview_image_url?: string | null;
 }): Promise<ScheduleRow> => {
   void description;
   const nextStatus = status || (scheduled_at ? 'scheduled' : 'draft');
@@ -161,6 +167,7 @@ export const createSchedule = async ({
     auto_publish: true,
   };
   if (idea_id) payload['idea_id'] = idea_id;
+  if (preview_image_url) payload['preview_image_url'] = preview_image_url;
 
   const { data: schedule, error } = await supabaseAdmin
     .from('content_queue_schedules')
@@ -253,7 +260,11 @@ export const getSchedulesForListView = async (
 
   const { data: schedules, error } = await supabaseAdmin
     .from('content_queue_schedules')
-    .select('*, content_assets(id, content_type, file_url, mime_type)')
+    .select(`
+      *,
+      content_assets(id, content_type, file_url, mime_type),
+      content_ideas(content_title, tiktok_caption, hashtag, generated_image_url)
+    `)
     .eq('created_by', userId)
     .gte('scheduled_at', startUTC)
     .lte('scheduled_at', endUTC)
@@ -262,10 +273,10 @@ export const getSchedulesForListView = async (
 
   if (error) throw error;
 
-  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[] }>;
+  const rows = (schedules ?? []) as Array<ScheduleRow & { created_by?: string; content_assets?: AssetRow[]; content_ideas?: any }>;
   const profiles = await profileMap(
     [...new Set(rows.map((s) => s.created_by).filter(Boolean) as string[])],
   );
 
-  return hydrateWithProfilesAndAssets(rows, profiles, false);
+  return hydrateWithProfilesAndAssets(rows, profiles);
 };

@@ -184,6 +184,7 @@ const SUGGESTIONS = [
 type AIChatbotProps = {
   openOnMount?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onApproved?: () => void;
 };
 
 const WELCOME_MESSAGE = {
@@ -193,7 +194,7 @@ const WELCOME_MESSAGE = {
   type:    'text',
 };
 
-const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) => {
+const AIChatbot = ({ openOnMount = false, onOpenChange, onApproved }: AIChatbotProps = {}) => {
   const navigate = useNavigate();
   const [open,     setOpen]     = useState(false);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
@@ -311,13 +312,19 @@ const AIChatbot = ({ openOnMount = false, onOpenChange }: AIChatbotProps = {}) =
           type:    'approved_confirm',
         },
       ]);
+
+      // Tell the host page (CalendarPage/ListPage) to refetch its
+      // useSchedule() data — otherwise the new schedule never appears in
+      // ContentLibrarySidebar until a manual page reload, since this widget
+      // has its own isolated state and no other link back to the page.
+      onApproved?.();
     } catch (err) {
       setMessages(prev =>
         prev.map(m => m.id === msgId ? { ...m, approving: false } : m)
       );
       setError(err?.response?.data?.message || 'Gagal membuat jadwal. Coba lagi.');
     }
-  }, []);
+  }, [onApproved]);
 
   // ── Reject handler ──────────────────────────────────────────
   const handleReject = useCallback(async (msgId) => {

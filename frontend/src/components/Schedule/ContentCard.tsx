@@ -33,9 +33,11 @@ const STATUS_BADGE = {
 export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart, publishLoading = false }: LibraryCardProps) => {
   const badge = STATUS_BADGE[schedule.status] || STATUS_BADGE.draft;
   // No media uploaded yet — fall back to the AI-generated cover image from
-  // idea generation (Supabase Storage `leadflow-media` bucket) so the card
-  // isn't blank between approve and upload.
-  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url;
+  // idea generation (content_ideas.generated_image_url) or, for idea-less
+  // agent/chatbot-approved schedules, content_queue_schedules.preview_image_url
+  // (Supabase Storage `leadflow-media` bucket) so the card isn't blank
+  // between approve and upload.
+  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url || schedule.preview_image_url;
   const hasImage = Boolean(imageUrl);
   const slideCount = schedule.slide_count || 1;
   const canPublish = ['scheduled', 'uploaded', 'failed'].includes(schedule.status);
@@ -125,7 +127,7 @@ export const LibraryCard = ({ schedule, onEdit, onDelete, onPublish, onDragStart
 
 // Compact calendar slot card (horizontal) — fits inside weekly time-slot cells
 export const SlotCard = ({ schedule, onClick }: SlotCardProps) => {
-  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url;
+  const imageUrl = schedule.primary_asset_url || schedule.generated_image_url || schedule.preview_image_url;
   const hasImage = Boolean(imageUrl);
   const badge = STATUS_BADGE[schedule.status] || STATUS_BADGE.draft;
   const isDraft = schedule.status === 'draft' || schedule.status === 'planned' || !schedule.scheduled_at;

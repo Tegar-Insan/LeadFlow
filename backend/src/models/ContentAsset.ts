@@ -16,6 +16,7 @@ export const createAsset = async ({
   mime_type,
   file_size_bytes,
   duration_seconds = null,
+  is_ai_placeholder = false,
 }: {
   queue_schedule_id: string;
   uploaded_by: string;
@@ -26,6 +27,11 @@ export const createAsset = async ({
   mime_type: string;
   file_size_bytes: number;
   duration_seconds?: number | null;
+  // TRUE only for the AI-generated cover auto-attached at idea approval
+  // (see migration 030) — prevents trg_asset_upload_advance_status from
+  // prematurely advancing an unscheduled draft to 'uploaded'. Real UC008
+  // uploads (mediaController.ts) must never set this.
+  is_ai_placeholder?: boolean;
 }): Promise<AssetRow> => {
   const { data: asset, error } = await supabaseAdmin
     .from('content_assets')
@@ -39,6 +45,7 @@ export const createAsset = async ({
       mime_type,
       file_size_bytes,
       duration_seconds,
+      is_ai_placeholder,
     })
     .select()
     .single();

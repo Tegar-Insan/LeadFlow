@@ -38,12 +38,13 @@ export async function findById(userId: string): Promise<Record<string, unknown> 
 }
 
 // ✅ CORRECT — 'id' is the correct column name
-export async function emailExists(email: string): Promise<boolean> {
-  const { data } = await db
+export async function emailExists(email: string, excludeUserId?: string): Promise<boolean> {
+  let q = db
     .from('users')
     .select('id')
-    .eq('email', email.toLowerCase())
-    .maybeSingle();
+    .eq('email', email.toLowerCase());
+  if (excludeUserId) q = q.neq('id', excludeUserId);
+  const { data } = await q.maybeSingle();
   return !!data;
 }
 
@@ -80,6 +81,14 @@ export async function updatePassword(userId: string, passwordHash: string): Prom
     .update({ password_hash: passwordHash })
     .eq('id', userId);
   if (error) throw new Error(`User.updatePassword: ${error.message}`);
+}
+
+export async function updateEmail(userId: string, email: string): Promise<void> {
+  const { error } = await db
+    .from('users')
+    .update({ email: email.toLowerCase(), email_verified: false })
+    .eq('id', userId);
+  if (error) throw new Error(`User.updateEmail: ${error.message}`);
 }
 
 export async function setActive(userId: string, isActive: boolean): Promise<void> {

@@ -24,7 +24,7 @@ export const scheduleCreateRules = [
     .isString().withMessage('Description must be a string'),
 
   body('caption')
-    .optional()
+    .optional({ nullable: true })
     .isString(),
 
   body('hashtags')
@@ -64,7 +64,7 @@ export const scheduleUpdateRules = [
     .isString(),
 
   body('caption')
-    .optional()
+    .optional({ nullable: true })
     .isString(),
 
   body('hashtags')

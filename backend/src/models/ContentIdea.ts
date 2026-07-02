@@ -14,6 +14,7 @@ import logger from '../utils/logger.ts';
 import { retryWithBackoff, ANTHROPIC_RETRY } from '../utils/retryHelper.ts';
 import { requestIdeaImage } from '../services/imageGenerationClient.ts';
 import * as Prompt from './Prompt.ts';
+import * as ContentAsset from './ContentAsset.ts';
 
 // ---------------------------------------------------------------------------
 // Public contract — what the frontend consumes
@@ -107,6 +108,23 @@ async function attachGeneratedImage(draft: GeneratedScheduleDraft): Promise<void
       err,
       ideaId: draft.id,
     });
+  }
+}
+
+// Reads the byte size of an already-uploaded storage object without a
+// separate HTTP round-trip to the public URL — used at approval time since
+// the in-memory buffer from generation time is long gone by then.
+async function getStorageObjectSizeBytes(storagePath: string): Promise<number> {
+  try {
+    const lastSlash = storagePath.lastIndexOf('/');
+    const dir = lastSlash >= 0 ? storagePath.slice(0, lastSlash) : '';
+    const fileName = lastSlash >= 0 ? storagePath.slice(lastSlash + 1) : storagePath;
+    const { data, error: listErr } = await supabase.storage.from(STORAGE_BUCKET).list(dir, { search: fileName });
+    if (listErr || !data) return 0;
+    const match = data.find((f) => f.name === fileName);
+    return (match?.metadata as { size?: number } | undefined)?.size ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -545,7 +563,8 @@ export async function approveIdea(ideaId: string, userId: string): Promise<{
         content_title,
         tiktok_caption,
         hashtag,
-        category
+        category,
+        generated_image_url
       )
     `)
     .eq('idea_id', ideaId)
@@ -558,6 +577,31 @@ export async function approveIdea(ideaId: string, userId: string): Promise<{
   }
 
   const idea = (draft as any)?.content_ideas ?? {};
+
+  // The AI cover was already uploaded to Storage during generation
+  // (attachGeneratedImage, content-ideas/{ideaId}.png) — turn it into a real
+  // content_assets row now that a schedule id exists to link it to, so it
+  // shows up in the Media panel/card thumbnails exactly like a manual
+  // upload. Non-fatal: an asset-creation failure must not undo the approval.
+  if (idea.generated_image_url && draft?.id) {
+    try {
+      const storagePath = `content-ideas/${ideaId}.png`;
+      const sizeBytes = await getStorageObjectSizeBytes(storagePath);
+      await ContentAsset.createAsset({
+        queue_schedule_id: draft.id,
+        uploaded_by: userId,
+        content_type: 'poster_photo',
+        file_name: `${ideaId}.png`,
+        file_url: idea.generated_image_url,
+        storage_path: storagePath,
+        mime_type: 'image/png',
+        file_size_bytes: sizeBytes,
+        is_ai_placeholder: true,
+      });
+    } catch (assetErr) {
+      logger.warn('[ContentIdea.approveIdea] failed to create content_assets row for AI cover', { assetErr, ideaId });
+    }
+  }
 
   return {
     idea_id: ideaId,

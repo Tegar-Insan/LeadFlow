@@ -17,6 +17,9 @@ router.get('/users',              roleController.getAllUsers);
 // POST /api/admin/users             — create account directly (no OTP)
 router.post('/users',             roleController.createUserByAdmin);
 
+// PUT  /api/admin/users/:id         — edit account details (full_name, email, phone)
+router.put('/users/:id',          roleController.updateUserDetails);
+
 // PUT  /api/admin/users/:id/role    — change a user's role
 router.put('/users/:id/role',     roleController.updateUserRole);
 

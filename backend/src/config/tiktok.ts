@@ -29,7 +29,7 @@ export function validateTikTokConfig(): void {
   if (!TIKTOK_CONFIG.clientSecret) missing.push('TIKTOK_CLIENT_SECRET');
   if (!TIKTOK_CONFIG.redirectUri) missing.push('TIKTOK_REDIRECT_URI');
   if (!process.env.TIKTOK_TOKEN_ENCRYPTION_KEY) missing.push('TIKTOK_TOKEN_ENCRYPTION_KEY');
-  if (!TIKTOK_CONFIG.mediaPublicBaseUrl) missing.push('TIKTOK_MEDIA_UPLOAD_URL');
+  if (!TIKTOK_CONFIG.mediaPublicBaseUrl) missing.push('TIKTOK_MEDIA_PUBLIC_BASE_URL');
 
   if (missing.length) {
     throw new Error(`Missing TikTok env vars: ${missing.join(', ')}`);

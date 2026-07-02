@@ -4,11 +4,13 @@
  * GeneratedIdeasPage so the form only exists in one place.
  * LeadFlow – Krench Chicken (UC007)
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { toDatetimeLocal, datetimeLocalToUTCiso, TZ } from '../../utils/formatDate';
+import { fetchMediaBySchedule } from '../../services/mediaService';
+import MediaPreview from '../media/MediaPreview';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -24,18 +26,42 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
     : initialDate ? `${initialDate}T10:00` : '';
   const fallbackScheduledTime = dayjs().tz(TZ).add(1, 'hour').format('YYYY-MM-DDTHH:mm');
 
+  // ── Existing media (edit mode) ──────────────────────────────
+  // Fetched here rather than by each host page (CalendarPage/ListPage/
+  // GeneratedIdeasPage) — this modal already knows the schedule id, so it
+  // can own showing what's already attached (real uploads AND the
+  // AI-generated cover from idea approval) instead of always rendering a
+  // blank dropzone regardless of existing content_assets rows.
+  const [existingAssets, setExistingAssets] = useState([]);
+  const [loadingExisting, setLoadingExisting] = useState(false);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !initial.id) return;
+    let cancelled = false;
+    setLoadingExisting(true);
+    fetchMediaBySchedule(initial.id)
+      .then((r) => { if (!cancelled) setExistingAssets(r.data?.data?.assets || []); })
+      .catch(() => { if (!cancelled) setExistingAssets([]); })
+      .finally(() => { if (!cancelled) setLoadingExisting(false); });
+    return () => { cancelled = true; };
+  }, [mode, initial.id]);
+
   // ── Bulk count (create-only) ────────────────────────────────
   const [postCount, setPostCount] = useState(1);
   const [activeTab, setActiveTab] = useState(0);
 
   // ── Per-post state array ────────────────────────────────────
+  // Falls back to the AI-original content_title/tiktok_caption/hashtag (from
+  // the linked content_ideas row) only when no manual custom_* override has
+  // ever been set — matches the same custom_caption || title convention
+  // already used by LibraryCard/SlotCard.
   const [posts, setPosts] = useState(() => [
     mode === 'edit'
       ? {
           ...EMPTY_POST_SLOT(),
-          title:    initial.custom_caption || initial.title || '',
-          caption:  initial.custom_caption || '',
-          hashtags: (initial.custom_hashtags || []).join(' '),
+          title:    initial.custom_caption || initial.title || initial.content_title || '',
+          caption:  initial.custom_caption || initial.tiktok_caption || '',
+          hashtags: ((initial.custom_hashtags?.length ? initial.custom_hashtags : initial.hashtag) || []).join(' '),
         }
       : EMPTY_POST_SLOT(),
   ]);
@@ -191,6 +217,22 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
             ))}
           </div>
         </div>
+
+        {/* Existing media already attached to this schedule (edit mode) —
+            includes the AI-generated cover from idea approval, so it's not
+            invisible just because no new files have been picked yet. */}
+        {mode === 'edit' && (
+          loadingExisting ? (
+            <p className="text-[11px] text-text-muted font-body">Loading existing media…</p>
+          ) : existingAssets.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-body font-semibold text-text-muted uppercase tracking-widest mb-1.5">
+                Currently attached
+              </p>
+              <MediaPreview assets={existingAssets} onDeleteAsset={undefined} />
+            </div>
+          ) : null
+        )}
 
         {/* Drop zone */}
         {!(p.mediaType === 'video' && p.mediaFiles.length > 0) && (

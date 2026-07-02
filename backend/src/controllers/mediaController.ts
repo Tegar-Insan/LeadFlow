@@ -149,19 +149,28 @@ export const uploadMedia = async (req: Request, res: Response): Promise<void> =>
 
     // Advance the schedule to 'uploaded' so it becomes eligible for the
     // auto-publish cron (publishService.getDueSchedules only polls
-    // status='uploaded'). Without this, media can be attached forever and
-    // the schedule never qualifies for auto-publish regardless of
-    // scheduled_at. Already excluded 'published' schedules above; this also
-    // lets a previously 'failed' schedule retry on re-upload.
-    await ContentQueueSchedule.updateSchedule(scheduleId, { status: 'uploaded' });
+    // status='uploaded' AND scheduled_at IS NOT NULL). Already excluded
+    // 'published' schedules above; this also lets a previously 'failed'
+    // schedule retry on re-upload.
+    //
+    // Only do this when the schedule actually has a scheduled_at. A pure
+    // draft (scheduled_at = null) is never auto-publish eligible regardless
+    // of status, and flipping it away from 'draft' orphans it: it no longer
+    // matches getDraftSchedules (status='draft') nor getSchedulesByMonth
+    // (requires a non-null scheduled_at in range), so it silently vanishes
+    // from both the Content Library sidebar and the list view.
+    const hasScheduledAt = !!schedule['scheduled_at'];
+    if (hasScheduledAt) {
+      await ContentQueueSchedule.updateSchedule(scheduleId, { status: 'uploaded' });
+    }
 
-    logger.info(`[Media] ${files.length} file(s) uploaded to schedule ${scheduleId}, status -> uploaded`);
+    logger.info(`[Media] ${files.length} file(s) uploaded to schedule ${scheduleId}, status -> ${hasScheduledAt ? 'uploaded' : schedule['status']}`);
     success(res, {
       message: 'Media uploaded',
       data: {
         scheduleId,
         tiktok_account_id: tiktokAccountId || null,
-        status: 'uploaded',
+        status: hasScheduledAt ? 'uploaded' : (schedule['status'] as string),
         assets: uploadedAssets,
       },
       statusCode: 201,

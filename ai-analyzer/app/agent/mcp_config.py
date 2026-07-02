@@ -37,10 +37,12 @@ def build_mcp_servers() -> dict:
     # On Windows, shutil.which("npx") resolves to npx.cmd — a batch file that
     # cannot be executed as a direct subprocess command by Node's spawn() without
     # shell:true. Route through cmd /c so Node can invoke it correctly.
+    # Use shutil.which("cmd") to get the full path (C:\Windows\System32\cmd.exe)
+    # rather than a bare "cmd" which may not resolve in all subprocess environments.
     # On Linux/macOS, use the resolved absolute path (or fall back to bare "npx"
     # if shutil.which returns None, letting the shell find it via PATH).
     if sys.platform == "win32":
-        command = "cmd"
+        command = shutil.which("cmd") or "cmd.exe"
         args = ["/c", "npx", "-y", _TAVILY_MCP_VERSION]
     else:
         command = shutil.which("npx") or "npx"

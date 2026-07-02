@@ -130,7 +130,7 @@ const CalendarView = ({ year, month, schedulesByDate = {}, onDrop, onDayClick, o
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 flex-1 relative">
+      <div className="grid grid-cols-7 flex-1 relative overflow-y-auto">
         {loading && (
           <div className="absolute inset-0 bg-surface-raised/70 flex items-center justify-center z-10">
             <div className="flex items-center gap-2 text-text-secondary font-body text-sm">

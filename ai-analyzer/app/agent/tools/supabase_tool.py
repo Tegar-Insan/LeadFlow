@@ -14,9 +14,12 @@ the real safety gate that keeps agent output out of the auto-publish path
 until a human reviews it (see PLAN.md section 9).
 """
 
+from typing import Optional
+
 from claude_agent_sdk import tool, create_sdk_mcp_server
 
-from app.utils.supabase_client import get_supabase_admin
+from app.utils.supabase_client import get_supabase_admin, MEDIA_BUCKET
+from app.utils.logger import logger
 
 CHECK_EXISTING_SCHEDULES_SCHEMA = {
     "type": "object",
@@ -37,6 +40,26 @@ INSERT_DRAFT_SCHEDULE_SCHEMA = {
     },
     "required": ["caption", "hashtags", "scheduled_at"],
 }
+
+
+def _parse_storage_path(public_url: str, bucket: str) -> Optional[str]:
+    marker = f"/storage/v1/object/public/{bucket}/"
+    idx = public_url.find(marker)
+    if idx == -1:
+        return None
+    return public_url[idx + len(marker):]
+
+
+def _get_storage_object_size_bytes(client, bucket: str, storage_path: str) -> int:
+    try:
+        last_slash = storage_path.rfind("/")
+        directory = storage_path[:last_slash] if last_slash >= 0 else ""
+        file_name = storage_path[last_slash + 1:] if last_slash >= 0 else storage_path
+        listing = client.storage.from_(bucket).list(directory, {"search": file_name})
+        match = next((f for f in listing if f.get("name") == file_name), None)
+        return int(((match or {}).get("metadata") or {}).get("size") or 0)
+    except Exception:
+        return 0
 
 
 def build_supabase_tool_server(run_id: str, created_by: str):
@@ -81,7 +104,37 @@ def build_supabase_tool_server(run_id: str, created_by: str):
         }
         resp = client.table("content_queue_schedules").insert(payload).execute()
         row = resp.data[0] if resp.data else {}
-        return {"content": [{"type": "text", "text": f"inserted schedule id={row.get('id')}"}]}
+        schedule_id = row.get("id")
+
+        # Mirrors ContentIdea.ts's approveIdea / chatbotController.ts's
+        # approveSchedule: the AI cover image only exists as a bare URL on
+        # the schedule until it's turned into a real content_assets row
+        # (is_ai_placeholder=true), which is what tiktokPublishService.ts
+        # actually reads to publish. Never fatal — a failed asset insert
+        # must not undo the schedule that was already created (NFR-002).
+        preview_image_url = args.get("preview_image_url")
+        if preview_image_url and schedule_id:
+            try:
+                storage_path = _parse_storage_path(preview_image_url, MEDIA_BUCKET)
+                if storage_path:
+                    size_bytes = _get_storage_object_size_bytes(client, MEDIA_BUCKET, storage_path)
+                    client.table("content_assets").insert({
+                        "queue_schedule_id": schedule_id,
+                        "uploaded_by": created_by,
+                        "content_type": "poster_photo",
+                        "file_name": storage_path.rsplit("/", 1)[-1],
+                        "file_url": preview_image_url,
+                        "storage_path": storage_path,
+                        "mime_type": "image/png",
+                        "file_size_bytes": size_bytes,
+                        "is_ai_placeholder": True,
+                    }).execute()
+                else:
+                    logger.warning(f"[agent.supabase_tool] could not parse storage_path from {preview_image_url}")
+            except Exception as exc:
+                logger.warning(f"[agent.supabase_tool] failed to create content_assets row for schedule {schedule_id}: {exc}")
+
+        return {"content": [{"type": "text", "text": f"inserted schedule id={schedule_id}"}]}
 
     return create_sdk_mcp_server(
         name="supabase",

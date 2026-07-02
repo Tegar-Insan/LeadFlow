@@ -20,6 +20,7 @@ from app.routers.analyze import router as analyze_router
 from app.routers.chatbot import router as chatbot_router
 from app.routers.image import router as image_router
 from app.routers.agent import router as agent_router
+from app.routers.tavily_health import router as tavily_health_router
 from app.utils.logger import logger
 
 app = FastAPI(
@@ -41,6 +42,7 @@ app.include_router(analyze_router)
 app.include_router(chatbot_router)
 app.include_router(image_router)
 app.include_router(agent_router)
+app.include_router(tavily_health_router)
 
 
 @app.get("/health")
