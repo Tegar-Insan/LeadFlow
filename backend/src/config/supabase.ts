@@ -15,6 +15,12 @@ export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-export const supabaseAnon = createClient(supabaseUrl, anonKey || '', {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+// SUPABASE_ANON_KEY is optional — nothing in this codebase currently
+// imports supabaseAnon — but supabase-js throws synchronously on an empty
+// key string, so constructing it unconditionally would crash the whole
+// app on boot just because an unused client couldn't be built.
+export const supabaseAnon = anonKey
+  ? createClient(supabaseUrl, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : null;

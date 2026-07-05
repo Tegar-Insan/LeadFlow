@@ -17,6 +17,7 @@ services:
         SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
         TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY}
         TIKTOK_MEDIA_UPLOAD_URL: ${TIKTOK_MEDIA_UPLOAD_URL}
+        TIKTOK_MEDIA_PUBLIC_BASE_URL: ${TIKTOK_MEDIA_PUBLIC_BASE_URL}
         TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET}
         TIKTOK_REDIRECT_URI: http://localhost:5000/api/tiktok/callback
         TIKTOK_TOKEN_ENCRYPTION_KEY: ${TIKTOK_TOKEN_ENCRYPTION_KEY}
@@ -29,7 +30,6 @@ services:
         SMTP_USER: ${SMTP_USER}
         SMTP_PASS: ${SMTP_PASS}
         EMAIL_FROM: ${EMAIL_FROM}
-        TAVILY_API_KEY: ${TAVILY_API_KEY}
         IMAGE_GPT_API_KEY: ${IMAGE_GPT_API_KEY}
         OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL}
         
@@ -88,9 +88,8 @@ services:
         ANTHROPIC_MODEL: ${ANTHROPIC_MODEL}
         IMAGE_GPT_API_KEY: ${IMAGE_GPT_API_KEY}
         OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL}
-        # Agentic Mode (PLAN.md) — Tavily MCP trend search + the agent's
-        # direct Supabase tool (slot-collision check + draft insert)
-        TAVILY_API_KEY: ${TAVILY_API_KEY}
+        # Agentic Mode (PLAN.md) — the agent's direct Supabase tool
+        # (slot-collision check + draft insert)
         SUPABASE_URL: ${SUPABASE_URL}
         SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       ports:

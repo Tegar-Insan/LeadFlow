@@ -70,4 +70,9 @@ def get_image_generation_semaphore() -> asyncio.Semaphore:
 
 
 def get_image_model_id() -> str:
-    return os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1").strip()
+    # Docker Compose's ${VAR} substitution sets an empty-string env var
+    # (not an absent one) when the source .env lacks the key at container
+    # creation time — os.getenv's default only kicks in for a truly
+    # missing key, so a blank value silently passed through as model=""
+    # to every images.generate() call. `or` catches both cases.
+    return os.getenv("OPENAI_IMAGE_MODEL", "").strip() or "gpt-image-1"

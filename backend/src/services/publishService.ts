@@ -1,5 +1,6 @@
 import { supabaseAdmin as supabase } from '../config/supabase.ts';
 import { isScheduleTimeReached } from '../utils/jakartaTime.ts';
+import { getErrorMessage } from '../utils/errorHelper.ts';
 import * as tiktokPublishService from './tiktokPublishService.ts';
 
 const DEFAULT_BATCH_SIZE = 20;
@@ -64,7 +65,7 @@ async function publishSingleWithTimeout(schedule: ScheduleRow): Promise<PublishR
     return {
       scheduleId: schedule.id,
       status: 'failed',
-      reason: err instanceof Error ? err.message : String(err),
+      reason: getErrorMessage(err),
     };
   }
 }
@@ -80,7 +81,7 @@ export async function runAutoPublishBatch(limit = DEFAULT_BATCH_SIZE) {
     return {
       scheduleId: due[i]!.id,
       status: 'failed' as const,
-      reason: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+      reason: getErrorMessage(outcome.reason),
     };
   });
 

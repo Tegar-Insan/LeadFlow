@@ -63,6 +63,13 @@ router.patch(
   controller.moveSchedule
 );
 
+// "Add to Queue" — draft only, queues for the same WIB time tomorrow
+router.patch(
+  '/:id/add-to-queue',
+  requireRole(['marketing_staff', 'admin']),
+  controller.addToQueue
+);
+
 router.delete(
   '/:id',
   requireRole(['marketing_staff', 'admin']),

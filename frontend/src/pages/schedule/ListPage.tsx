@@ -271,7 +271,7 @@ export default function ListPage() {
 
   const {
     schedules, drafts, loading, error,
-    loadMonth, addSchedule, editSchedule, removeSchedule, publishNow,
+    loadMonth, addSchedule, editSchedule, removeSchedule, publishNow, addToQueue, dragDrop,
   } = useSchedule(urlYear, urlMonth);
 
   const [listTab,          setListTab]          = useState<'scheduled' | 'drafts'>('scheduled');
@@ -283,10 +283,16 @@ export default function ListPage() {
   const [formLoading,      setFormLoading]      = useState(false);
   const [formError,        setFormError]        = useState(null);
   const [publishLoadingId, setPublishLoadingId] = useState(null);
+  const [queueLoadingId,   setQueueLoadingId]   = useState(null);
   const [chatbotDrawerOpen,setChatbotDrawerOpen]= useState(false);
   const [mediaDeleting,    setMediaDeleting]    = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Drag-and-drop (Scheduled tab only): dragging a card onto another date's
+  // group reschedules it to that date, keeping its existing time-of-day.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverDateKey, setDragOverDateKey] = useState<string | null>(null);
 
   // List view filter state
   const [listViewFilter, setListViewFilter] = useState<'day' | 'week' | 'month'>('month');
@@ -402,6 +408,27 @@ export default function ListPage() {
     setModal('detail');
   };
 
+  const handleListDrop = async (scheduleId, dateISO) => {
+    if (!canEdit) return;
+    // Block drop onto past dates — same rule as CalendarPage.tsx's handleDrop.
+    const dropDay = dayjs.tz(dateISO, TZ).startOf('day');
+    const today   = dayjs().tz(TZ).startOf('day');
+    if (dropDay.isBefore(today)) {
+      alert('Cannot move a post to a past date.');
+      return;
+    }
+    // Keep the card's existing time-of-day; only the date changes.
+    const dragged = schedules.find(s => s.id === scheduleId);
+    const timeStr = dragged?.scheduled_at
+      ? dayjs(dragged.scheduled_at).tz(TZ).format('HH:mm')
+      : '10:00';
+    try {
+      await dragDrop(scheduleId, dateISO, timeStr);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to move');
+    }
+  };
+
   const handleCreateSave = async (postsArray) => {
     setFormLoading(true); setFormError(null);
     let needReload = false;
@@ -445,6 +472,18 @@ export default function ListPage() {
       if (activeSchedule?.id === schedule.id) setActiveSchedule(prev => prev ? { ...prev, status: 'failed' } : prev);
     }
     setPublishLoadingId(null);
+  };
+
+  const handleAddToQueue = async (item) => {
+    if (!item?.id || queueLoadingId) return;
+    setQueueLoadingId(item.id);
+    const result = await addToQueue(item.id);
+    if (result.ok) {
+      toast.success(result.message || 'Added to queue');
+    } else {
+      toast.error(result.message || 'Failed to add to queue');
+    }
+    setQueueLoadingId(null);
   };
 
   const handleMediaUpload = (newAssets) => { setAssets(prev => [...prev, ...newAssets]); loadMonth(); };
@@ -716,8 +755,33 @@ export default function ListPage() {
             {!loading && sortedDateKeys.map(dateKey => {
               const items = groupedItems[dateKey];
               const headerLabel = formatDateHeader(dateKey);
+              const isDroppableGroup = listTab === 'scheduled' && canEdit && dateKey !== '__unscheduled__';
+              const isDropTarget = isDroppableGroup && dragOverDateKey === dateKey;
+
+              const handleGroupDragOver = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDragOverDateKey(dateKey);
+              };
+              const handleGroupDragLeave = () => {
+                setDragOverDateKey(prev => (prev === dateKey ? null : prev));
+              };
+              const handleGroupDrop = (e) => {
+                e.preventDefault();
+                setDragOverDateKey(null);
+                const id = e.dataTransfer.getData('scheduleId');
+                // Past-date blocking happens in handleListDrop (same guard/alert as CalendarPage.tsx's handleDrop).
+                if (id) handleListDrop(id, dateKey);
+              };
+
               return (
-                <div key={dateKey} className="space-y-3">
+                <div
+                  key={dateKey}
+                  className={`space-y-3 rounded-xl transition-colors ${isDropTarget ? 'ring-2 ring-[#f6b70a] bg-amber-50/60 p-2 -m-2' : ''}`}
+                  onDragOver={isDroppableGroup ? handleGroupDragOver : undefined}
+                  onDragLeave={isDroppableGroup ? handleGroupDragLeave : undefined}
+                  onDrop={isDroppableGroup ? handleGroupDrop : undefined}
+                >
                   <p className="list-date-header">{headerLabel}</p>
                   {items.map(item => {
                     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.draft;
@@ -729,9 +793,21 @@ export default function ListPage() {
                       ? dayjs(item.created_at).tz(TZ).fromNow()
                       : null;
                     const nameInitial = (item.created_by_name || 'K').trim().charAt(0).toUpperCase();
+                    const isDraggable = listTab === 'scheduled' && canEdit;
 
                     return (
-                      <div key={item.id} className="list-card flex gap-0 cursor-pointer" onClick={() => handleCardClick(item)}>
+                      <div
+                        key={item.id}
+                        className={`list-card flex gap-0 cursor-pointer ${isDraggable ? 'active:cursor-grabbing' : ''} ${draggingId === item.id ? 'opacity-40' : ''}`}
+                        onClick={() => handleCardClick(item)}
+                        draggable={isDraggable}
+                        onDragStart={isDraggable ? (e) => {
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('scheduleId', item.id);
+                          setDraggingId(item.id);
+                        } : undefined}
+                        onDragEnd={isDraggable ? () => setDraggingId(null) : undefined}
+                      >
                         {/* Left time column */}
                         <div className="flex flex-col items-center justify-start gap-1.5 px-4 py-4 min-w-[90px] border-r border-slate-100">
                           <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{timeLabel}</span>
@@ -783,13 +859,21 @@ export default function ListPage() {
                             </span>
                             {canEdit && (
                               <div className="flex items-center gap-2">
-                                {item.status !== 'published' && (
+                                {item.status === 'draft' && (
+                                  <button
+                                    onClick={() => handleAddToQueue(item)}
+                                    disabled={queueLoadingId === item.id}
+                                    className="h-7 px-3 rounded-full text-[10px] font-bold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 transition-colors flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                                    {queueLoadingId === item.id ? '…' : 'Add to Queue'}
+                                  </button>
+                                )}
+                                {item.status !== 'draft' && item.status !== 'published' && (
                                   <button
                                     onClick={() => handlePublishNow(item)}
                                     disabled={publishLoadingId === item.id}
-                                    className="h-7 px-3 rounded-full text-[10px] font-bold border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 transition-colors flex items-center gap-1">
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                                    {publishLoadingId === item.id ? '…' : 'Add to Queue'}
+                                    className="h-7 px-3 rounded-full text-[10px] font-bold border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 transition-colors flex items-center gap-1">
+                                    {publishLoadingId === item.id ? '…' : 'Publish Now'}
                                   </button>
                                 )}
                                 <button

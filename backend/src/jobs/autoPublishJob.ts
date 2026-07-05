@@ -2,6 +2,8 @@ import cron from 'node-cron';
 import type { Server as SocketServer } from 'socket.io';
 import { runAutoPublishBatch } from '../services/publishService.ts';
 import { broadcastCalendarUpdate } from '../utils/calendarSocket.ts';
+import { getErrorMessage } from '../utils/errorHelper.ts';
+import logger from '../utils/logger.ts';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone.js';
 import utc from 'dayjs/plugin/utc.js';
@@ -28,8 +30,7 @@ export function startAutoPublishJob(io?: SocketServer) {
           broadcastCalendarUpdate(io, now.year(), now.month() + 1);
         }
       } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err);
-        console.error('[autoPublishJob] failed:', detail);
+        logger.error(`[autoPublishJob] failed: ${getErrorMessage(err)}`, { error: err });
       }
     },
     {

@@ -16,6 +16,7 @@ import {
   moveSchedule,
   deleteSchedule,
   publishScheduleNow,
+  addScheduleToQueue,
 } from '../services/scheduleService';
 import { TZ, nowWIB } from '../utils/formatDate';
 
@@ -149,6 +150,33 @@ export const useSchedule = (initialYear?: number, initialMonth?: number) => {
     }
   }, []);
 
+  const addToQueue = useCallback(async (id) => {
+    try {
+      const res = await addScheduleToQueue(id);
+      const s   = res.data.data.schedule;
+
+      setDrafts(prev => prev.filter(x => x.id !== id));
+      setSchedules(prev => {
+        const original = prev.find(x => x.id === id) || draftsRef.current.find(x => x.id === id);
+        const merged = original
+          ? {
+              ...s,
+              primary_asset_url:  original.primary_asset_url  ?? null,
+              primary_asset_type: original.primary_asset_type ?? null,
+              primary_asset_mime: original.primary_asset_mime ?? null,
+              created_by_name:    original.created_by_name    ?? null,
+            }
+          : s;
+        return [...prev.filter(x => x.id !== id), merged];
+      });
+
+      return { ok: true, schedule: s, message: res?.data?.message || 'Added to queue' };
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Failed to add to queue';
+      return { ok: false, message };
+    }
+  }, []);
+
   const dragDrop = useCallback(async (id, newDateISO, timeStr = '10:00') => {
     // Combine date + time → WIB → UTC ISO
     const wibStr = `${newDateISO}T${timeStr}:00`;
@@ -206,6 +234,7 @@ export const useSchedule = (initialYear?: number, initialMonth?: number) => {
     editSchedule,
     removeSchedule,
     publishNow,
+    addToQueue,
     dragDrop,
   };
 };

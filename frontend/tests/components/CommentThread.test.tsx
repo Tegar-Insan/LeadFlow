@@ -6,6 +6,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CalendarPage from '../../src/pages/schedule/CalendarPage';
 import AuthContext from '../../src/context/AuthContext';
+import { ConfirmProvider } from '../../src/context/ConfirmContext';
 import { useSchedule } from '../../src/hooks/useSchedule';
 
 vi.mock('../../src/hooks/useSchedule', () => ({
@@ -89,6 +90,7 @@ function renderCalendarPage(schedule: Record<string, unknown>) {
     editSchedule: vi.fn(),
     removeSchedule: vi.fn(),
     publishNow: vi.fn().mockResolvedValue({ ok: true, message: 'Published' }),
+    addToQueue: vi.fn().mockResolvedValue({ ok: true, message: 'Added to queue' }),
     dragDrop: vi.fn(),
   });
 
@@ -109,16 +111,18 @@ function renderCalendarPage(schedule: Record<string, unknown>) {
         updateUser: vi.fn(),
       }}
     >
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: '/calendar',
-            state: { createdScheduleId: schedule.id },
-          },
-        ]}
-      >
-        <CalendarPage />
-      </MemoryRouter>
+      <ConfirmProvider>
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/calendar',
+              state: { createdScheduleId: schedule.id },
+            },
+          ]}
+        >
+          <CalendarPage />
+        </MemoryRouter>
+      </ConfirmProvider>
     </AuthContext.Provider>,
   );
 }

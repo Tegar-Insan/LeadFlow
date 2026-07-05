@@ -590,12 +590,12 @@ async function uploadBinaryToTikTok(uploadUrl, binaryBuffer, mimeType) {
 // 2. Init publish — TikTok fetches the images from the provided URLs
 //
 // Per https://developers.tiktok.com/doc/content-posting-api-reference-photo-post:
-// post_mode=MEDIA_UPLOAD sends the photos to the creator's TikTok inbox as a
-// draft for them to finish and publish manually — privacy_level,
-// disable_comment, auto_add_music, brand_content_toggle and
-// brand_organic_toggle are documented as "DIRECT_POST mode only" and are
-// deliberately omitted here. photo_images is capped at TikTok's documented
-// max of 35 URLs.
+// post_mode=DIRECT_POST publishes the photo post immediately instead of
+// dropping it into the creator's TikTok inbox as a manual draft. DIRECT_POST
+// requires privacy_level, disable_comment and auto_add_music in post_info —
+// mirrors the same forced-SELF_ONLY privacy and allow_comment handling
+// already used by initVideoPublish. photo_images is capped at TikTok's
+// documented max of 35 URLs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function initPhotoPublish(accessToken, schedule, photoAssets) {
@@ -615,13 +615,16 @@ async function initPhotoPublish(accessToken, schedule, photoAssets) {
     post_info: {
       title: resolveShortTitle(schedule),
       description: resolveCaption(schedule).slice(0, 4000),
+      privacy_level: resolvePrivacyLevel(schedule),
+      disable_comment: schedule.allow_comment === false,
+      auto_add_music: true,
     },
     source_info: {
       source: 'PULL_FROM_URL',
       photo_images: photoUrls,
       photo_cover_index: 0,
     },
-    post_mode: 'MEDIA_UPLOAD',
+    post_mode: 'DIRECT_POST',
     media_type: 'PHOTO',
   };
 

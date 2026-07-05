@@ -8,10 +8,15 @@ since the model has no legitimate way to know the real user id and
 shouldn't be trusted to invent one.
 
 check_existing_schedules backs the Scheduling skill's collision check.
-insert_draft_schedule is the "Calendar Placement" tool from PLAN.md section
-2/9 — always inserts status='draft', auto_publish=False; that pairing is
-the real safety gate that keeps agent output out of the auto-publish path
-until a human reviews it (see PLAN.md section 9).
+insert_scheduled_content is the "Calendar Placement" tool from PLAN.md
+section 2/9 — inserts status='scheduled' at the WIB date/time the Schedule
+skill picked from staff preferences, auto_publish=False. auto_publish=False
+is the real safety gate: content_queue_schedules only enters the
+auto-publish cron once status='uploaded' AND auto_publish=true (see
+publishService.ts's getDueSchedules), so a human still has to review and
+either upload final media or hit "Publish Now" before an agent-generated
+post can go live — it just no longer sits mislabeled as "Draft only" when
+it already has a real scheduled_at slot.
 """
 
 from typing import Optional
@@ -30,7 +35,7 @@ CHECK_EXISTING_SCHEDULES_SCHEMA = {
     "required": ["date_from", "date_to"],
 }
 
-INSERT_DRAFT_SCHEDULE_SCHEMA = {
+INSERT_SCHEDULED_CONTENT_SCHEMA = {
     "type": "object",
     "properties": {
         "caption": {"type": "string", "description": "Full caption text, hashtags appended"},
@@ -86,15 +91,15 @@ def build_supabase_tool_server(run_id: str, created_by: str):
         return {"content": [{"type": "text", "text": str(occupied)}]}
 
     @tool(
-        name="insert_draft_schedule",
-        description="Insert the final content idea as a draft row in content_queue_schedules (status=draft, auto_publish=false)",
-        input_schema=INSERT_DRAFT_SCHEDULE_SCHEMA,
+        name="insert_scheduled_content",
+        description="Insert the final content idea as a scheduled row in content_queue_schedules, at the WIB slot the Schedule skill picked (status=scheduled, auto_publish=false)",
+        input_schema=INSERT_SCHEDULED_CONTENT_SCHEMA,
     )
-    async def insert_draft_schedule(args: dict) -> dict:
+    async def insert_scheduled_content(args: dict) -> dict:
         payload = {
             "idea_id": None,
             "created_by": created_by,
-            "status": "draft",
+            "status": "scheduled",
             "auto_publish": False,
             "custom_caption": args["caption"],
             "custom_hashtags": args.get("hashtags", []),
@@ -139,5 +144,5 @@ def build_supabase_tool_server(run_id: str, created_by: str):
     return create_sdk_mcp_server(
         name="supabase",
         version="1.0.0",
-        tools=[check_existing_schedules, insert_draft_schedule],
+        tools=[check_existing_schedules, insert_scheduled_content],
     )

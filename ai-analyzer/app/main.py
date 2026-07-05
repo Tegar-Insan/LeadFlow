@@ -20,8 +20,15 @@ from app.routers.analyze import router as analyze_router
 from app.routers.chatbot import router as chatbot_router
 from app.routers.image import router as image_router
 from app.routers.agent import router as agent_router
-from app.routers.tavily_health import router as tavily_health_router
 from app.utils.logger import logger
+from app.utils.openai_client import is_configured as is_image_client_configured, get_image_model_id
+
+
+def _get_anthropic_model() -> str:
+    # Same "Docker Compose sets ${VAR} to an empty string, not unset"
+    # gotcha as get_image_model_id() — os.getenv's default only applies
+    # to a truly missing key.
+    return os.getenv("ANTHROPIC_MODEL", "").strip() or "claude-sonnet-4-6"
 
 app = FastAPI(
     title="LeadFlow AI Service",
@@ -42,7 +49,6 @@ app.include_router(analyze_router)
 app.include_router(chatbot_router)
 app.include_router(image_router)
 app.include_router(agent_router)
-app.include_router(tavily_health_router)
 
 
 @app.get("/health")
@@ -50,21 +56,14 @@ async def health():
     return {
         "status": "healthy",
         "service": "LeadFlow AI Microservice",
-        "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
-        "openai_image_configured": bool(os.getenv("IMAGE_GPT_API_KEY", "").strip()),
-        "image_model": os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1"),
+        "anthropic_model": _get_anthropic_model(),
+        "openai_image_configured": is_image_client_configured(),
+        "image_model": get_image_model_id(),
     }
 
 
 @app.on_event("startup")
 async def on_startup():
     logger.info("LeadFlow AI Microservice started on port 8000")
-    logger.info(f"Anthropic model: {os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-4-6')}")
-    logger.info(f"Image model (Nano Banana 2): {os.getenv('OPENAI_IMAGE_MODEL', 'gpt-image-1')}")
-
-    if not os.getenv("TAVILY_API_KEY"):
-        logger.warning(
-            "TAVILY_API_KEY is not set — Agentic Mode web search (Tavily MCP) will "
-            "raise RuntimeError at the start of any agent run. Add TAVILY_API_KEY to "
-            "ai-analyzer/.env"
-        )
+    logger.info(f"Anthropic model: {_get_anthropic_model()}")
+    logger.info(f"Image model (Nano Banana 2): {get_image_model_id()}")
