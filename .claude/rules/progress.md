@@ -1086,7 +1086,55 @@ MODIFIED:
 
 ### Next Session Priority
 1. Run a real Agentic Mode job end-to-end and confirm in Supabase that `scheduled_at` actually lands on a future date now (not just asserted in unit tests) — pairs with Session 19's still-open "verify scheduled status lands correctly" item.
-2. Fix the two stale ListPage test files (`ListPage.test.tsx`, `ListPageRedesigned.test.tsx`) — wrap in `ConfirmProvider` (see `ListPageDragDrop.test.tsx` or `CommentThread.test.tsx` for the working pattern) or retire them if superseded.
+2. Fix the two stale ListPage test files (`ListPage.test.tsx`, `ListPageRedesigned.test.tsx`) — wrap in `ConfirmProvider` + `AlertProvider` (see `ListPageDragDrop.test.tsx` or `CommentThread.test.tsx` for the working pattern) or retire them if superseded.
 3. Investigate the ~46 unrelated full-suite Vitest failures (LoginForm/LoginPage/CalendarView/GeneratedIdeasPage/etc.) — unclear yet whether this is real test rot or full-run environment flakiness; worth a dedicated session rather than folding into unrelated feature work.
 4. Carried forward from Session 15/16/19: `AdminUserTable.tsx` `fullName`/`full_name` mismatch; notification bell end-to-end verification; TikTok photo DIRECT_POST live sandbox check.
 5. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.
+
+---
+
+## Session 20 continued (2026-07-06) — ListPage filter-bar removal + AlertContext (themed window.alert() replacement)
+
+### 1. Removed the dead Day/Week/Month filter bar from ListPage.tsx
+User pointed at the filter bar UI; confirmed via `AskUserQuestion` that it was dead weight — `listViewFilter`/`listViewDate` state only fed a `useEffect` that called `fetchSchedulesForList` and `console.log`'d the result, never touching what's actually rendered (the list is driven entirely by `useSchedule()`'s `schedules`/`drafts` via `groupedItems`/`sortedDateKeys`). Removed the button row, the two state hooks, the effect, and the now-unused `fetchSchedulesForList` import together rather than leaving orphaned code behind.
+
+### 2. Replaced native `window.alert()` with a themed `AlertDialog` (13 call sites, 5 files)
+Screenshot showed the native dark browser-chrome `alert()` popup ("Cannot move a published schedule" — a 409 from `calendarController.ts`'s `moveSchedule`, surfaced via the `catch (err) { alert(err.response?.data?.message) }` pattern already used for drag-drop errors). Confirmed via `AskUserQuestion`: build a reusable dialog and replace all 13 `alert()` calls project-wide (not just the drag-drop ones), styled like `ConfirmDialog` but with a red/danger accent since every one of these is an error/failure notice.
+
+**New, mirrors `ConfirmContext`/`ConfirmDialog` exactly:**
+- `frontend/src/context/AlertContext.tsx` — `AlertProvider` + `useAlert()`. `await alert('message')` or `await alert({ title, message, okLabel })`, promise resolves on dismiss (OK click, Escape, or backdrop click).
+- `frontend/src/components/common/AlertDialog.tsx` — same white rounded-3xl card as `ConfirmDialog`, single red `bg-red-500` OK button, red `"Error"` title by default.
+- Mounted `AlertProvider` in `main.tsx` (inside `ConfirmProvider`, wrapping `AuthProvider`).
+
+**Replaced across 5 files** (`ListPage.tsx`, `CalendarPage.tsx`, `ContentScheduleQueuePage.tsx`, `MediaUploader.tsx`, `components/Schedule/ScheduleModal.tsx`): every call site now does `const alert = useAlert();` then `await alert(...)`, matching the existing `const confirm = useConfirm();` convention in each of those files.
+
+**One real design snag, fixed:** two call sites (`MediaUploader.tsx`'s oversized-file check, `ScheduleModal.tsx`'s JPG/PNG+size check) lived inside synchronous `Array.prototype.filter()` callbacks — `await`ing inside `.filter()` doesn't work (filter needs a synchronous boolean return, and calling the promise-based `alert()` once per invalid file would make each call overwrite the dialog's pending state before the previous one resolves, since only one `request` can be shown at a time). Fixed by collecting the invalid file names/reasons during the synchronous filter pass, then firing a single aggregated `alert()` (fire-and-forget in `MediaUploader.tsx` since `addFiles` itself is called from further sync contexts; properly `await`ed in `ScheduleModal.tsx` since `addMediaFiles` was made `async`) after the filter completes — better UX than the old "one blocking native alert per bad file" chain anyway.
+
+**Regression caught and fixed:** adding `useAlert()` into `CalendarPage.tsx`/`ListPage.tsx` meant every test that renders those components needs an `<AlertProvider>` wrapper now, same as the existing `<ConfirmProvider>` requirement. Found via running the full Vitest suite before/after: `CommentThread.test.tsx`'s "shows textarea when schedule is draft" test (previously passing) broke on `useAlert must be used inside <AlertProvider>`. Fixed by adding `AlertProvider` to that file's and the new `ListPageDragDrop.test.tsx`'s render wrappers. `ListPageDragDrop.test.tsx`'s past-date test was also rewritten from `vi.spyOn(window, 'alert')` to asserting the real rendered `role="alertdialog"` + message text, matching the "use the real provider, assert the rendered dialog" convention `CommentThread.test.tsx` already established for `useConfirm`.
+
+**Verification:** `tsc --noEmit` clean across all touched files (only the pre-existing unrelated `AdminUserTable.tsx` error remains). Full Vitest suite after the fix: exactly the same 10 failed / 5 passed files, 46 failed / 42 passed tests as the pre-existing baseline measured earlier this session — confirmed zero new regressions beyond the one caught-and-fixed above.
+
+### Files Modified/Created This (continued) Session
+```
+NEW:
+  frontend/src/context/AlertContext.tsx
+  frontend/src/components/common/AlertDialog.tsx
+
+MODIFIED:
+  frontend/src/main.tsx
+  frontend/src/pages/schedule/ListPage.tsx
+  frontend/src/pages/schedule/CalendarPage.tsx
+  frontend/src/pages/schedule/ContentScheduleQueuePage.tsx
+  frontend/src/components/media/MediaUploader.tsx
+  frontend/src/components/Schedule/ScheduleModal.tsx
+  frontend/tests/components/CommentThread.test.tsx
+  frontend/tests/pages/schedule/ListPageDragDrop.test.tsx
+```
+
+### Next Session Priority (supersedes the list above where overlapping)
+1. Run a real Agentic Mode job end-to-end and confirm in Supabase that `scheduled_at` lands on a future date (still open from earlier this session).
+2. Fix the two stale ListPage test files (`ListPage.test.tsx`, `ListPageRedesigned.test.tsx`) — now need **both** `ConfirmProvider` and `AlertProvider` wrappers, or retire them if superseded by `ListPageDragDrop.test.tsx`.
+3. Manually verify the new `AlertDialog` in-browser at a few of the 13 call sites (especially the two `.filter()`-based aggregated-message paths in `MediaUploader.tsx`/`ScheduleModal.tsx`).
+4. Investigate the ~46 unrelated full-suite Vitest failures — still unclear if real test rot or environment flakiness; worth a dedicated session.
+5. Carried forward from Session 15/16/19: `AdminUserTable.tsx` `fullName`/`full_name` mismatch; notification bell end-to-end verification; TikTok photo DIRECT_POST live sandbox check.
+6. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.

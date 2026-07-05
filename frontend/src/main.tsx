@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider }         from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ConfirmProvider }      from './context/ConfirmContext';
+import { AlertProvider }        from './context/AlertContext';
 import App      from './App';
 import './index.css';
 
@@ -13,9 +14,11 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <NotificationProvider>
         <ConfirmProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </AlertProvider>
         </ConfirmProvider>
       </NotificationProvider>
     </BrowserRouter>

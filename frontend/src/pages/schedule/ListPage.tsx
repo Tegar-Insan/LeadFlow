@@ -24,7 +24,6 @@ import {
   TZ,
 } from '../../utils/formatDate';
 import { fetchMediaBySchedule, uploadMedia, deleteMediaAsset } from '../../services/mediaService';
-import { fetchSchedulesForList } from '../../services/scheduleService';
 import AIChatbot from '../../components/common/AIChatbot';
 import TikTokLoginButton from '../../components/common/TikTokLoginButton';
 import SmallSidebar from '../../components/common/smallsidebar';
@@ -32,6 +31,7 @@ import ViewModeToggle from '../../components/Schedule/ViewModeToggle';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useAlert } from '../../context/AlertContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
   listComments,
@@ -294,12 +294,9 @@ export default function ListPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverDateKey, setDragOverDateKey] = useState<string | null>(null);
 
-  // List view filter state
-  const [listViewFilter, setListViewFilter] = useState<'day' | 'week' | 'month'>('month');
-  const [listViewDate, setListViewDate] = useState(dayjs().tz('Asia/Jakarta').format('YYYY-MM-DD'));
-
   const { toast } = useNotification();
   const confirm = useConfirm();
+  const alert = useAlert();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);
   const [tiktokLoading, setTiktokLoading] = useState(false);
 
@@ -312,21 +309,6 @@ export default function ListPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Fetch list view data when filter or date changes
-  useEffect(() => {
-    const fetchListData = async () => {
-      try {
-        const response = await fetchSchedulesForList(listViewFilter, listViewDate);
-        const data = response.data?.data || [];
-        console.log('list', data); // Validation: log list data to console
-        console.info(`[ListPage] List view loaded: filter=${listViewFilter}, date=${listViewDate}, count=${data.length}`);
-      } catch (err) {
-        console.error('[ListPage] Failed to fetch list view data:', err);
-      }
-    };
-    fetchListData();
-  }, [listViewFilter, listViewDate]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -414,7 +396,7 @@ export default function ListPage() {
     const dropDay = dayjs.tz(dateISO, TZ).startOf('day');
     const today   = dayjs().tz(TZ).startOf('day');
     if (dropDay.isBefore(today)) {
-      alert('Cannot move a post to a past date.');
+      await alert('Cannot move a post to a past date.');
       return;
     }
     // Keep the card's existing time-of-day; only the date changes.
@@ -425,7 +407,7 @@ export default function ListPage() {
     try {
       await dragDrop(scheduleId, dateISO, timeStr);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to move');
+      await alert(err.response?.data?.message || 'Failed to move');
     }
   };
 
@@ -457,7 +439,7 @@ export default function ListPage() {
   const handleDelete = async (id) => {
     if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); setModal(null); }
-    catch (err) { alert(err.response?.data?.message || 'Failed to delete'); }
+    catch (err) { await alert(err.response?.data?.message || 'Failed to delete'); }
   };
 
   const handlePublishNow = async (schedule) => {
@@ -680,24 +662,6 @@ export default function ListPage() {
 
         {/* List content */}
         <div className="list-shell flex-1 flex flex-col overflow-hidden">
-
-          {/* Filter buttons: day/week/month */}
-          <div className="flex items-center gap-2 px-6 pt-4 pb-3 bg-white border-b border-slate-100">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter:</span>
-            {['day', 'week', 'month'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setListViewFilter(f as 'day' | 'week' | 'month')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  listViewFilter === f
-                    ? 'bg-[#f6b70a] text-black shadow-sm'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
 
           {/* Tabs: Scheduled | Drafts */}
           <div className="flex items-center gap-6 px-6 pt-4 pb-0 border-b border-slate-200 bg-white">

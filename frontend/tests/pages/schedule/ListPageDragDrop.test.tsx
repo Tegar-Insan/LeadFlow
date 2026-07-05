@@ -8,7 +8,7 @@
  * stale (see progress.md's lesson about hardcoded dates becoming past dates).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -18,6 +18,7 @@ import timezone from 'dayjs/plugin/timezone';
 import ListPage from '../../../src/pages/schedule/ListPage';
 import AuthContext from '../../../src/context/AuthContext';
 import { ConfirmProvider } from '../../../src/context/ConfirmContext';
+import { AlertProvider } from '../../../src/context/AlertContext';
 import { useSchedule } from '../../../src/hooks/useSchedule';
 
 dayjs.extend(utc);
@@ -80,9 +81,7 @@ const dayA = now.add(2, 'day').hour(10).minute(0).second(0).millisecond(0);
 const dayB = now.add(3, 'day').hour(19).minute(0).second(0).millisecond(0);
 const pastDay = now.subtract(1, 'day').hour(10).minute(0).second(0).millisecond(0);
 
-const dayAKey = dayA.format('YYYY-MM-DD');
 const dayBKey = dayB.format('YYYY-MM-DD');
-const pastDayKey = pastDay.format('YYYY-MM-DD');
 
 function scheduleFixture(id: string, when: dayjs.Dayjs) {
   return {
@@ -129,9 +128,11 @@ function renderListPage(schedules: Record<string, unknown>[], dragDrop = vi.fn()
       } as any}
     >
       <ConfirmProvider>
-        <MemoryRouter initialEntries={['/calendar/list']}>
-          <ListPage />
-        </MemoryRouter>
+        <AlertProvider>
+          <MemoryRouter initialEntries={['/calendar/list']}>
+            <ListPage />
+          </MemoryRouter>
+        </AlertProvider>
       </ConfirmProvider>
     </AuthContext.Provider>,
   );
@@ -140,12 +141,6 @@ function renderListPage(schedules: Record<string, unknown>[], dragDrop = vi.fn()
 }
 
 describe('ListPage drag-and-drop (Scheduled tab)', () => {
-  let alertSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-  });
-
   it('dragging a card onto a different date group reschedules it to that date, keeping its time-of-day', () => {
     const { dragDrop } = renderListPage([
       scheduleFixture('sched-a', dayA),
@@ -164,7 +159,7 @@ describe('ListPage drag-and-drop (Scheduled tab)', () => {
     }));
 
     expect(dragDrop).toHaveBeenCalledWith('sched-a', dayBKey, '10:00');
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('sets the dragged schedule id via dataTransfer.setData on drag start', () => {
@@ -177,7 +172,7 @@ describe('ListPage drag-and-drop (Scheduled tab)', () => {
     expect(setData).toHaveBeenCalledWith('scheduleId', 'sched-a');
   });
 
-  it('blocks dropping onto a past date group and alerts instead of calling dragDrop', () => {
+  it('blocks dropping onto a past date group and shows a themed alert instead of calling dragDrop', async () => {
     const { dragDrop } = renderListPage([
       scheduleFixture('sched-a', dayA),
       scheduleFixture('sched-old', pastDay),
@@ -190,7 +185,8 @@ describe('ListPage drag-and-drop (Scheduled tab)', () => {
     }));
 
     expect(dragDrop).not.toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith('Cannot move a post to a past date.');
+    expect(await screen.findByText('Cannot move a post to a past date.')).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
   });
 
   it('cards are not draggable while viewing the Drafts tab', () => {

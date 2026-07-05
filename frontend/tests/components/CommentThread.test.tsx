@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import CalendarPage from '../../src/pages/schedule/CalendarPage';
 import AuthContext from '../../src/context/AuthContext';
 import { ConfirmProvider } from '../../src/context/ConfirmContext';
+import { AlertProvider } from '../../src/context/AlertContext';
 import { useSchedule } from '../../src/hooks/useSchedule';
 
 vi.mock('../../src/hooks/useSchedule', () => ({
@@ -112,16 +113,18 @@ function renderCalendarPage(schedule: Record<string, unknown>) {
       }}
     >
       <ConfirmProvider>
-        <MemoryRouter
-          initialEntries={[
-            {
-              pathname: '/calendar',
-              state: { createdScheduleId: schedule.id },
-            },
-          ]}
-        >
-          <CalendarPage />
-        </MemoryRouter>
+        <AlertProvider>
+          <MemoryRouter
+            initialEntries={[
+              {
+                pathname: '/calendar',
+                state: { createdScheduleId: schedule.id },
+              },
+            ]}
+          >
+            <CalendarPage />
+          </MemoryRouter>
+        </AlertProvider>
       </ConfirmProvider>
     </AuthContext.Provider>,
   );

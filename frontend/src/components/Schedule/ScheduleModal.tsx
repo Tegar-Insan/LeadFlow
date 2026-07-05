@@ -11,6 +11,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { toDatetimeLocal, datetimeLocalToUTCiso, TZ } from '../../utils/formatDate';
 import { fetchMediaBySchedule } from '../../services/mediaService';
 import MediaPreview from '../media/MediaPreview';
+import { useAlert } from '../../context/AlertContext';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -21,6 +22,7 @@ const EMPTY_POST_SLOT = () => ({
 });
 
 const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, onSave, loading, error }: any) => {
+  const alert = useAlert();
   const defaultTime = initialHour != null
     ? `${initialDate}T${String(initialHour).padStart(2,'0')}:00`
     : initialDate ? `${initialDate}T10:00` : '';
@@ -110,24 +112,30 @@ const ScheduleModal = ({ mode, initial = {}, initialDate, initialHour, onClose, 
     }));
   };
 
-  const addMediaFiles = (idx, rawFiles: FileList | File[] | null | undefined) => {
+  const addMediaFiles = async (idx, rawFiles: FileList | File[] | null | undefined) => {
     const p    = posts[idx];
     const arr: File[]  = Array.from(rawFiles || []) as File[];
     if (p.mediaType === 'video') {
       const mp4 = arr.find((f) => f.type === 'video/mp4' || f.name.toLowerCase().endsWith('.mp4'));
-      if (!mp4) { alert('Please select an MP4 video file.'); return; }
-      if (mp4.size > 50 * 1024 * 1024) { alert('Video must be ≤ 50 MB.'); return; }
+      if (!mp4) { await alert('Please select an MP4 video file.'); return; }
+      if (mp4.size > 50 * 1024 * 1024) { await alert('Video must be ≤ 50 MB.'); return; }
       p.mediaPreviews.forEach(u => URL.revokeObjectURL(u));
       setPosts(prev => prev.map((pp, i) => i !== idx ? pp
         : { ...pp, mediaFiles: [mp4], mediaPreviews: [URL.createObjectURL(mp4)] }));
     } else {
+      const rejectedReasons: string[] = [];
       const valid: File[] = arr.filter((f) => {
         if (!['image/jpeg', 'image/jpg', 'image/png'].includes(f.type)) {
-          alert(`${f.name} is not JPG or PNG.`); return false;
+          rejectedReasons.push(`${f.name} is not JPG or PNG.`);
+          return false;
         }
-        if (f.size > 50 * 1024 * 1024) { alert(`${f.name} exceeds 50 MB.`); return false; }
+        if (f.size > 50 * 1024 * 1024) {
+          rejectedReasons.push(`${f.name} exceeds 50 MB.`);
+          return false;
+        }
         return true;
       });
+      if (rejectedReasons.length > 0) await alert(rejectedReasons.join('\n'));
       if (!valid.length) return;
       setPosts(prev => prev.map((pp, i) => i !== idx ? pp : {
         ...pp,

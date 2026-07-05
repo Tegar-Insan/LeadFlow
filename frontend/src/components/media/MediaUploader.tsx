@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { uploadMedia, deleteMediaAsset } from '../../services/mediaService';
 import { KineticLoader, InlineLoader } from '../common/KineticLoader';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useAlert } from '../../context/AlertContext';
 
 const ACCEPTED = '.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi';
 const MAX_SIZE_MB = 200;
@@ -120,6 +121,7 @@ const MediaUploader = ({
   const [isDragOver,    setIsDragOver]     = useState(false);
   const [uploadedAssets, setUploadedAssets] = useState([]);
   const confirm = useConfirm();
+  const alert = useAlert();
 
   useEffect(() => {
     setUploadedAssets((prev) => {
@@ -145,9 +147,10 @@ const MediaUploader = ({
   }, [existingAssets, uploadedAssets]);
 
   const addFiles = useCallback((newFiles: FileList | File[] | null | undefined) => {
+    const oversized: string[] = [];
     const valid = Array.from(newFiles || []).filter((f: File) => {
       if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-        alert(`${f.name} exceeds the ${MAX_SIZE_MB} MB size limit`);
+        oversized.push(f.name);
         return false;
       }
       return true;
@@ -155,7 +158,12 @@ const MediaUploader = ({
     setFiles(prev => [...prev, ...valid]);
     const newPreviews = valid.map(f => URL.createObjectURL(f));
     setPreviews(prev => [...prev, ...newPreviews]);
-  }, []);
+    if (oversized.length > 0) {
+      // Fire-and-forget: addFiles must stay synchronous (called from a
+      // .filter() context), the dialog can resolve on its own time.
+      void alert(`${oversized.join(', ')} exceed${oversized.length > 1 ? '' : 's'} the ${MAX_SIZE_MB} MB size limit`);
+    }
+  }, [alert]);
 
   const removeFile = (idx) => {
     URL.revokeObjectURL(previews[idx]);
@@ -208,7 +216,7 @@ const MediaUploader = ({
       setUploadedAssets(prev => prev.filter((asset) => asset.id !== assetId));
       onAssetDeleted?.(assetId);
     } catch {
-      alert('Failed to delete media. Please try again.');
+      await alert('Failed to delete media. Please try again.');
     } finally {
       setDeletingId(null);
     }

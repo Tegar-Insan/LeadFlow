@@ -16,6 +16,7 @@ import { useSchedule }  from '../../hooks/useSchedule';
 import AuthContext       from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useAlert } from '../../context/AlertContext';
 import { fLongDateTime } from '../../utils/formatDate';
 import { InlineLoader }  from '../../components/common/KineticLoader';
 import { LEADFLOW_BG } from '../../utils/contentModuleTheme';
@@ -167,6 +168,7 @@ const ContentScheduleQueuePage = () => {
   const canEdit  = ['marketing_staff', 'admin'].includes(roleName);
   const { toast } = useNotification();
   const confirm = useConfirm();
+  const alert = useAlert();
 
   const {
     year, month,
@@ -216,7 +218,7 @@ const ContentScheduleQueuePage = () => {
   const handleDelete = async (id) => {
     if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); }
-    catch { alert('Failed to delete.'); }
+    catch { await alert('Failed to delete.'); }
   };
 
   const handleEdit = (s) => {

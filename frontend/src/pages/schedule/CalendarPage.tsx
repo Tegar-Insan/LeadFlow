@@ -31,6 +31,7 @@ import SmallSidebar from '../../components/common/smallsidebar';
 import { KineticLoader } from '../../components/common/KineticLoader';
 import { useNotification } from '../../context/NotificationContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { useAlert } from '../../context/AlertContext';
 import { getTikTokAuthUrl, getTikTokStatus, disconnectTikTok } from '../../services/tiktokService';
 import {
   listComments,
@@ -430,6 +431,7 @@ const CalendarPage = () => {
   // ── TikTok connect state ────────────────────────────────────
   const { toast }                         = useNotification();
   const confirm                           = useConfirm();
+  const alert                             = useAlert();
   const [tiktokStatus,  setTiktokStatus]  = useState(null);  // null=unknown, object=connected, false=not connected
   const [tiktokLoading, setTiktokLoading] = useState(false);
 
@@ -623,13 +625,13 @@ const CalendarPage = () => {
     const dropDay = dayjs.tz(dateISO, TZ).startOf('day');
     const today   = dayjs().tz(TZ).startOf('day');
     if (dropDay.isBefore(today)) {
-      alert('Cannot move a post to a past date.');
+      await alert('Cannot move a post to a past date.');
       return;
     }
     try {
       await dragDrop(scheduleId, dateISO, `${String(hour).padStart(2,'0')}:00`);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to move');
+      await alert(err.response?.data?.message || 'Failed to move');
     }
   };
 
@@ -670,7 +672,7 @@ const CalendarPage = () => {
   const handleDelete = async (id) => {
     if (!(await confirm({ message: 'Delete this schedule and all its media?', confirmLabel: 'Delete', variant: 'danger' }))) return;
     try { await removeSchedule(id); setModal(null); }
-    catch (err) { alert(err.response?.data?.message || 'Failed to delete'); }
+    catch (err) { await alert(err.response?.data?.message || 'Failed to delete'); }
   };
 
   const handlePublishNow = async (schedule) => {
