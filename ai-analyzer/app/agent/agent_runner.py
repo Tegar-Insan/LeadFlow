@@ -4,8 +4,9 @@ agent_runner.py — the Agentic Mode agent loop (Phase 1, PLAN.md sections 2/7/1
 Runs a ClaudeSDKClient session per agent_runs row: one query per idea, using
 the Searching/Copywriting/Schedule skills (loaded from skills_agent/ as a
 local Claude Code plugin — see SKILLS_AGENT_DIR below, not the default
-.claude/skills/ project-discovery path) plus three tools: the Tavily MCP
-server, and two direct SDK tools (image generation, Supabase read/write).
+.claude/skills/ project-discovery path) plus three tools: the SDK's built-in
+WebSearch tool, and two direct SDK tools (image generation, Supabase
+read/write).
 
 This is an unattended backend job — no human to approve tool calls. Per the
 project decision (see PLAN.md and session notes), permission_mode stays
@@ -18,6 +19,7 @@ hook the SDK closes the stream before the permission callback can fire.
 """
 
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -28,7 +30,6 @@ from claude_agent_sdk import (
 )
 from claude_agent_sdk.types import PermissionResultAllow, PermissionResultDeny
 
-from app.agent.mcp_config import build_mcp_servers
 from app.agent.tools.image_tool import build_image_tool_server
 from app.agent.tools.supabase_tool import build_supabase_tool_server
 from app.agent.run_store import update_run_progress, update_run_step, finalize_run
@@ -37,12 +38,21 @@ from app.utils.logger import logger
 AI_ANALYZER_DIR = Path(__file__).resolve().parent.parent.parent
 SKILLS_AGENT_DIR = AI_ANALYZER_DIR / "skills_agent"
 
+JAKARTA_TZ = timezone(timedelta(hours=7))
+
+
+def _now_wib() -> datetime:
+    """Separated from _build_system_prompt so tests can monkeypatch a fixed
+    'now' instead of depending on wall-clock time (see test_agent_scheduling_window.py)."""
+    return datetime.now(JAKARTA_TZ)
+
 ALLOWED_TOOLS = [
     "Skill",
-    "mcp__tavily__tavily_search",
+    "WebSearch",
+    "WebFetch",
     "mcp__image__generate_image",
     "mcp__supabase__check_existing_schedules",
-    "mcp__supabase__insert_draft_schedule",
+    "mcp__supabase__insert_scheduled_content",
 ]
 
 # Human-readable progress labels shown in AgentRunningPanel.tsx via
@@ -50,10 +60,11 @@ ALLOWED_TOOLS = [
 # reports in a PreToolUse hook's tool_name field.
 TOOL_STEP_LABELS = {
     "Skill": "Using a content-planning skill…",
-    "mcp__tavily__tavily_search": "Searching trends via Tavily…",
+    "WebSearch": "Searching the web for trends…",
+    "WebFetch": "Reading a web page for more detail…",
     "mcp__image__generate_image": "Generating an image…",
     "mcp__supabase__check_existing_schedules": "Checking existing schedules in Supabase…",
-    "mcp__supabase__insert_draft_schedule": "Saving draft to Supabase…",
+    "mcp__supabase__insert_scheduled_content": "Saving scheduled post to Supabase…",
 }
 
 
@@ -94,18 +105,37 @@ def _build_progress_hook(run_id: str):
 
 
 def _build_system_prompt(prefs: dict) -> str:
+    # The model has no ground truth for "today" on its own — without this it
+    # was picking scheduled_at as "today at the current run time" instead of
+    # properly planning ahead (see test_agent_scheduling_window.py). Compute
+    # the real WIB clock here and shift the requested range so it never
+    # starts today or earlier, even when trigger-today pins date_from==date_to
+    # to today (see app/routers/agent.py's /trigger-today).
+    now_wib = _now_wib()
+    tomorrow_str = (now_wib + timedelta(days=1)).strftime("%Y-%m-%d")
+    current_time_str = now_wib.strftime("%Y-%m-%d %H:%M")
+
+    effective_date_from = max(prefs["date_from"], tomorrow_str)
+    effective_date_to = max(prefs["date_to"], effective_date_from)
+
     return (
         "You are the Agentic Mode content planner for Krench Chicken, a fried "
         "chicken restaurant in Bogor, Indonesia, on TikTok.\n"
         f"Staff content preference: {prefs['content_preference']}\n"
         f"Staff hashtags to append: {', '.join(prefs.get('hashtags', []))}\n"
         f"Preferred posting times (WIB): {', '.join(prefs.get('preferred_times', []))}\n"
-        f"Date range to schedule within (WIB): {prefs['date_from']} to {prefs['date_to']}\n"
+        f"Current date/time (WIB): {current_time_str}\n"
+        f"Requested date range (WIB): {prefs['date_from']} to {prefs['date_to']}\n"
+        f"Scheduling window to actually use (WIB): {effective_date_from} to {effective_date_to} "
+        "— never schedule anything for today or earlier; this window has already "
+        "been shifted forward to start no earlier than tomorrow so posts are "
+        "properly planned ahead instead of posted immediately.\n"
         + (f"Image style preference: {prefs['image_style']}\n" if prefs.get("image_style") else "")
         + "For every idea: use the searching skill first, then the copywriting "
         "skill to write it, then call generate_image, then use the schedule "
-        "skill (calling check_existing_schedules first) to pick a WIB slot, then "
-        "call insert_draft_schedule exactly once to place it. One idea per turn."
+        "skill (calling check_existing_schedules first) to pick a WIB slot within "
+        "the scheduling window above, then call insert_scheduled_content exactly "
+        "once to place it. One idea per turn."
     )
 
 
@@ -115,7 +145,6 @@ def _idea_instruction(index: int, total: int) -> str:
 
 def _build_options(prefs: dict, run_id: str, created_by: str) -> ClaudeAgentOptions:
     mcp_servers = {
-        **build_mcp_servers(),
         "image": build_image_tool_server(),
         "supabase": build_supabase_tool_server(run_id=run_id, created_by=created_by),
     }

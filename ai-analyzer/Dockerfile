@@ -1,9 +1,8 @@
 FROM python:3.11-slim
   WORKDIR /app
 
-  # Node.js + npm — required for `npx -y tavily-mcp` (app/agent/mcp_config.py)
-  # and for claude-agent-sdk's bundled Claude Code CLI subprocess. The base
-  # image has no Node.js by default.
+  # Node.js + npm — required for claude-agent-sdk's bundled Claude Code CLI
+  # subprocess. The base image has no Node.js by default.
   RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \

@@ -231,6 +231,29 @@ export const moveSchedule = async (
   return schedule as ScheduleRow;
 };
 
+// "Add to Queue" (ListPage draft cards) — always queues for the same
+// wall-clock time tomorrow (WIB). Caller (calendarController) is responsible
+// for verifying the row is currently a draft before calling this; the model
+// itself just performs the move + status flip once that's established.
+export const addToQueueNextDay = async (id: string): Promise<ScheduleRow> => {
+  const nextScheduledAt = dayjs().tz('Asia/Jakarta').add(1, 'day').toISOString();
+
+  const { data: schedule, error } = await supabaseAdmin
+    .from('content_queue_schedules')
+    .update({
+      scheduled_at: nextScheduledAt,
+      status: 'scheduled',
+      auto_publish: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return schedule as ScheduleRow;
+};
+
 export const deleteSchedule = async (id: string): Promise<void> => {
   const { error } = await supabaseAdmin.from('content_queue_schedules').delete().eq('id', id);
   if (error) throw error;

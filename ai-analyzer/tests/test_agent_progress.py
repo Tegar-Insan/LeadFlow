@@ -19,10 +19,11 @@ from app.agent.agent_runner import describe_tool_call
 
 # ── describe_tool_call (pure, no I/O) ───────────────────────────────
 def test_describe_tool_call_known_tools():
-    assert "Tavily" in describe_tool_call("mcp__tavily__tavily_search")
+    assert "web" in describe_tool_call("WebSearch").lower()
+    assert "web page" in describe_tool_call("WebFetch").lower()
     assert "image" in describe_tool_call("mcp__image__generate_image").lower()
     assert "Checking existing schedules" in describe_tool_call("mcp__supabase__check_existing_schedules")
-    assert "Saving draft" in describe_tool_call("mcp__supabase__insert_draft_schedule")
+    assert "Saving scheduled post" in describe_tool_call("mcp__supabase__insert_scheduled_content")
     assert "skill" in describe_tool_call("Skill").lower()
 
 
@@ -38,10 +39,10 @@ def test_progress_hook_records_step_via_update_run_step(monkeypatch):
 
     hook = agent_runner._build_progress_hook("run-abc")
     result = asyncio.run(
-        hook({"tool_name": "mcp__tavily__tavily_search", "tool_input": {}}, "tool-use-1", None)
+        hook({"tool_name": "WebSearch", "tool_input": {}}, "tool-use-1", None)
     )
 
-    assert calls == [("run-abc", describe_tool_call("mcp__tavily__tavily_search"))]
+    assert calls == [("run-abc", describe_tool_call("WebSearch"))]
     assert result == {"continue_": True}
 
 
@@ -97,7 +98,7 @@ def test_update_run_step_writes_current_step_for_the_right_run(monkeypatch):
     fake_client = _FakeClient()
     monkeypatch.setattr(run_store, "get_supabase_admin", lambda: fake_client)
 
-    run_store.update_run_step("run-123", "Searching trends via Tavily…")
+    run_store.update_run_step("run-123", "Searching the web for trends…")
 
-    assert fake_client.table_obj.last_update == {"current_step": "Searching trends via Tavily…"}
+    assert fake_client.table_obj.last_update == {"current_step": "Searching the web for trends…"}
     assert fake_client.table_obj.last_eq == ("id", "run-123")

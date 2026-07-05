@@ -1,5 +1,5 @@
 # LeadFlow — Project Progress Tracker
-**Last updated:** 2026-06-23 (session 18)
+**Last updated:** 2026-07-06 (session 20)
 **Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
 **Client:** Krench Chicken, Bogor, West Java, Indonesia
 
@@ -978,3 +978,115 @@ MODIFIED:
 1. Manually verify the Edit/Delete fix and the Privacy-field removal in-browser across all three pages.
 2. Carried forward from Session 15/16: fix broken `node_modules` install (`@rollup/rollup-win32-x64-msvc`) blocking Vitest; fix `AdminUserTable.tsx` `fullName`/`full_name` mismatch; verify the notification bell end-to-end once install is fixed.
 3. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.
+
+---
+
+## Session 19 Update (2026-07-06) — TikTok Photo DIRECT_POST + Agentic Mode Draft-Status Bug + WebFetch
+
+### 1. TikTok photo publish: MEDIA_UPLOAD (inbox draft) → DIRECT_POST
+`tiktokPublishService.ts`'s `initPhotoPublish()` previously used `post_mode: 'MEDIA_UPLOAD'`, which sends photo posts to the creator's TikTok inbox as a manual draft instead of publishing them. Changed to `post_mode: 'DIRECT_POST'`, which requires fields MEDIA_UPLOAD forbids:
+- `privacy_level: resolvePrivacyLevel(schedule)` — reuses the existing forced-`SELF_ONLY` override, same as video publish (sandbox/unaudited TikTok apps can only post to private accounts)
+- `disable_comment: schedule.allow_comment === false` — mirrors `initVideoPublish`'s existing pattern
+- `auto_add_music: true`
+
+No change needed in `tiktok.ts` — photos still use the same `publishPhotoInitUrl` endpoint; only the request body's `post_mode` differs. The unrelated, already-dead `publishInboxVideoInitUrl` constant (video inbox, unused) was left alone — out of scope for this photo-only change.
+
+**Not yet done:** no live TikTok sandbox smoke test of the DIRECT_POST photo body. Watch for `privacy_level_option_mismatch` or `unaudited_client_can_only_post_to_private_accounts` on the next real photo publish attempt.
+
+### 2. Agentic Mode bug: generated schedules always landed as "Draft only" instead of scheduled
+Root cause in `ai-analyzer/app/agent/tools/supabase_tool.py`: the agent's Supabase insert tool hardcoded `status: "draft"` on every row, even though the Schedule skill was already correctly picking a real WIB date/time from the staff's preferred posting times and passing it as `scheduled_at`. `ContentCard.tsx` treats `status === 'draft'` as "Draft only" regardless of whether `scheduled_at` is populated, so agent-generated cards always showed the wrong label even with a real time already attached.
+
+**Fix:**
+- Insert `status: "scheduled"` instead of `"draft"`, keeping the real `scheduled_at` from the Schedule skill
+- `auto_publish` stays `False` — confirmed via `publishService.ts`'s `getDueSchedules()` that the auto-publish cron only fires on `status='uploaded' AND auto_publish=true`, so this is not a behavior change for auto-publish safety, only for the draft-vs-scheduled label/date display and enabling the manual "Publish Now" action (`ContentCard.tsx`'s `canPublish` already includes `'scheduled'`)
+- Renamed the now-misleadingly-named tool `insert_draft_schedule` → `insert_scheduled_content` across `supabase_tool.py` (function, `@tool` name, schema constant), `agent_runner.py` (`ALLOWED_TOOLS`, `TOOL_STEP_LABELS`, system prompt reference), and the one test that asserted the old name/label (`test_agent_progress.py`)
+- Updated the module docstring in `supabase_tool.py` to describe the real safety gate accurately (`auto_publish=False` + the `status='uploaded'` requirement, not `status='draft'`)
+
+Verified: `ai-analyzer` pytest suite green after the rename (6/6 in `test_agent_progress.py` at the time).
+
+### 3. Added WebFetch to the agent's allowed tools + new permission test coverage
+User confirmed (via `/leadflow-testing` on the Agent SDK's built-in tools docs) that `WebFetch` should be added as a capability, not just tested as denied:
+- `agent_runner.py` — added `"WebFetch"` to `ALLOWED_TOOLS` and a `TOOL_STEP_LABELS` entry ("Reading a web page for more detail…")
+- `ai-analyzer/skills_agent/skills/searching/SKILL.md` — taught the agent when to use it: if one WebSearch result looks unusually detailed/promising, `WebFetch` that single URL before writing, at most once per idea
+
+**Real gap found and fixed:** `_can_use_tool` (the actual security boundary for this unattended, no-human-approval agent loop) had **zero test coverage** before this session. Added `ai-analyzer/tests/test_agent_permissions.py`:
+- every tool in `ALLOWED_TOOLS` is allowed (iterates the real list, stays in sync automatically)
+- `WebSearch` and `WebFetch` specifically allowed
+- a plausible non-allowlisted tool (`Bash`) is denied
+- an unknown/made-up tool name is denied
+
+Also added a `describe_tool_call("WebFetch")` assertion to `test_agent_progress.py`.
+
+**Verified:** full `ai-analyzer` pytest suite — 27/27 passing, no regressions.
+
+**Not yet done:** no live end-to-end Agentic Mode run since these changes (would need a real `agent_runs` row with Tavily/image/Supabase credentials configured) to confirm in logs that `WebFetch` actually gets invoked as intended and that generated schedules land as `status='scheduled'` in the real DB, not just in unit tests.
+
+### Files Modified/Created This Session
+```
+NEW:
+  ai-analyzer/tests/test_agent_permissions.py
+
+MODIFIED:
+  backend/src/services/tiktokPublishService.ts
+  ai-analyzer/app/agent/agent_runner.py
+  ai-analyzer/app/agent/tools/supabase_tool.py
+  ai-analyzer/skills_agent/skills/searching/SKILL.md
+  ai-analyzer/tests/test_agent_progress.py
+```
+
+### Next Session Priority
+1. Live-verify the TikTok photo DIRECT_POST change against the real sandbox (previous next-step, still open).
+2. Run a real Agentic Mode job end-to-end: confirm `WebFetch` is actually invoked when useful, and confirm a generated schedule lands with `status='scheduled'` + the correct WIB `scheduled_at` in Supabase (not just asserted in unit tests).
+3. Carried forward from Session 15/16: broken `node_modules` install blocking Vitest; `AdminUserTable.tsx` `fullName`/`full_name` mismatch; notification bell end-to-end verification.
+4. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.
+
+---
+
+## Session 20 Update (2026-07-06) — Agentic Mode "schedules today" bug fix + ListPage drag-and-drop
+
+### 1. Fixed Agentic Mode scheduling posts for "today at the current time" instead of planning ahead
+User reported (screenshot) generated posts landing scheduled at the exact run time on the same day, instead of a real future slot. Root cause: `_build_system_prompt` in `ai-analyzer/app/agent/agent_runner.py` gave the model `date_from`/`date_to` + `preferred_times`, but never told it the actual current WIB date/time — the model had no anchor for "today" to reason against. Made worse by `POST /agent/trigger-today` (`app/routers/agent.py`) always pinning `date_from == date_to == today_wib`, so the daily cron path structurally requests same-day scheduling every time.
+
+**Fix** (`agent_runner.py`):
+- Added `_now_wib()` (isolated so tests can monkeypatch a fixed "now" instead of depending on wall-clock time)
+- `_build_system_prompt` now computes `effective_date_from = max(date_from, tomorrow)` and `effective_date_to = max(date_to, effective_date_from)` — always shifts the window to start no earlier than tomorrow, even when the daily trigger requests today for both ends
+- Prompt now states both the real "Current date/time (WIB)" and a "Scheduling window to actually use (WIB)" that's already been shifted, with an explicit instruction never to schedule for today or earlier
+- `ai-analyzer/skills_agent/skills/schedule/SKILL.md` updated to reference the scheduling window from the system prompt instead of the raw staff-requested range
+
+**Tests:** new `ai-analyzer/tests/test_agent_scheduling_window.py` (4 tests, TDD RED→GREEN) — window shifts to tomorrow when the requested range is today, future ranges pass through untouched, `date_to` extends forward when it would otherwise precede the shifted `date_from`, current WIB datetime appears in the prompt. Full `ai-analyzer` suite: 31/31 passing (27 pre-existing + 4 new).
+
+**Scope decision (confirmed via `AskUserQuestion`):** scheduling logic only — did not touch how `date_from`/`date_to` are computed upstream in `agent.py`'s `/trigger-today`; the shift happens entirely inside `_build_system_prompt` so it's a single choke point regardless of caller.
+
+### 2. Added drag-and-drop to ListPage.tsx (Scheduled tab)
+`CalendarPage.tsx`'s grid view already had drag-drop rescheduling (`DragDropSlot.tsx` + `useSchedule`'s `dragDrop`); `ListPage.tsx`'s flat, date-grouped list had none. Confirmed via `AskUserQuestion` before coding: dragging a card onto a different date's group reschedules it to that date (reusing the same `dragDrop(id, dateISO, timeStr)` from `useSchedule.ts` that `CalendarPage.tsx` already calls, keeping the card's existing time-of-day) — Scheduled tab only (Drafts have no real `scheduled_at` to preserve), past-date groups blocked with the identical guard + alert as `CalendarPage.tsx:620-634`'s `handleDrop`.
+
+**`frontend/src/pages/schedule/ListPage.tsx`:**
+- Added `dragDrop` to the `useSchedule()` destructure; added `draggingId`/`dragOverDateKey` state
+- `handleListDrop(scheduleId, dateISO)` — mirrors `CalendarPage.tsx`'s `handleDrop` exactly (same past-date alert message), looks up the dragged item's existing `scheduled_at` time-of-day to pass through to `dragDrop` so only the date changes
+- Each date-group container is a drop target (amber ring highlight on drag-over); each card is `draggable` only when `listTab === 'scheduled' && canEdit`, setting `dataTransfer.setData('scheduleId', item.id)` on drag start
+- Initially over-built this with `DragDropSlot.tsx`-style handler removal on past groups (no attached listeners at all) — that would have made the approved "alert on past-date drop" behavior unreachable/untestable via the UI. Simplified to always attach handlers and let `handleListDrop`'s alert guard do the blocking, matching the approved plan exactly (page-level guard like `CalendarPage.tsx`, not cell-level like `DragDropSlot.tsx`).
+
+**Tests:** new `frontend/tests/pages/schedule/ListPageDragDrop.test.tsx` (4/4 passing) — reschedule-on-drop with time-of-day preserved, `dataTransfer.setData` on drag-start, past-date block+alert (no `dragDrop` call), Drafts-tab cards not draggable. Dates computed relative to real `dayjs()` at test-run time (not hardcoded) per the Session-3 lesson about hardcoded dates silently becoming past dates.
+
+**Verification:** `tsc --noEmit` clean on `ListPage.tsx` (only the pre-existing unrelated `AdminUserTable.tsx` `fullName`/`full_name` error remains project-wide — confirmed still present, not newly introduced).
+
+**Found, not caused by this session:** running the *full* frontend Vitest suite surfaces ~46 failures across files never touched this session (`LoginForm`, `LoginPage`, `CalendarView`, `GeneratedIdeasPage`, `Marketingdashboard`, `DragDropslot`, `CommentThread`, `CalendarPage`) — confirmed pre-existing by running `LoginForm.test.tsx`/`LoginPage.test.tsx` in isolation (fail identically, zero relation to anything touched here). Separately, the two existing `ListPage.test.tsx`/`ListPageRedesigned.test.tsx` files crash on `useConfirm must be used inside <ConfirmProvider>` — they pre-date Session 15's `ConfirmDialog`/`useConfirm()` rollout into `ListPage.tsx` and were never updated to wrap it. Also noticed `frontend/tests/components/AgentRunningPanel.test.tsx` and `CommentThread.test.tsx` were already modified/uncommitted in the working tree before this session started (not edited by this session).
+
+### Files Modified/Created This Session
+```
+NEW:
+  ai-analyzer/tests/test_agent_scheduling_window.py
+  frontend/tests/pages/schedule/ListPageDragDrop.test.tsx
+
+MODIFIED:
+  ai-analyzer/app/agent/agent_runner.py
+  ai-analyzer/skills_agent/skills/schedule/SKILL.md
+  frontend/src/pages/schedule/ListPage.tsx
+```
+
+### Next Session Priority
+1. Run a real Agentic Mode job end-to-end and confirm in Supabase that `scheduled_at` actually lands on a future date now (not just asserted in unit tests) — pairs with Session 19's still-open "verify scheduled status lands correctly" item.
+2. Fix the two stale ListPage test files (`ListPage.test.tsx`, `ListPageRedesigned.test.tsx`) — wrap in `ConfirmProvider` (see `ListPageDragDrop.test.tsx` or `CommentThread.test.tsx` for the working pattern) or retire them if superseded.
+3. Investigate the ~46 unrelated full-suite Vitest failures (LoginForm/LoginPage/CalendarView/GeneratedIdeasPage/etc.) — unclear yet whether this is real test rot or full-run environment flakiness; worth a dedicated session rather than folding into unrelated feature work.
+4. Carried forward from Session 15/16/19: `AdminUserTable.tsx` `fullName`/`full_name` mismatch; notification bell end-to-end verification; TikTok photo DIRECT_POST live sandbox check.
+5. Carried forward from Session 10/12: TikTok publish TypeScript cleanup, `/api/publish` route mounting, Weekly Dashboard aggregation, backend Jest/Supertest suite.

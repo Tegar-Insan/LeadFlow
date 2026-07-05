@@ -110,11 +110,11 @@ describe('AgentRunningPanel polling backoff', () => {
   });
 
   it('shows current_step from the run when present, replacing the static caption', async () => {
-    mockGetAgentRun.mockResolvedValue(makeRun({ current_step: 'Searching trends via Tavily…' }));
+    mockGetAgentRun.mockResolvedValue(makeRun({ current_step: 'Searching the web for trends…' }));
     render(<AgentRunningPanel runId="run-1" onDone={vi.fn()} />);
     await flush(0);
 
-    expect(screen.getByText('Searching trends via Tavily…')).toBeInTheDocument();
+    expect(screen.getByText('Searching the web for trends…')).toBeInTheDocument();
     expect(screen.queryByText(/Searching trends, writing copy/i)).not.toBeInTheDocument();
   });
 

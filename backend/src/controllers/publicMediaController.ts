@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import sharp from 'sharp';
 import { supabaseAdmin } from '../config/supabase.ts';
 import * as ContentAsset from '../models/ContentAsset.ts';
 import { success, error } from '../utils/responseHelper.ts';
@@ -6,6 +7,13 @@ import { verifyMediaToken } from '../utils/mediaTokenHelper.ts';
 import logger from '../utils/logger.ts';
 
 const STORAGE_BUCKET = process.env['SUPABASE_STORAGE_BUCKET'] ?? 'leadflow-media';
+
+// TikTok's Content Posting API photo endpoint (PULL_FROM_URL) only accepts
+// JPEG/WEBP — this is the only route TikTok's servers fetch photo assets
+// from, so anything else stored (PNG is the common case — AI-generated
+// poster images and most manual uploads) must be converted here rather
+// than at upload time, keeping the original file untouched in storage.
+const TIKTOK_ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/webp']);
 
 export const serveMedia = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -39,8 +47,18 @@ export const serveMedia = async (req: Request, res: Response): Promise<void> => 
     }
 
     const arrayBuffer = await data.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const contentType = (asset as { mime_type?: string }).mime_type ?? data.type ?? 'application/octet-stream';
+    let buffer: Buffer<ArrayBufferLike> = Buffer.from(arrayBuffer);
+    let contentType = (asset as { mime_type?: string }).mime_type ?? data.type ?? 'application/octet-stream';
+
+    if (contentType.startsWith('image/') && !TIKTOK_ACCEPTED_IMAGE_TYPES.has(contentType)) {
+      try {
+        buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+        contentType = 'image/jpeg';
+      } catch (conversionErr) {
+        logger.error('[publicMediaController] image conversion to JPEG failed', conversionErr);
+        error(res, { message: 'Failed to convert media for TikTok', statusCode: 500 }); return;
+      }
+    }
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', buffer.length);

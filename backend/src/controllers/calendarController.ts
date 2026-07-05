@@ -127,6 +127,34 @@ export const moveSchedule = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+// "Add to Queue" business rule: only a draft can be queued this way, and it
+// always lands on the same wall-clock time tomorrow (WIB) — e.g. pressed at
+// 05:11 AM WIB Monday queues it for 05:11 AM WIB Tuesday. Anything else
+// (already scheduled/uploaded/published/failed) is a conflict, not a silent
+// no-op, since "add to queue" only makes sense starting from a draft.
+export const addToQueue = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const existing = await ContentQueueSchedule.getScheduleById(req.params['id'] as string);
+    if (!existing) { error(res, { message: 'Schedule not found', statusCode: 404 }); return; }
+    if ((existing as { status?: string }).status !== 'draft') {
+      error(res, {
+        message: 'Only draft content can be added to the queue',
+        statusCode: 409,
+      });
+      return;
+    }
+
+    const schedule = await ContentQueueSchedule.addToQueueNextDay(req.params['id'] as string);
+    logger.info(`[Calendar] Schedule added to queue id=${(schedule as { id: string }).id} scheduled_at=${(schedule as any).scheduled_at}`);
+    const _io5 = (req.app as any).io;
+    if (_io5) broadcastCalendarUpdateFromDate(_io5, (schedule as any).scheduled_at);
+    success(res, { message: 'Added to queue', data: { schedule } });
+  } catch (err) {
+    logger.error('[calendarController.addToQueue]', err);
+    error(res, { message: 'Failed to add schedule to queue', statusCode: 500 });
+  }
+};
+
 export const deleteSchedule = async (req: Request, res: Response): Promise<void> => {
   try {
     const existing = await ContentQueueSchedule.getScheduleById(req.params['id'] as string);
