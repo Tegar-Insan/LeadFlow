@@ -1,382 +1,283 @@
-# LeadFlow — TikTok Content Management System
+# LeadFlow
 
-**Client:** Krench Chicken, Bogor, West Java, Indonesia
-**Author:** Tegar Insan Tohaga (A22EC4043) | UTM Faculty of Computing
+LeadFlow is a TikTok content-management application built for Krench Chicken's marketing workflow. It combines content ideation, AI-generated images, approval and scheduling, media uploads, TikTok publishing, notifications, and role-based dashboards.
 
-A full-stack web application to manage TikTok content creation, scheduling, publishing, and interaction monitoring for Krench Chicken's marketing team.
+The repository contains three application services. Docker Compose starts those services, but the PostgreSQL database, authentication, and object storage are provided by an external Supabase project.
 
----
+## Architecture
 
-## Tech Stack
+| Service | Technology | Container port | Purpose |
+|---|---|---:|---|
+| `frontend` | React 18, Vite, Tailwind CSS | 5173 | Browser UI |
+| `backend` | Node.js, Express, TypeScript, Socket.IO | 5000 | REST API, authentication, scheduling, uploads, TikTok integration, WebSockets |
+| `ai-analyzer` | Python 3.11, FastAPI | 8000 | Claude content/chat features, image generation, and agent workflows |
+| Supabase | Hosted PostgreSQL, Auth, Storage | external | Persistent application data and media |
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite + Tailwind CSS (port 5173) |
-| Backend | Node.js + Express.js + TypeScript (port 5000) |
-| AI Microservice | Python FastAPI (port 8000) |
-| Database | PostgreSQL via Supabase |
-| AI Model | Claude (Anthropic API) |
-| TikTok | TikTok Business API v2 (Login Kit) |
+Inside the Compose network, the backend calls the AI service at `http://ai-analyzer:8000`. The browser calls the backend through the host port at `http://localhost:5000/api`.
 
----
+## Important deployment note
 
-## Prerequisites (Windows)
+The supplied [`docker-compose.yml`](docker-compose.yml) is a **development deployment**:
 
-Install the following before continuing:
+- the frontend runs the Vite development server;
+- the backend runs through `nodemon` and `ts-node`;
+- FastAPI runs with `--reload`;
+- source folders are bind-mounted into the containers; and
+- all three application ports are published directly to the host.
 
-1. **Node.js** — download from [https://nodejs.org](https://nodejs.org) (LTS version). Includes `npm`.
-2. **Python 3.11+** — download from [https://www.python.org/downloads](https://www.python.org/downloads). Check **"Add Python to PATH"** during install.
-3. **Git** — download from [https://git-scm.com](https://git-scm.com).
-4. **Docker Desktop** *(optional, for Docker approach)* — [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop).
+It is suitable for local development, demonstrations, and a trusted internal test server. It is not production-hardened. A public production deployment should use compiled artifacts, pinned runtime images, health checks, restart policies, a TLS reverse proxy, restricted port exposure, and production-specific URLs/CORS settings.
 
-> All commands below are for **Command Prompt (cmd)** or **PowerShell**. Do not use Git Bash for the Python venv commands.
+## Prerequisites
 
----
+- Git
+- Docker Desktop or Docker Engine with Docker Compose v2
+- A Supabase project
+- Anthropic API credentials
+- OpenAI image API credentials if image generation is required
+- SMTP credentials for real OTP email delivery
+- TikTok developer credentials and a public HTTPS media URL for TikTok features
 
-## Project Structure
+Node.js and Python do not need to be installed on the host when using Docker Compose.
 
-```
-LEADFLOW-2/
-├── backend/          # Node.js + Express API (port 5000)
-├── frontend/         # React + Vite UI (port 5173)
-├── ai-analyzer/      # Python FastAPI AI classifier (port 8000)
-├── database/
-│   └── migrations/   # 001 → 019 SQL files (run in order)
-├── docker-compose.yml
-└── README.md
-```
+## 1. Clone the repository
 
----
-
-## Option A — Run with Docker (Recommended for Windows)
-
-This is the easiest path on Windows. Docker runs all three services together.
-
-### Step 1 — Clone the repository
-
-```cmd
-git clone https://github.com/your-username/LEADFLOW-2.git
-cd LEADFLOW-2
+```powershell
+git clone <repository-url> LeadFlow
+cd LeadFlow
 ```
 
-### Step 2 — Create the root `.env` file
+All following commands must be run from the repository root, where `docker-compose.yml` is located.
 
-Create a file named `.env` in the `LEADFLOW-2/` root folder (same folder as `docker-compose.yml`):
+## 2. Prepare Supabase
 
-```env
-# Supabase
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-DATABASE_URL=postgresql://postgres.your-project-ref:password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+Create a Supabase project, then apply **every** SQL file in [`database/migrations`](database/migrations) in filename order, from `001_Create_roles.sql` through `030_fix_ai_cover_asset_status_trigger.sql`.
 
-# Security
-JWT_SECRET=your_long_random_string_here
-OTP_SECRET=another_random_string_here
+The current root [`database/MASTER_RUN_ALL.sql`](database/MASTER_RUN_ALL.sql) is incomplete and must not be used as the only setup script for a new environment; it does not include all migrations through `030`.
 
-# Anthropic (Claude)
-ANTHROPIC_API_KEY=sk-ant-...
+The migrations create the application tables, views, triggers, policies, and the default `leadflow-media` storage bucket. If a migration fails, stop and resolve it before continuing rather than skipping it.
 
-# TikTok
-TIKTOK_CLIENT_KEY=your_tiktok_client_key
-TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
-TIKTOK_TOKEN_ENCRYPTION_KEY=64_hex_chars_generate_below
-TIKTOK_MEDIA_UPLOAD_URL=https://open.tiktokapis.com
+For a new Supabase project created with automatic Data API exposure disabled, verify that the migration grants expose the required tables to the appropriate API roles. Data API grants and row-level security are separate controls. Never place the service-role key in frontend code.
+
+After migration, obtain these values from the Supabase project settings:
+
+- project URL (`SUPABASE_URL`);
+- service-role secret (`SUPABASE_SERVICE_ROLE_KEY`); and
+- optionally the legacy anon/publishable key (`SUPABASE_ANON_KEY`). The current backend constructs an anon client only when this value is present.
+
+## 3. Create the root environment file
+
+Create `.env` beside `docker-compose.yml`. The file is ignored by Git. Do not commit it.
+
+```dotenv
+# Required: backend startup and Supabase
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_SECRET
+SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
+JWT_SECRET=REPLACE_WITH_A_LONG_RANDOM_SECRET
+
+# Required by the current backend startup validation, even if TikTok is not used yet
+TIKTOK_CLIENT_KEY=YOUR_TIKTOK_CLIENT_KEY
+TIKTOK_CLIENT_SECRET=YOUR_TIKTOK_CLIENT_SECRET
+TIKTOK_TOKEN_ENCRYPTION_KEY=REPLACE_WITH_64_HEX_CHARACTERS
+TIKTOK_MEDIA_PUBLIC_BASE_URL=https://YOUR_PUBLIC_MEDIA_HOST
+
+# AI content and chatbot
+ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY
+ANTHROPIC_MODEL=claude-sonnet-4-6
+
+# AI image generation; leave blank only if image generation is intentionally unavailable
+IMAGE_GPT_API_KEY=YOUR_OPENAI_API_KEY
+OPENAI_IMAGE_MODEL=gpt-image-1
+
+# OTP email. In development, a missing SMTP_USER causes the OTP to be logged instead.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=YOUR_SMTP_USERNAME
+SMTP_PASS=YOUR_SMTP_PASSWORD_OR_APP_PASSWORD
+EMAIL_FROM="LeadFlow <noreply@example.com>"
 ```
 
-To generate `TIKTOK_TOKEN_ENCRYPTION_KEY` (run in PowerShell):
+Generate the required 32-byte TikTok encryption key in PowerShell:
+
 ```powershell
 -join ((0..31) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
 ```
 
-### Step 3 — Start all services
+`OTP_SECRET` and `TIKTOK_MEDIA_UPLOAD_URL` appear in Compose for compatibility but are not required by the current code when the variables above are configured. The Compose file supplies the following internal/local values itself:
 
-```cmd
+- `PORT=5000`
+- `AI_SERVICE_URL=http://ai-analyzer:8000`
+- `TIKTOK_REDIRECT_URI=http://localhost:5000/api/tiktok/callback`
+- `FRONTEND_BASE_URL=http://localhost:5173`
+- `VITE_API_BASE_URL=http://localhost:5000/api`
+
+## 4. Validate and start the stack
+
+Validate interpolation and Compose syntax:
+
+```powershell
+docker compose config --quiet
+```
+
+Build and start all services:
+
+```powershell
 docker compose up --build
 ```
 
-Wait for all three containers to start. You will see logs from `leadflow-backend`, `leadflow-frontend`, and `leadflow-ai`.
+To start in the background instead:
 
-### Step 4 — Open the app
+```powershell
+docker compose up --build -d
+docker compose logs -f
+```
 
-- Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend API: [http://localhost:5000](http://localhost:5000)
-- AI Analyzer: [http://localhost:8000](http://localhost:8000)
+The backend deliberately checks Supabase on startup by querying the `roles` table. If the schema or Supabase credentials are wrong, the backend exits instead of starting in a partially working state. The backend also currently treats all TikTok configuration values as mandatory.
 
-### Stop
+## 5. Verify the deployment
 
-```cmd
+Open or request each endpoint:
+
+| Check | URL | Expected result |
+|---|---|---|
+| Frontend | <http://localhost:5173> | LeadFlow login page |
+| Backend health | <http://localhost:5000/health> | JSON containing `status: healthy` |
+| AI health | <http://localhost:8000/health> | JSON with model/configuration status |
+| AI API docs | <http://localhost:8000/docs> | FastAPI Swagger UI |
+
+PowerShell health checks:
+
+```powershell
+Invoke-RestMethod http://localhost:5000/health
+Invoke-RestMethod http://localhost:8000/health
+docker compose ps
+```
+
+The AI health endpoint may report `openai_image_configured: false` while the service remains healthy; that means image generation credentials are absent or invalid, not that FastAPI failed to start.
+
+## Day-to-day Compose commands
+
+```powershell
+# Follow all logs
+docker compose logs -f
+
+# Follow one service
+docker compose logs -f backend
+
+# Rebuild after dependency or Dockerfile changes
+docker compose up --build -d
+
+# Stop and remove containers/network
 docker compose down
+
+# Stop without removing containers
+docker compose stop
 ```
 
----
+Source changes are bind-mounted and each service has a reload watcher. The anonymous `/app/node_modules` and `/app/dist` volumes prevent host files from replacing container-managed dependencies and build output.
 
-## Option B — Run Manually (Without Docker)
+## Configuration reference
 
-Use this if you prefer to run each service in a separate terminal window.
+| Variable | Required | Used by | Notes |
+|---|---:|---|---|
+| `SUPABASE_URL` | Yes | backend, AI | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | backend, AI | Server-only secret; never expose to the browser |
+| `SUPABASE_ANON_KEY` | No | backend | Optional in the current implementation |
+| `SUPABASE_STORAGE_BUCKET` | No | backend | Defaults to `leadflow-media`; not currently forwarded by Compose |
+| `JWT_SECRET` | Yes | backend | Signs access/refresh and media tokens |
+| `JWT_EXPIRES_IN` | No | backend | Defaults to `7d`; not currently forwarded by Compose |
+| `JWT_REFRESH_EXPIRES_IN` | No | backend | Defaults to `30d`; not currently forwarded by Compose |
+| `OTP_EXPIRES_MINUTES` | No | backend | Defaults to `10`; not currently forwarded by Compose |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | No | backend | SMTP transport settings |
+| `SMTP_USER`, `SMTP_PASS` | For real email | backend | Required to deliver OTP rather than log it in development |
+| `EMAIL_FROM` | No | backend | Sender address |
+| `ANTHROPIC_API_KEY` | For AI features | backend, AI | Claude API credential |
+| `ANTHROPIC_MODEL` | No | AI | Defaults in code to `claude-sonnet-4-6` |
+| `IMAGE_GPT_API_KEY` | For image generation | backend, AI | OpenAI image API credential |
+| `OPENAI_IMAGE_MODEL` | No | backend, AI | Defaults to `gpt-image-1` |
+| `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` | Yes at startup | backend | TikTok Login Kit credentials |
+| `TIKTOK_TOKEN_ENCRYPTION_KEY` | Yes at startup | backend | Exactly 64 hexadecimal characters |
+| `TIKTOK_MEDIA_PUBLIC_BASE_URL` | Yes at startup | backend | Public HTTPS origin from which TikTok can fetch media |
 
-### Step 1 — Clone the repository
+To customize a default that Compose does not currently forward, add the variable to the relevant service's `environment` section in `docker-compose.yml`; placing it only in the root `.env` makes it available for interpolation but does not automatically inject it into a container.
 
-```cmd
-git clone https://github.com/your-username/LEADFLOW-2.git
-cd LEADFLOW-2
+## TikTok setup
+
+The current Compose file fixes the callback URL to:
+
+```text
+http://localhost:5000/api/tiktok/callback
 ```
 
----
+Register that exact URI in the TikTok developer console for local development. Publishing also requires the relevant TikTok Content Posting API access. `TIKTOK_MEDIA_PUBLIC_BASE_URL` cannot be `localhost`; TikTok's servers must be able to reach it over public HTTPS.
 
-### Step 2 — Set up the Backend
+For a remote host, update `TIKTOK_REDIRECT_URI`, `FRONTEND_BASE_URL`, frontend API/socket URLs, and backend CORS origins in the Compose configuration before building and starting the stack.
 
-Open a new terminal window and run:
+## Troubleshooting
 
-```cmd
+### Backend exits immediately
+
+Inspect the logs:
+
+```powershell
+docker compose logs backend
+```
+
+Common causes are a missing required environment variable, an invalid Supabase service-role key, or the `roles` table not existing because migrations were not applied.
+
+### Compose warns that a variable is not set
+
+Add the named variable to the root `.env`. Compose substitutes an absent value with an empty string, and some SDKs treat an empty string differently from an unset variable.
+
+### CORS or WebSocket failures
+
+For the supplied local stack, use `http://localhost:5173`. A remote deployment must inject the actual frontend/backend origins and the frontend socket URL. The current Compose file is hard-coded for localhost in several places.
+
+### OTP email is not received
+
+Check `SMTP_USER`, `SMTP_PASS`, and the backend logs. Gmail accounts normally require an App Password when two-factor authentication is enabled. Without SMTP credentials in development, the application logs the OTP instead of emailing it.
+
+### TikTok publishing cannot fetch media
+
+Confirm that `TIKTOK_MEDIA_PUBLIC_BASE_URL` is a public HTTPS URL and that the media endpoint is reachable from outside the local network.
+
+### Dependency changes are not reflected
+
+Rebuild the affected image:
+
+```powershell
+docker compose build --no-cache backend
+docker compose up -d backend
+```
+
+## Running checks without Compose
+
+If Node.js and Python are installed on the host:
+
+```powershell
 cd backend
-npm install
+npm test
+npm run typecheck
+
+cd ..\frontend
+npm test
+npm run build
+
+cd ..\ai-analyzer
+pytest tests
 ```
 
-Create `backend\.env` by copying the example:
+## Known deployment gaps found in the code review
 
-```cmd
-copy .env.example .env
-```
+- Compose is configured for development rather than production.
+- The current frontend production build fails type-checking in `AdminUserTable.tsx`: the create-user payload sends `fullName`, while its declared API type requires `full_name`. Fix this before creating a production frontend image.
+- The root master SQL script is behind the migration directory; migrations through `030` are required.
+- TikTok configuration is described by some older documentation as optional, but backend startup currently rejects missing TikTok credentials.
+- Several useful overrides (`FRONTEND_URL`, `BACKEND_URL`, socket URLs, token lifetimes, storage bucket, and `NODE_ENV=production`) are not exposed as Compose substitutions.
+- The Compose services have no health checks, `depends_on` conditions, or restart policies.
+- The Dockerfiles install floating major/runtime dependencies (`node:25-alpine`, broad Python ranges, and `npm install`), which reduces reproducibility compared with pinned images and lockfile-based installs.
+- No reverse proxy or TLS termination is included.
 
-Open `backend\.env` in Notepad and fill in your values:
+These are constraints of the current deployment files, not extra steps that Docker Compose performs automatically.
 
-```env
-PORT=5000
-NODE_ENV=development
-
-# Supabase
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-DATABASE_URL=postgresql://postgres.your-project-ref:password@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
-SUPABASE_STORAGE_BUCKET=leadflow-media
-
-# JWT
-JWT_SECRET=your_long_random_string
-JWT_EXPIRES=7d
-JWT_REFRESH_EXPIRES_IN=30d
-
-# OTP
-OTP_EXPIRES_MINUTES=10
-
-# SMTP (Gmail — use App Password, not your account password)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your_gmail@gmail.com
-SMTP_PASS=your_gmail_app_password
-EMAIL_FROM=LeadFlow <noreply@leadflow.id>
-
-# Frontend URL
-FRONTEND_URL=http://localhost:5173
-FRONTEND_BASE_URL=http://localhost:5173
-
-# Anthropic (Claude)
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-haiku-4-5-20251001
-
-# TikTok
-TIKTOK_CLIENT_KEY=your_tiktok_client_key
-TIKTOK_CLIENT_SECRET=your_tiktok_client_secret
-TIKTOK_REDIRECT_URI=http://localhost:5000/api/tiktok/callback
-TIKTOK_TOKEN_ENCRYPTION_KEY=your_64_hex_chars
-TIKTOK_MEDIA_PUBLIC_BASE_URL=https://your-cloudflare-tunnel.trycloudflare.com
-
-# Timezone
-TZ=Asia/Jakarta
-```
-
-Start the backend:
-
-```cmd
-npm run dev
-```
-
-The backend runs at [http://localhost:5000](http://localhost:5000).
-
----
-
-### Step 3 — Set up the Frontend
-
-Open a **new** terminal window:
-
-```cmd
-cd frontend
-npm install
-```
-
-Create `frontend\.env`:
-
-```cmd
-copy .env.example .env
-```
-
-If `.env.example` does not exist, create `frontend\.env` manually:
-
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_DEBUG_AUTH=false
-```
-
-Start the frontend:
-
-```cmd
-npm run dev
-```
-
-The app opens at [http://localhost:5173](http://localhost:5173).
-
----
-
-### Step 4 — Set up the AI Analyzer
-
-Open a **new** terminal window:
-
-```cmd
-cd ai-analyzer
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Create `ai-analyzer\.env`:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-haiku-4-5-20251001
-```
-
-Start the AI service:
-
-```cmd
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-The AI classifier runs at [http://localhost:8000](http://localhost:8000).
-
-> **Note:** You must run `venv\Scripts\activate` every time you open a new terminal for the AI analyzer.
-
----
-
-## Step 5 — Set up the Database (Supabase)
-
-1. Go to [https://supabase.com](https://supabase.com) and create a free project.
-2. In your project, go to **SQL Editor**.
-3. Run the migration files in order from `database/migrations/`:
-   - Open each file in Notepad, copy the SQL, paste into the Supabase SQL Editor, and click **Run**.
-   - Run them in this order: `001` → `002` → `003` → ... → `019`
-
-Alternatively, use the master script if available:
-- Open `database/migrations/MASTER_RUN_ALL.sql` and run it in the Supabase SQL Editor.
-
-4. After migrations, get your connection details from Supabase:
-   - **Project URL** → Settings → API → Project URL
-   - **Anon Key** → Settings → API → `anon public`
-   - **Service Role Key** → Settings → API → `service_role` (keep this secret)
-   - **Database URL** → Settings → Database → Connection string → **Session pooler** (port 6543)
-
----
-
-## Available Routes
-
-| Role | Entry Page |
-|---|---|
-| `admin` | `/admin` |
-| `marketing_staff` | `/calendar` |
-| `business_owner` | `/dashboard` |
-
----
-
-## Useful Commands
-
-### Backend
-
-```cmd
-cd backend
-npm run dev          # Start with hot-reload
-npm run build        # Compile TypeScript
-npm test             # Run Jest tests
-npm run typecheck    # TypeScript type check only
-```
-
-### Frontend
-
-```cmd
-cd frontend
-npm run dev          # Start Vite dev server
-npm run build        # Production build
-npm test             # Run Vitest tests
-```
-
-### AI Analyzer
-
-```cmd
-cd ai-analyzer
-venv\Scripts\activate
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-pytest tests\        # Run pytest tests
-```
-
----
-
-## Environment Variables Summary
-
-| Variable | Where | Description |
-|---|---|---|
-| `SUPABASE_URL` | backend | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | backend | Public anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | backend | Secret service role key — **required** or all routes return 401 |
-| `DATABASE_URL` | backend | Session pooler connection string (port 6543) |
-| `JWT_SECRET` | backend | Any long random string |
-| `SMTP_USER` / `SMTP_PASS` | backend | Gmail address + App Password for OTP emails |
-| `ANTHROPIC_API_KEY` | backend + ai-analyzer | Claude API key |
-| `TIKTOK_CLIENT_KEY` | backend | From TikTok Developer Console |
-| `TIKTOK_CLIENT_SECRET` | backend | From TikTok Developer Console |
-| `TIKTOK_TOKEN_ENCRYPTION_KEY` | backend | 64 hex chars (32 bytes), generate randomly |
-| `VITE_API_BASE_URL` | frontend | Must be `http://localhost:5000/api` |
-
----
-
-## Common Issues on Windows
-
-| Problem | Fix |
-|---|---|
-| `python` not found | Re-install Python and check "Add to PATH" |
-| `venv\Scripts\activate` fails in PowerShell | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first |
-| `npm` not found | Re-install Node.js from nodejs.org |
-| Port 5000 already in use | Change `PORT=5001` in `backend\.env` and `VITE_API_BASE_URL=http://localhost:5001/api` in `frontend\.env` |
-| CORS error in browser | Make sure `FRONTEND_URL=http://localhost:5173` is set in `backend\.env` |
-| 401 on all API calls | `SUPABASE_SERVICE_ROLE_KEY` is missing or wrong in `backend\.env` |
-| OTP email not sending | Use Gmail App Password (not your account password) — enable 2FA on Gmail first |
-| `CRLF` line ending errors | Run `git config --global core.autocrlf false` before cloning, or run `sed -i 's/\r//' filename` in Git Bash |
-
----
-
-## TikTok Setup (Optional — for publish features)
-
-1. Create a TikTok Developer account at [https://developers.tiktok.com](https://developers.tiktok.com).
-2. Create an app and add a **Login Kit** product.
-3. Set the redirect URI to exactly: `http://localhost:5000/api/tiktok/callback`
-4. Copy the **Client Key** and **Client Secret** into `backend\.env`.
-5. For photo/video publishing, you need Content Posting API approval from TikTok.
-
----
-
-## Use Cases Implemented
-
-| UC | Feature | Status |
-|---|---|---|
-| UC001 | Register with OTP email | ✅ Done |
-| UC002 | Login / Logout (JWT) | ✅ Done |
-| UC003 | Admin — manage user accounts | ✅ Done |
-| UC004 | Input prompt for AI | ✅ Done |
-| UC005 | Generate 3 content ideas via Claude | ✅ Done |
-| UC006 | Approve / reject AI ideas → draft in calendar | ✅ Done |
-| UC007 | Calendar CRUD + drag-drop + auto-publish | ✅ Done |
-| UC008 | Upload photo / video to calendar slot | ✅ Done |
-| UC009 | Publish status notifications | ✅ Done |
-| UC010 | Fetch TikTok DMs + comments | ⚠️ Backend stub |
-| UC011 | AI classify interactions | ✅ Done (FastAPI) |
-| UC012 | Interaction inbox — view, reply, delete | ⚠️ Frontend ready, backend stub |
-| UC013 | Business Owner weekly dashboard | ⚠️ Frontend ready, backend stub |
